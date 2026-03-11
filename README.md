@@ -11,7 +11,7 @@ No fixed timeline. No pressure. Just shipping.
 
 | # | Project | Description | Stack | Status | Live |
 |---|---------|-------------|-------|--------|------|
-| 01 | [StockKids](./p01-stockkids) | TikTok-style virtual stock trading for under-18s | React, Claude API, Finnhub | 🔨 Building | — |
+| 01 | [Swish](./p01-swish) | Virtual stock trading for under-18s | React, Claude API, Finnhub | 🔨 Building | — |
 | 02 | — | — | — | — | — |
 | 03 | — | — | — | — | — |
 | 04 | — | — | — | — | — |
