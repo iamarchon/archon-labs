@@ -1,5 +1,5 @@
 import { T } from "../tokens";
-import { HOLDINGS } from "../data";
+import { HOLDINGS, STARTING_CASH } from "../data";
 import Reveal from "../components/Reveal";
 import Card from "../components/Card";
 import Sparkline from "../components/Sparkline";
@@ -9,7 +9,7 @@ export default function Portfolio({ stocks }) {
     const s = stocks.find(x => x.ticker === h.ticker);
     return sum + (s ? s.price * h.shares : 0);
   }, 0);
-  const cash = 4840, total = portfolioValue + cash;
+  const cash = STARTING_CASH, total = portfolioValue + cash;
   const gain = total - 10000, gainPct = (gain / 10000) * 100;
   const barData = [38,45,42,58,52,67,61,75,70,82,78,91,86,100];
 
@@ -20,8 +20,8 @@ export default function Portfolio({ stocks }) {
           <div style={{ color: T.inkFaint, fontSize: "12px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "10px" }}>Total Portfolio Value</div>
           <div style={{ fontSize: "60px", fontWeight: 700, letterSpacing: "-2.5px", color: T.ink, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>${total.toFixed(2)}</div>
           <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "10px", marginTop: "12px" }}>
-            <span style={{ color: T.green, fontSize: "17px", fontWeight: 600 }}>▲ +{gainPct.toFixed(2)}%</span>
-            <span style={{ color: T.inkFaint, fontSize: "15px" }}>+${gain.toFixed(2)} all time</span>
+            <span style={{ color: gain >= 0 ? T.green : T.red, fontSize: "17px", fontWeight: 600 }}>{gain >= 0 ? "▲" : "▼"} {gain >= 0 ? "+" : ""}{gainPct.toFixed(2)}%</span>
+            <span style={{ color: T.inkFaint, fontSize: "15px" }}>{gain >= 0 ? "+" : "−"}${Math.abs(gain).toFixed(2)} all time</span>
           </div>
           <div style={{ display: "flex", gap: "4px", alignItems: "flex-end", height: "48px", justifyContent: "center", marginTop: "28px", padding: "0 60px" }}>
             {barData.map((h, i) => (<div key={i} style={{ flex: 1, maxWidth: "20px", height: `${h}%`, background: i === barData.length - 1 ? T.accent : `${T.accent}22`, borderRadius: "3px 3px 0 0", transition: "height .6s ease" }} />))}

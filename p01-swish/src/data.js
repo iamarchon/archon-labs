@@ -12,10 +12,12 @@ export const SEED_STOCKS = [
 ];
 
 export const HOLDINGS = [
-  { ticker:"AAPL", shares:3,  avgCost:182.50 },
-  { ticker:"NVDA", shares:2,  avgCost:845.00 },
-  { ticker:"RBLX", shares:10, avgCost:38.40  },
+  { ticker:"AAPL", shares:3,  avgCost:189.30 },
+  { ticker:"NVDA", shares:2,  avgCost:875.40 },
+  { ticker:"RBLX", shares:10, avgCost:42.15  },
 ];
+
+export const STARTING_CASH = 7259.80;
 
 export const LEADERBOARD = [
   { rank:1, user:"portfolio_pro",  level:"Legend",  total:"$15,842", gain:"+58.4%", streak:14 },

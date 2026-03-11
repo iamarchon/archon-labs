@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { T } from "../tokens";
-import { HOLDINGS, LEADERBOARD, CHALLENGES } from "../data";
+import { HOLDINGS, LEADERBOARD, CHALLENGES, STARTING_CASH } from "../data";
 import Reveal from "../components/Reveal";
 import Card from "../components/Card";
 import Sparkline from "../components/Sparkline";
@@ -13,7 +13,7 @@ export default function Dashboard({ stocks, onTrade }) {
     const s = stocks.find(x => x.ticker === h.ticker);
     return sum + (s ? s.price * h.shares : 0);
   }, 0);
-  const cash = 4840, total = portfolioValue + cash;
+  const cash = STARTING_CASH, total = portfolioValue + cash;
   const gain = total - 10000, gainPct = (gain / 10000) * 100;
   const barData = [38,45,42,58,52,67,61,75,70,82,78,91,86,100];
 
@@ -30,8 +30,8 @@ export default function Dashboard({ stocks, onTrade }) {
                 ${total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "12px" }}>
-                <span style={{ color: T.green, fontSize: "17px", fontWeight: 600 }}>▲ +{gainPct.toFixed(2)}%</span>
-                <span style={{ color: T.inkFaint, fontSize: "15px" }}>+${gain.toFixed(2)} all time</span>
+                <span style={{ color: gain >= 0 ? T.green : T.red, fontSize: "17px", fontWeight: 600 }}>{gain >= 0 ? "▲" : "▼"} {gain >= 0 ? "+" : ""}{gainPct.toFixed(2)}%</span>
+                <span style={{ color: T.inkFaint, fontSize: "15px" }}>{gain >= 0 ? "+" : "−"}${Math.abs(gain).toFixed(2)} all time</span>
               </div>
             </div>
             <div style={{ display: "flex", gap: "4px", alignItems: "flex-end", height: "56px" }}>

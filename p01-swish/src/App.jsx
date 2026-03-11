@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { T } from "./tokens";
 import { SEED_STOCKS } from "./data";
+import useLivePrices from "./hooks/useLivePrices";
 import TopNav from "./components/TopNav";
 import TickerStrip from "./components/TickerStrip";
 import TradeModal from "./components/TradeModal";
@@ -19,19 +20,22 @@ function ScrollToTop() {
 }
 
 function AppShell() {
-  const [stocks, setStocks] = useState(SEED_STOCKS);
+  const tickers = useMemo(() => SEED_STOCKS.map(s => s.ticker), []);
+  const livePrices = useLivePrices(tickers);
   const [tradeStock, setTradeStock] = useState(null);
   const [watchlist, setWatchlist] = useState([]);
   const [toast, setToast] = useState(null);
 
-  useEffect(() => {
-    const id = setInterval(() => setStocks(prev => prev.map(s => ({
-      ...s,
-      price: Math.max(1, s.price + (Math.random() - 0.495) * 1.2),
-      changePct: s.changePct + (Math.random() - 0.495) * 0.04,
-    }))), 3000);
-    return () => clearInterval(id);
-  }, []);
+  // Merge live WebSocket prices into seed data
+  const stocks = useMemo(() =>
+    SEED_STOCKS.map(s => {
+      const live = livePrices[s.ticker];
+      if (live == null) return s;
+      const changePct = ((live - s.price) / s.price) * 100;
+      return { ...s, price: live, changePct };
+    }),
+    [livePrices]
+  );
 
   const handleTrade = (stock, action, shares) => {
     setToast({ text: `${action} ${shares}× ${stock.ticker} confirmed`, type: action });
