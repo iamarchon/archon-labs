@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { T } from "../tokens";
 
-export default function TradeModal({ stock, onClose, onTrade }) {
+export default function TradeModal({ stock, onClose, onTrade, cash = 10000, holdings = [] }) {
   const [action, setAction] = useState("BUY");
   const [shares, setShares] = useState(1);
 
@@ -13,6 +13,9 @@ export default function TradeModal({ stock, onClose, onTrade }) {
 
   const price = stock.price ?? 0;
   const total = (price * shares).toFixed(2);
+  const holding = holdings.find(h => h.ticker === stock.ticker);
+  const ownedShares = holding ? Number(holding.shares) : 0;
+  const canAfford = action === "BUY" ? cash >= price * shares : ownedShares >= shares;
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.22)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", animation: "fadeIn .16s ease" }}>
@@ -28,13 +31,21 @@ export default function TradeModal({ stock, onClose, onTrade }) {
         </div>
         <div style={{ display: "flex", background: T.bg, borderRadius: "11px", padding: "3px", marginBottom: "24px" }}>
           {["BUY", "SELL"].map(a => (
-            <button key={a} onClick={() => setAction(a)} style={{ flex: 1, padding: "10px", borderRadius: "9px", border: "none", cursor: "pointer", background: action === a ? T.white : "transparent", color: action === a ? T.ink : T.inkSub, fontWeight: action === a ? 600 : 400, fontSize: "14px", boxShadow: action === a ? "0 1px 4px rgba(0,0,0,.1)" : "none", transition: "all .18s ease" }}>{a}</button>
+            <button key={a} onClick={() => { setAction(a); setShares(1); }} style={{ flex: 1, padding: "10px", borderRadius: "9px", border: "none", cursor: "pointer", background: action === a ? T.white : "transparent", color: action === a ? T.ink : T.inkSub, fontWeight: action === a ? 600 : 400, fontSize: "14px", boxShadow: action === a ? "0 1px 4px rgba(0,0,0,.1)" : "none", transition: "all .18s ease" }}>{a}</button>
           ))}
         </div>
         <div style={{ background: T.bg, borderRadius: "12px", padding: "18px", marginBottom: "20px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: "13px", borderBottom: `1px solid ${T.line}` }}>
             <span style={{ color: T.inkSub, fontSize: "14px" }}>Market Price</span>
             <span style={{ color: T.ink, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{price > 0 ? `$${price.toFixed(2)}` : "—"}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "13px", paddingBottom: "13px", borderBottom: `1px solid ${T.line}` }}>
+            <span style={{ color: T.inkSub, fontSize: "14px" }}>
+              {action === "BUY" ? "Cash Available" : "Shares Owned"}
+            </span>
+            <span style={{ color: T.ink, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+              {action === "BUY" ? `$${cash.toFixed(2)}` : ownedShares}
+            </span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "13px" }}>
             <span style={{ color: T.inkSub, fontSize: "14px" }}>Shares</span>
@@ -49,9 +60,17 @@ export default function TradeModal({ stock, onClose, onTrade }) {
           <span style={{ color: T.inkSub, fontSize: "14px" }}>Total</span>
           <span style={{ color: T.ink, fontWeight: 700, fontSize: "26px", letterSpacing: "-0.8px", fontVariantNumeric: "tabular-nums" }}>{price > 0 ? `$${total}` : "—"}</span>
         </div>
-        <button onClick={() => { onTrade(stock, action, shares); onClose(); }} style={{ width: "100%", padding: "15px", borderRadius: "12px", border: "none", cursor: "pointer", background: action === "BUY" ? T.accent : T.red, color: T.white, fontWeight: 600, fontSize: "15px", transition: "opacity .15s ease" }}
-          onMouseEnter={e => e.currentTarget.style.opacity = ".88"}
-          onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+        {!canAfford && (
+          <div style={{ color: T.red, fontSize: "13px", textAlign: "center", marginBottom: "12px", fontWeight: 500 }}>
+            {action === "BUY" ? "Not enough cash" : "Not enough shares"}
+          </div>
+        )}
+        <button
+          onClick={() => { if (canAfford) { onTrade(stock, action, shares); onClose(); } }}
+          disabled={!canAfford}
+          style={{ width: "100%", padding: "15px", borderRadius: "12px", border: "none", cursor: canAfford ? "pointer" : "not-allowed", background: action === "BUY" ? T.accent : T.red, color: T.white, fontWeight: 600, fontSize: "15px", transition: "opacity .15s ease", opacity: canAfford ? 1 : 0.4 }}
+          onMouseEnter={e => { if (canAfford) e.currentTarget.style.opacity = ".88"; }}
+          onMouseLeave={e => { if (canAfford) e.currentTarget.style.opacity = "1"; }}>
           {action === "BUY" ? "Buy" : "Sell"} {shares} share{shares > 1 ? "s" : ""} of {stock.ticker}
         </button>
       </div>

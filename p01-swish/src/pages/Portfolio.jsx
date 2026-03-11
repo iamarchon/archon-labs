@@ -1,15 +1,14 @@
 import { T } from "../tokens";
-import { HOLDINGS, STARTING_CASH } from "../data";
 import Reveal from "../components/Reveal";
 import Card from "../components/Card";
 import Sparkline from "../components/Sparkline";
 
-export default function Portfolio({ stocks }) {
-  const portfolioValue = HOLDINGS.reduce((sum, h) => {
+export default function Portfolio({ stocks, holdings = [], cash = 10000, xp = 0 }) {
+  const portfolioValue = holdings.reduce((sum, h) => {
     const s = stocks.find(x => x.ticker === h.ticker);
-    return sum + (s ? s.price * h.shares : 0);
+    return sum + (s ? s.price * Number(h.shares) : 0);
   }, 0);
-  const cash = STARTING_CASH, total = portfolioValue + cash;
+  const total = portfolioValue + cash;
   const gain = total - 10000, gainPct = (gain / 10000) * 100;
   const barData = [38,45,42,58,52,67,61,75,70,82,78,91,86,100];
 
@@ -30,7 +29,7 @@ export default function Portfolio({ stocks }) {
       </Reveal>
       <Reveal delay={0.08}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px", marginBottom: "20px" }}>
-          {[["Invested", `$${portfolioValue.toFixed(2)}`], ["Cash", `$${cash.toFixed(2)}`], ["XP", "2,840"]].map(([label, value]) => (
+          {[["Invested", `$${portfolioValue.toFixed(2)}`], ["Cash", `$${cash.toFixed(2)}`], ["XP", xp.toLocaleString()]].map(([label, value]) => (
             <Card key={label} style={{ padding: "24px 28px" }}>
               <div style={{ color: T.inkFaint, fontSize: "11px", fontWeight: 500, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: "8px" }}>{label}</div>
               <div style={{ color: T.ink, fontSize: "24px", fontWeight: 700, letterSpacing: "-0.6px", fontVariantNumeric: "tabular-nums" }}>{value}</div>
@@ -41,18 +40,23 @@ export default function Portfolio({ stocks }) {
       <Reveal delay={0.14}>
         <div style={{ color: T.inkFaint, fontSize: "11px", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: "14px", padding: "0 4px" }}>Holdings</div>
         <Card hover={false} style={{ overflow: "hidden" }}>
-          {HOLDINGS.map((h, i) => {
+          {holdings.length === 0 ? (
+            <div style={{ padding: "40px", textAlign: "center", color: T.inkSub, fontSize: "14px" }}>
+              No holdings yet. Make your first trade to get started.
+            </div>
+          ) : holdings.map((h, i) => {
             const s = stocks.find(x => x.ticker === h.ticker);
             if (!s) return null;
-            const val = s.price * h.shares, cost = h.avgCost * h.shares, g = val - cost, gPct = (g / cost) * 100;
+            const shares = Number(h.shares), avgCost = Number(h.avg_cost);
+            const val = s.price * shares, cost = avgCost * shares, g = val - cost, gPct = cost > 0 ? (g / cost) * 100 : 0;
             return (
-              <div key={h.ticker} style={{ display: "flex", alignItems: "center", gap: "20px", padding: "20px 28px", borderBottom: i < HOLDINGS.length - 1 ? `1px solid ${T.line}` : "none" }}>
+              <div key={h.ticker} style={{ display: "flex", alignItems: "center", gap: "20px", padding: "20px 28px", borderBottom: i < holdings.length - 1 ? `1px solid ${T.line}` : "none" }}>
                 <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: T.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <span style={{ color: T.inkMid, fontSize: "9.5px", fontWeight: 700 }}>{s.ticker}</span>
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ color: T.ink, fontWeight: 600, fontSize: "15px", letterSpacing: "-0.2px" }}>{s.ticker} <span style={{ color: T.inkSub, fontWeight: 400 }}>· {s.name}</span></div>
-                  <div style={{ color: T.inkSub, fontSize: "13px", marginTop: "2px" }}>{h.shares} shares · avg cost ${h.avgCost.toFixed(2)}</div>
+                  <div style={{ color: T.inkSub, fontSize: "13px", marginTop: "2px" }}>{shares} shares · avg cost ${avgCost.toFixed(2)}</div>
                 </div>
                 <Sparkline positive={gPct >= 0} width={64} height={24} />
                 <div style={{ textAlign: "right" }}>

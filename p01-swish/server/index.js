@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { createClient } from "@supabase/supabase-js";
 
 dotenv.config();
 
@@ -9,6 +10,13 @@ const PORT = 3001;
 
 app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
+
+/* ── Supabase admin client (service key for privileged ops) ── */
+const supabaseUrl = process.env.VITE_SUPABASE_URL || "";
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || "";
+const supabaseAdmin = supabaseUrl && supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey)
+  : null;
 
 /* ── POST /api/coach — proxy to Anthropic Messages API ── */
 app.post("/api/coach", async (req, res) => {

@@ -1,19 +1,19 @@
 import { useNavigate } from "react-router-dom";
 import { T } from "../tokens";
-import { HOLDINGS, LEADERBOARD, CHALLENGES, STARTING_CASH } from "../data";
+import { LEADERBOARD, CHALLENGES } from "../data";
 import Reveal from "../components/Reveal";
 import Card from "../components/Card";
 import Sparkline from "../components/Sparkline";
 import ProgressBar from "../components/ProgressBar";
 
-export default function Dashboard({ stocks, onTrade }) {
+export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader" }) {
   const navigate = useNavigate();
 
-  const portfolioValue = HOLDINGS.reduce((sum, h) => {
+  const portfolioValue = holdings.reduce((sum, h) => {
     const s = stocks.find(x => x.ticker === h.ticker);
-    return sum + (s ? s.price * h.shares : 0);
+    return sum + (s ? s.price * Number(h.shares) : 0);
   }, 0);
-  const cash = STARTING_CASH, total = portfolioValue + cash;
+  const total = portfolioValue + cash;
   const gain = total - 10000, gainPct = (gain / 10000) * 100;
   const barData = [38,45,42,58,52,67,61,75,70,82,78,91,86,100];
 
@@ -41,7 +41,7 @@ export default function Dashboard({ stocks, onTrade }) {
             </div>
           </div>
           <div style={{ display: "flex", marginTop: "36px", paddingTop: "28px", borderTop: `1px solid ${T.line}` }}>
-            {[["Invested", `$${portfolioValue.toFixed(2)}`], ["Cash", `$${cash.toFixed(2)}`], ["XP", "2,840"], ["Rank", "#4"], ["Streak", "5 days 🔥"]].map((stat, i, arr) => (
+            {[["Invested", `$${portfolioValue.toFixed(2)}`], ["Cash", `$${cash.toFixed(2)}`], ["XP", xp.toLocaleString()], ["Level", level], ["Streak", `${streak} days 🔥`]].map((stat, i, arr) => (
               <div key={stat[0]} style={{ flex: 1, textAlign: "center", borderRight: i < arr.length - 1 ? `1px solid ${T.line}` : "none" }}>
                 <div style={{ color: T.inkFaint, fontSize: "10.5px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "5px" }}>{stat[0]}</div>
                 <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>{stat[1]}</div>
@@ -108,28 +108,35 @@ export default function Dashboard({ stocks, onTrade }) {
             <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Your Holdings</div>
             <button onClick={() => navigate("/portfolio")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>View portfolio</button>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "12px" }}>
-            {HOLDINGS.map(h => {
-              const s = stocks.find(x => x.ticker === h.ticker);
-              if (!s) return null;
-              const val = s.price * h.shares, cost = h.avgCost * h.shares, g = val - cost, gPct = (g / cost) * 100;
-              return (
-                <div key={h.ticker} onClick={() => onTrade(s)} style={{ padding: "18px 20px", borderRadius: T.r, background: T.bg, border: `1px solid ${T.line}`, cursor: "pointer", transition: "all .18s ease" }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = T.ghost; e.currentTarget.style.background = T.white; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = T.line; e.currentTarget.style.background = T.bg; }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
-                    <div>
-                      <div style={{ color: T.ink, fontWeight: 700, fontSize: "15px", letterSpacing: "-0.2px" }}>{s.ticker}</div>
-                      <div style={{ color: T.inkSub, fontSize: "12px", marginTop: "2px" }}>{h.shares} shares</div>
+          {holdings.length === 0 ? (
+            <div style={{ padding: "32px", textAlign: "center", color: T.inkSub, fontSize: "14px" }}>
+              No holdings yet. Head to Markets to make your first trade.
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(holdings.length, 3)},1fr)`, gap: "12px" }}>
+              {holdings.map(h => {
+                const s = stocks.find(x => x.ticker === h.ticker);
+                if (!s) return null;
+                const shares = Number(h.shares), avgCost = Number(h.avg_cost);
+                const val = s.price * shares, cost = avgCost * shares, g = val - cost, gPct = cost > 0 ? (g / cost) * 100 : 0;
+                return (
+                  <div key={h.ticker} onClick={() => onTrade(s)} style={{ padding: "18px 20px", borderRadius: T.r, background: T.bg, border: `1px solid ${T.line}`, cursor: "pointer", transition: "all .18s ease" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = T.ghost; e.currentTarget.style.background = T.white; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = T.line; e.currentTarget.style.background = T.bg; }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
+                      <div>
+                        <div style={{ color: T.ink, fontWeight: 700, fontSize: "15px", letterSpacing: "-0.2px" }}>{s.ticker}</div>
+                        <div style={{ color: T.inkSub, fontSize: "12px", marginTop: "2px" }}>{shares} shares</div>
+                      </div>
+                      <Sparkline positive={gPct >= 0} width={52} height={20} />
                     </div>
-                    <Sparkline positive={gPct >= 0} width={52} height={20} />
+                    <div style={{ color: T.ink, fontWeight: 700, fontSize: "17px", letterSpacing: "-0.4px", fontVariantNumeric: "tabular-nums" }}>${val.toFixed(2)}</div>
+                    <div style={{ color: gPct >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 500, marginTop: "2px" }}>{gPct >= 0 ? "+" : ""}{gPct.toFixed(2)}%</div>
                   </div>
-                  <div style={{ color: T.ink, fontWeight: 700, fontSize: "17px", letterSpacing: "-0.4px", fontVariantNumeric: "tabular-nums" }}>${val.toFixed(2)}</div>
-                  <div style={{ color: gPct >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 500, marginTop: "2px" }}>{gPct >= 0 ? "+" : ""}{gPct.toFixed(2)}%</div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </Card>
       </Reveal>
 

@@ -1,8 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import { T } from "./tokens";
 import { SEED_STOCKS } from "./data";
 import useLivePrices from "./hooks/useLivePrices";
+import useUserData from "./hooks/useUserData";
+import useTrade from "./hooks/useTrade";
+import AuthGate from "./components/AuthGate";
 import TopNav from "./components/TopNav";
 import TickerStrip from "./components/TickerStrip";
 import TradeModal from "./components/TradeModal";
@@ -22,9 +26,19 @@ function ScrollToTop() {
 function AppShell() {
   const tickers = useMemo(() => SEED_STOCKS.map(s => s.ticker), []);
   const livePrices = useLivePrices(tickers);
+  const {
+    user: dbUser, holdings, watchlist, loading: userLoading,
+    toggleWatch, refreshUser, refreshHoldings, xpToLevel,
+  } = useUserData();
   const [tradeStock, setTradeStock] = useState(null);
-  const [watchlist, setWatchlist] = useState([]);
   const [toast, setToast] = useState(null);
+
+  const onTradeComplete = useCallback(async () => {
+    await refreshUser();
+    await refreshHoldings();
+  }, [refreshUser, refreshHoldings]);
+
+  const { executeTrade, error: tradeError } = useTrade(dbUser?.id, onTradeComplete);
 
   // Merge live WebSocket prices into seed data
   const stocks = useMemo(() =>
@@ -37,31 +51,53 @@ function AppShell() {
     [livePrices]
   );
 
-  const handleTrade = (stock, action, shares) => {
-    setToast({ text: `${action} ${shares}× ${stock.ticker} confirmed`, type: action });
-    setTimeout(() => setToast(null), 3000);
+  const cash = dbUser ? Number(dbUser.cash) : 10000;
+  const xp = dbUser?.xp ?? 0;
+  const level = xpToLevel(xp);
+  const streak = dbUser?.streak ?? 0;
+  const username = dbUser?.username ?? "trader";
+
+  const handleTrade = async (stock, action, shares) => {
+    await executeTrade(stock, action, shares);
+    if (!tradeError) {
+      setToast({ text: `${action} ${shares}× ${stock.ticker} confirmed`, type: action });
+      setTimeout(() => setToast(null), 3000);
+    }
   };
 
-  const handleWatch = (stock) => {
-    setWatchlist(prev =>
-      prev.includes(stock.ticker)
-        ? prev.filter(t => t !== stock.ticker)
-        : [...prev, stock.ticker]
+  if (userLoading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: T.bg }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "28px", fontWeight: 700, letterSpacing: "-0.8px", color: T.ink, marginBottom: "8px" }}>
+            swish<span style={{ color: T.accent }}>.</span>
+          </div>
+          <div style={{ color: T.inkFaint, fontSize: "14px" }}>Loading your portfolio...</div>
+        </div>
+      </div>
     );
-  };
+  }
 
   return (
     <>
       <ScrollToTop />
       <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: T.bg }}>
-        <TopNav />
+        <TopNav xp={xp} level={level} />
         <div style={{ height: "52px", flexShrink: 0 }} />
         <TickerStrip stocks={stocks} />
         <main style={{ flex: 1, background: T.bg }}>
           <Routes>
-            <Route path="/" element={<Dashboard stocks={stocks} onTrade={setTradeStock} />} />
-            <Route path="/markets" element={<Markets onTrade={setTradeStock} watchlist={watchlist} onWatch={handleWatch} />} />
-            <Route path="/portfolio" element={<Portfolio stocks={stocks} />} />
+            <Route path="/" element={
+              <Dashboard stocks={stocks} onTrade={setTradeStock}
+                holdings={holdings} cash={cash} xp={xp} level={level}
+                streak={streak} username={username} />
+            } />
+            <Route path="/markets" element={
+              <Markets onTrade={setTradeStock} watchlist={watchlist} onWatch={toggleWatch} />
+            } />
+            <Route path="/portfolio" element={
+              <Portfolio stocks={stocks} holdings={holdings} cash={cash} xp={xp} />
+            } />
             <Route path="/learn" element={<Learn />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/coach" element={<Coach />} />
@@ -69,7 +105,15 @@ function AppShell() {
         </main>
       </div>
 
-      {tradeStock && <TradeModal stock={tradeStock} onClose={() => setTradeStock(null)} onTrade={handleTrade} />}
+      {tradeStock && (
+        <TradeModal
+          stock={tradeStock}
+          onClose={() => setTradeStock(null)}
+          onTrade={handleTrade}
+          cash={cash}
+          holdings={holdings}
+        />
+      )}
 
       {toast && (
         <div style={{ position: "fixed", bottom: "36px", left: "50%", transform: "translateX(-50%)", background: T.ink, color: T.white, padding: "12px 24px", borderRadius: "24px", fontWeight: 500, fontSize: "14px", zIndex: 300, animation: "toastIn .28s cubic-bezier(.34,1.56,.64,1)", whiteSpace: "nowrap", boxShadow: "0 8px 32px rgba(0,0,0,.18)" }}>
@@ -83,7 +127,9 @@ function AppShell() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AppShell />
+      <AuthGate>
+        <AppShell />
+      </AuthGate>
     </BrowserRouter>
   );
 }

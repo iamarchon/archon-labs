@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
+import { UserButton } from "@clerk/react";
 import { T } from "../tokens";
 
 const NAV = [
@@ -11,7 +12,7 @@ const NAV = [
   { to: "/coach",       label: "Coach"       },
 ];
 
-export default function TopNav() {
+export default function TopNav({ xp = 0, level = "Bronze" }) {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 6);
@@ -59,8 +60,11 @@ export default function TopNav() {
             </NavLink>
           ))}
         </nav>
-        <div style={{ fontSize: "12px", color: T.inkSub, background: T.bg, padding: "5px 13px", borderRadius: "20px", fontWeight: 500 }}>
-          2,840 XP · Silver
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{ fontSize: "12px", color: T.inkSub, background: T.bg, padding: "5px 13px", borderRadius: "20px", fontWeight: 500 }}>
+            {xp.toLocaleString()} XP · {level}
+          </div>
+          <UserButton afterSignOutUrl="/" />
         </div>
       </div>
     </header>

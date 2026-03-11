@@ -11,7 +11,8 @@
       "Bash(curl:*)",
       "Bash(xxd .env:*)",
       "Bash(iconv:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(npm:*)"
     ]
   }
 }
