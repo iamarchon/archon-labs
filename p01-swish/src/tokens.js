@@ -1,0 +1,18 @@
+export const T = {
+  white:    "#ffffff",
+  bg:       "#f5f5f7",
+  ink:      "#1d1d1f",
+  inkMid:   "#424245",
+  inkSub:   "#6e6e73",
+  inkFaint: "#86868b",
+  line:     "#e8e8ed",
+  ghost:    "#d2d2d7",
+  accent:   "#0071e3",
+  green:    "#1a7f3c",
+  greenBg:  "#f0faf4",
+  red:      "#c0392b",
+  redBg:    "#fdf2f2",
+  amber:    "#b45309",
+  r:        "16px",
+  rLg:      "20px",
+};
