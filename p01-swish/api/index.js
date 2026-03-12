@@ -114,6 +114,114 @@ app.get("/api/candles", async (req, res) => {
   }
 });
 
+/* ── GET /api/news/:symbol — AI-powered stock news via Claude + web_search ── */
+const newsCache = {};
+const NEWS_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+app.get("/api/news/:symbol", async (req, res) => {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: "ANTHROPIC_API_KEY not set" });
+
+  const symbol = req.params.symbol.toUpperCase();
+  const cached = newsCache[symbol];
+  if (cached && Date.now() - cached.ts < NEWS_CACHE_TTL) {
+    return res.json(cached.data);
+  }
+
+  const companyName = req.query.name || symbol;
+
+  try {
+    // Step 1: Fetch news via web_search
+    const searchRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 1500,
+        tools: [{ type: "web_search_20250305" }],
+        messages: [{
+          role: "user",
+          content: `Find the 5 most recent news headlines about ${companyName} (${symbol}) stock from the past 2 weeks. For each story return: headline, source, date, 1-sentence summary, and URL if available. Focus on product launches, earnings, partnerships, innovation — things a young investor aged 13-18 would find exciting or educational. Avoid: political controversy, layoffs framed negatively, adult content, anything inappropriate for under-18s. Return ONLY a JSON array, no other text: [{\"headline\": \"\", \"source\": \"\", \"date\": \"\", \"summary\": \"\", \"url\": \"\"}]`
+        }],
+      }),
+    });
+    const searchData = await searchRes.json();
+
+    // Extract text from response (may have multiple content blocks)
+    let articlesText = "";
+    for (const block of (searchData.content || [])) {
+      if (block.type === "text") articlesText += block.text;
+    }
+
+    // Parse articles JSON
+    let articles = [];
+    try {
+      const jsonMatch = articlesText.match(/\[[\s\S]*\]/);
+      if (jsonMatch) articles = JSON.parse(jsonMatch[0]);
+    } catch { /* parse failed, articles stays empty */ }
+
+    // Step 2: Safety filter
+    if (articles.length > 0) {
+      const filterRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 1200,
+          messages: [{
+            role: "user",
+            content: `Review these news headlines for an under-18 audience. Remove any that involve violence, adult content, political controversy, or anything inappropriate for teenagers. Return ONLY the safe ones as a JSON array with the same format. Input: ${JSON.stringify(articles)}`
+          }],
+        }),
+      });
+      const filterData = await filterRes.json();
+      const filterText = (filterData.content || []).map(b => b.type === "text" ? b.text : "").join("");
+      try {
+        const m = filterText.match(/\[[\s\S]*\]/);
+        if (m) articles = JSON.parse(m[0]);
+      } catch { /* keep original if filter parse fails */ }
+    }
+
+    // Step 3: Generate teen-friendly summary
+    let summary = "";
+    if (articles.length > 0) {
+      const sumRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 150,
+          messages: [{
+            role: "user",
+            content: `Based on these recent headlines about ${companyName} (${symbol}), write a 2-sentence "What's happening with ${companyName}" summary for a teenager. Be excited, clear, no jargon. Headlines: ${articles.map(a => a.headline).join("; ")}. Return ONLY the 2 sentences, no other text.`
+          }],
+        }),
+      });
+      const sumData = await sumRes.json();
+      summary = (sumData.content || []).map(b => b.type === "text" ? b.text : "").join("").trim();
+    }
+
+    const result = { summary, articles: articles.slice(0, 5) };
+    newsCache[symbol] = { ts: Date.now(), data: result };
+    res.json(result);
+  } catch (err) {
+    console.error("News fetch error:", err);
+    res.status(502).json({ error: "Failed to fetch news" });
+  }
+});
+
 /* ── POST /api/insights — AI portfolio insights via Claude Haiku ── */
 app.post("/api/insights", async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;

@@ -118,6 +118,28 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
   const chartColor = candles.length >= 2 && lastPrice >= firstPrice
     ? T.green : candles.length >= 2 ? T.red : T.accent;
 
+  // News
+  const [news, setNews] = useState(null);
+  const [newsLoading, setNewsLoading] = useState(true);
+  const [newsError, setNewsError] = useState(false);
+
+  useEffect(() => {
+    setNewsLoading(true);
+    setNewsError(false);
+    setNews(null);
+    (async () => {
+      try {
+        const res = await fetch(`${baseUrl}/api/news/${encodeURIComponent(symbol)}?name=${encodeURIComponent(stockName)}`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        setNews(data);
+      } catch {
+        setNewsError(true);
+      }
+      setNewsLoading(false);
+    })();
+  }, [symbol, stockName]);
+
   const tickInterval = candles.length > 5 ? Math.floor(candles.length / 5) : 1;
 
   return (
@@ -235,6 +257,81 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
             onMouseLeave={e => { e.currentTarget.style.borderColor = T.line; e.currentTarget.style.color = T.ink; }}
           >Sell {symbol}</button>
         </div>
+      </Reveal>
+
+      {/* Latest News */}
+      <Reveal delay={0.18}>
+        <Card hover={false} style={{ padding: "28px 30px", marginTop: "20px" }}>
+          <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px", marginBottom: "20px" }}>
+            Latest News &middot; {stockName}
+          </div>
+
+          {newsLoading ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {[1, 2, 3].map(i => (
+                <div key={i} style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div style={{ height: "14px", width: `${70 + i * 8}%`, background: T.bg, borderRadius: "4px", animation: "pulse 1.5s ease infinite" }} />
+                  <div style={{ height: "10px", width: "40%", background: T.bg, borderRadius: "4px", animation: "pulse 1.5s ease infinite" }} />
+                  <div style={{ height: "12px", width: "90%", background: T.bg, borderRadius: "4px", animation: "pulse 1.5s ease infinite" }} />
+                  {i < 3 && <div style={{ height: "1px", background: T.line, marginTop: "8px" }} />}
+                </div>
+              ))}
+            </div>
+          ) : newsError ? (
+            <div style={{ padding: "20px 0", textAlign: "center", color: T.inkFaint, fontSize: "13px" }}>
+              Couldn't load news right now
+            </div>
+          ) : (
+            <>
+              {news?.summary && (
+                <div style={{ background: "#f0f7ff", borderRadius: "12px", padding: "16px 18px", marginBottom: "20px" }}>
+                  <div style={{ fontSize: "13px", color: T.inkSub, lineHeight: 1.6 }}>
+                    <span style={{ fontWeight: 600, color: T.accent }}>AI Summary: </span>
+                    {news.summary}
+                  </div>
+                </div>
+              )}
+
+              {(!news?.articles || news.articles.length === 0) ? (
+                <div style={{ padding: "16px 0", textAlign: "center", color: T.inkFaint, fontSize: "13px" }}>
+                  No recent news found
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  {news.articles.map((article, i) => (
+                    <div key={i}>
+                      <div style={{ padding: "12px 0" }}>
+                        {article.url ? (
+                          <a href={article.url} target="_blank" rel="noopener noreferrer"
+                            style={{ color: T.ink, fontSize: "14px", fontWeight: 600, letterSpacing: "-0.2px", textDecoration: "none", lineHeight: 1.4 }}
+                            onMouseEnter={e => e.currentTarget.style.color = T.accent}
+                            onMouseLeave={e => e.currentTarget.style.color = T.ink}>
+                            {article.headline}
+                          </a>
+                        ) : (
+                          <div style={{ color: T.ink, fontSize: "14px", fontWeight: 600, letterSpacing: "-0.2px", lineHeight: 1.4 }}>
+                            {article.headline}
+                          </div>
+                        )}
+                        <div style={{ color: T.inkFaint, fontSize: "11px", marginTop: "4px" }}>
+                          {[article.source, article.date].filter(Boolean).join(" · ")}
+                        </div>
+                        {article.summary && (
+                          <div style={{ color: T.inkSub, fontSize: "13px", marginTop: "6px", lineHeight: 1.5 }}>
+                            {article.summary}
+                          </div>
+                        )}
+                      </div>
+                      {i < news.articles.length - 1 && (
+                        <div style={{ height: "1px", background: T.line }} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </Card>
       </Reveal>
     </div>
   );
