@@ -10,6 +10,7 @@ import ProgressBar from "../components/ProgressBar";
 import InsightsTile from "../components/InsightsTile";
 import LeaguesTile from "../components/LeaguesTile";
 import RangeTabs from "../components/RangeTabs";
+import { STOCK_CATEGORIES, CATEGORY_ICONS } from "../data/stockCategories";
 
 const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
@@ -181,6 +182,30 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
 
   const MOVERS_LABELS = { "1D": "Today", "1W": "Past week", "1M": "Past month", "3M": "Past 3 months", "1Y": "Past year" };
   const moversRangeLabel = MOVERS_LABELS[moversRange] || "Today";
+
+  // Watchlist range + price history + collapsed state
+  const [wlRange, setWlRange] = useState("1D");
+  const [wlPriceHistory, setWlPriceHistory] = useState({});
+  const [wlCollapsed, setWlCollapsed] = useState({});
+
+  useEffect(() => {
+    if (watchlist.length === 0) return;
+    (async () => {
+      const results = {};
+      await Promise.all(watchlist.map(async (symbol) => {
+        try {
+          const res = await fetch(`${baseUrl}/api/candles?symbol=${encodeURIComponent(symbol)}&range=${wlRange}`);
+          const data = await res.json();
+          if (data.s === "ok" && data.c?.length >= 2) {
+            const first = data.c[0];
+            const last = data.c[data.c.length - 1];
+            results[symbol] = { changePct: ((last - first) / first) * 100 };
+          }
+        } catch { /* ignore */ }
+      }));
+      setWlPriceHistory(results);
+    })();
+  }, [watchlist, wlRange]);
 
   // Holdings time range + price history
   const [holdingsRange, setHoldingsRange] = useState("1D");
@@ -356,56 +381,108 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
         </Card>
       </Reveal>
 
-      {/* Row 3: Watchlist */}
+      {/* Row 3: Watchlist — grouped by category */}
       {watchlist.length > 0 && (
         <Reveal delay={0.06}>
           <Card style={{ padding: "28px 30px", marginBottom: "16px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
               <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Watchlist 👀</div>
-              <button onClick={() => navigate("/markets")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>Browse Markets</button>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <RangeTabs selected={wlRange} onChange={setWlRange} />
+                <button onClick={() => navigate("/markets")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>Browse Markets</button>
+              </div>
             </div>
-            <div>
-              {watchlist.map((symbol, i) => {
+            {(() => {
+              const enriched = watchlist.map(symbol => {
                 const s = stocks.find(x => x.ticker === symbol);
                 const price = livePrices[symbol] ?? s?.price;
-                const changePct = s?.changePct ?? 0;
+                const rangeData = wlPriceHistory[symbol];
+                const changePct = rangeData ? rangeData.changePct : (s?.changePct ?? 0);
                 const name = s?.name ?? symbol;
-                return (
-                  <div key={symbol}>
-                    <div
-                      onClick={() => navigate(`/stock/${symbol}`)}
-                      style={{ display: "flex", alignItems: "center", padding: "14px 4px", cursor: "pointer", transition: "background .15s", borderRadius: "8px" }}
-                      onMouseEnter={e => e.currentTarget.style.background = T.bg}
-                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", letterSpacing: "-0.2px" }}>{symbol}</div>
-                        <div style={{ color: T.inkSub, fontSize: "12px", marginTop: "1px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
-                      </div>
-                      <div style={{ textAlign: "right", minWidth: "110px" }}>
-                        {price != null ? (
-                          <>
-                            <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", fontVariantNumeric: "tabular-nums" }}>${price.toFixed(2)}</div>
-                            <div style={{ color: changePct >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 600, marginTop: "1px", fontVariantNumeric: "tabular-nums" }}>
-                              {changePct >= 0 ? "+" : ""}{changePct.toFixed(2)}%
-                            </div>
-                          </>
-                        ) : (
-                          <div style={{ color: T.ghost, fontWeight: 600, fontSize: "14px" }}>$...</div>
+                const category = STOCK_CATEGORIES[symbol] || "Other";
+                return { symbol, price, changePct, name, category };
+              });
+
+              const grouped = {};
+              for (const item of enriched) {
+                if (!grouped[item.category]) grouped[item.category] = [];
+                grouped[item.category].push(item);
+              }
+              for (const cat of Object.keys(grouped)) {
+                grouped[cat].sort((a, b) => b.changePct - a.changePct);
+              }
+
+              const categories = Object.keys(grouped).sort();
+              const singleCategory = categories.length <= 1;
+
+              const renderRow = (item, showDivider) => (
+                <div key={item.symbol}>
+                  <div
+                    onClick={() => navigate(`/stock/${item.symbol}`)}
+                    style={{ display: "flex", alignItems: "center", padding: "14px 4px", cursor: "pointer", transition: "background .15s", borderRadius: "8px" }}
+                    onMouseEnter={e => e.currentTarget.style.background = T.bg}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", letterSpacing: "-0.2px" }}>{item.symbol}</div>
+                      <div style={{ color: T.inkSub, fontSize: "12px", marginTop: "1px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
+                    </div>
+                    <div style={{ textAlign: "right", minWidth: "110px" }}>
+                      {item.price != null ? (
+                        <>
+                          <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", fontVariantNumeric: "tabular-nums" }}>${item.price.toFixed(2)}</div>
+                          <div style={{ color: item.changePct >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 600, marginTop: "1px", fontVariantNumeric: "tabular-nums" }}>
+                            {item.changePct >= 0 ? "+" : ""}{item.changePct.toFixed(2)}%
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ color: T.ghost, fontWeight: 600, fontSize: "14px" }}>$...</div>
+                      )}
+                    </div>
+                    <button
+                      onClick={e => { e.stopPropagation(); toggleWatch(item.symbol); }}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#e67e22", fontSize: "18px", padding: "4px 8px", marginLeft: "8px", flexShrink: 0 }}
+                    >★</button>
+                  </div>
+                  {showDivider && <div style={{ height: "1px", background: T.line, margin: "0 4px" }} />}
+                </div>
+              );
+
+              if (singleCategory) {
+                const items = enriched.sort((a, b) => b.changePct - a.changePct);
+                return <div>{items.map((item, i) => renderRow(item, i < items.length - 1))}</div>;
+              }
+
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  {categories.map(cat => {
+                    const items = grouped[cat];
+                    const icon = CATEGORY_ICONS[cat] || CATEGORY_ICONS.Other;
+                    const collapsed = wlCollapsed[cat] || false;
+                    return (
+                      <div key={cat}>
+                        <div
+                          onClick={() => setWlCollapsed(prev => ({ ...prev, [cat]: !prev[cat] }))}
+                          style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 4px", cursor: "pointer", userSelect: "none", borderRadius: "6px", transition: "background .15s" }}
+                          onMouseEnter={e => e.currentTarget.style.background = T.bg}
+                          onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                        >
+                          <span style={{ fontSize: "14px" }}>{icon}</span>
+                          <span style={{ color: T.ink, fontSize: "13px", fontWeight: 700, letterSpacing: "-0.2px" }}>{cat}</span>
+                          <span style={{ color: T.inkFaint, fontSize: "12px", fontWeight: 500 }}>({items.length})</span>
+                          <span style={{ color: T.inkFaint, fontSize: "10px", marginLeft: "auto", transform: collapsed ? "rotate(-90deg)" : "none", transition: "transform .2s" }}>▼</span>
+                        </div>
+                        {!collapsed && (
+                          <div style={{ animation: "fadeIn .2s ease" }}>
+                            {items.map((item, i) => renderRow(item, i < items.length - 1))}
+                          </div>
                         )}
                       </div>
-                      <button
-                        onClick={e => { e.stopPropagation(); toggleWatch(symbol); }}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "#e67e22", fontSize: "18px", padding: "4px 8px", marginLeft: "8px", flexShrink: 0 }}
-                      >★</button>
-                    </div>
-                    {i < watchlist.length - 1 && (
-                      <div style={{ height: "1px", background: T.line, margin: "0 4px" }} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </Card>
         </Reveal>
       )}
