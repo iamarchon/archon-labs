@@ -183,11 +183,31 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
   const MOVERS_LABELS = { "1D": "Today", "1W": "Past week", "1M": "Past month", "3M": "Past 3 months", "1Y": "Past year" };
   const moversRangeLabel = MOVERS_LABELS[moversRange] || "Today";
 
-  // Watchlist range + price history + collapsed state
+  // Watchlist range + price history + live quotes + collapsed state
   const [wlRange, setWlRange] = useState("1D");
   const [wlPriceHistory, setWlPriceHistory] = useState({});
+  const [wlQuotes, setWlQuotes] = useState({});
   const [wlCollapsed, setWlCollapsed] = useState({});
 
+  // Fetch live quote for every watched symbol (price + daily % from Finnhub)
+  useEffect(() => {
+    if (watchlist.length === 0) return;
+    (async () => {
+      const results = {};
+      await Promise.all(watchlist.map(async (symbol) => {
+        try {
+          const res = await fetch(`${baseUrl}/api/quote/${encodeURIComponent(symbol)}`);
+          const data = await res.json();
+          if (data.c && data.c > 0) {
+            results[symbol] = { price: data.c, changePct: data.dp ?? 0 };
+          }
+        } catch { /* ignore */ }
+      }));
+      setWlQuotes(results);
+    })();
+  }, [watchlist]);
+
+  // Fetch candle-based % change for selected range
   useEffect(() => {
     if (watchlist.length === 0) return;
     (async () => {
@@ -395,9 +415,10 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
             {(() => {
               const enriched = watchlist.map(symbol => {
                 const s = stocks.find(x => x.ticker === symbol);
-                const price = livePrices[symbol] ?? s?.price;
+                const q = wlQuotes[symbol];
+                const price = livePrices[symbol] ?? q?.price ?? s?.price ?? null;
                 const rangeData = wlPriceHistory[symbol];
-                const changePct = rangeData ? rangeData.changePct : (s?.changePct ?? 0);
+                const changePct = rangeData ? rangeData.changePct : (q?.changePct ?? s?.changePct ?? 0);
                 const name = s?.name ?? symbol;
                 const category = STOCK_CATEGORIES[symbol] || "Other";
                 return { symbol, price, changePct, name, category };
@@ -436,7 +457,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
                           </div>
                         </>
                       ) : (
-                        <div style={{ color: T.ghost, fontWeight: 600, fontSize: "14px" }}>$...</div>
+                        <div style={{ color: T.ghost, fontWeight: 600, fontSize: "14px" }}>--</div>
                       )}
                     </div>
                     <button
