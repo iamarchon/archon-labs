@@ -205,8 +205,21 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
     }));
   })();
 
+  // Range-based P&L for hero subtitle
+  const rangeLabel = perfRange === "1W" ? "this week" : perfRange === "1M" ? "this month" : "all time";
+  const rangeBaseline = (() => {
+    if (filteredSnapshots.length >= 2) return filteredSnapshots[0].value;
+    if (perfRange === "ALL") return 10000;
+    // No snapshot for this window — fall back to all-time
+    if (snapshots.length >= 1) return Number(snapshots[0].total_value ?? 10000);
+    return 10000;
+  })();
+  const rangeGain = total - rangeBaseline;
+  const rangeGainPct = rangeBaseline > 0 ? (rangeGain / rangeBaseline) * 100 : 0;
+  const rangeLabelFinal = filteredSnapshots.length >= 2 ? rangeLabel : "all time";
+
   const perfColor = filteredSnapshots.length >= 2
-    ? filteredSnapshots[filteredSnapshots.length - 1].value >= 10000 ? T.green : T.red
+    ? filteredSnapshots[filteredSnapshots.length - 1].value >= rangeBaseline ? T.green : T.red
     : T.accent;
 
   return (
@@ -222,8 +235,8 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
                 ${total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "12px" }}>
-                <span style={{ color: gain >= 0 ? T.green : T.red, fontSize: "17px", fontWeight: 600 }}>{gain >= 0 ? "▲" : "▼"} {gain >= 0 ? "+" : ""}{gainPct.toFixed(2)}%</span>
-                <span style={{ color: T.inkFaint, fontSize: "15px" }}>{gain >= 0 ? "+" : "−"}${Math.abs(gain).toFixed(2)} all time</span>
+                <span style={{ color: rangeGain >= 0 ? T.green : T.red, fontSize: "17px", fontWeight: 600 }}>{rangeGain >= 0 ? "▲" : "▼"} {rangeGain >= 0 ? "+" : ""}{rangeGainPct.toFixed(2)}%</span>
+                <span style={{ color: T.inkFaint, fontSize: "15px" }}>{rangeGain >= 0 ? "+" : "−"}${Math.abs(rangeGain).toFixed(2)} {rangeLabelFinal}</span>
               </div>
               {sessionDelta != null && (
                 <div style={{ color: sessionDelta >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 500, marginTop: "6px", animation: "fadeIn .4s ease" }}>
