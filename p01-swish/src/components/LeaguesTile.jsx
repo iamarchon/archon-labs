@@ -4,7 +4,7 @@ import Card from "./Card";
 
 const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
-export default function LeaguesTile({ userId }) {
+export default function LeaguesTile({ userId, cardStyle = {} }) {
   const [leagues, setLeagues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -106,7 +106,7 @@ export default function LeaguesTile({ userId }) {
   if (!userId) return null;
 
   return (
-    <Card hover={false} style={{ padding: "28px 30px" }}>
+    <Card hover={false} style={{ padding: "28px 30px", ...cardStyle }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>My Leagues 🏆</div>
         <div style={{ display: "flex", gap: "8px" }}>

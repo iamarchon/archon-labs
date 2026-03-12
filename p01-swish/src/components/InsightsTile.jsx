@@ -4,7 +4,7 @@ import Card from "./Card";
 
 const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
-export default function InsightsTile({ holdings = [], cash = 10000, totalValue = 10000, totalTrades = 0, portfolioGain = 0, livePrices = {}, stocks = [] }) {
+export default function InsightsTile({ holdings = [], cash = 10000, totalValue = 10000, totalTrades = 0, portfolioGain = 0, livePrices = {}, stocks = [], cardStyle = {} }) {
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -60,7 +60,7 @@ export default function InsightsTile({ holdings = [], cash = 10000, totalValue =
   if (holdings.length === 0 && totalTrades === 0) return null;
 
   return (
-    <Card hover={false} style={{ padding: "28px 30px" }}>
+    <Card hover={false} style={{ padding: "28px 30px", ...cardStyle }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>
