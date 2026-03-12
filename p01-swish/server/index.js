@@ -95,15 +95,19 @@ app.get("/api/candles", async (req, res) => {
       return res.json({ s: "no_data", t: [], c: [] });
     }
     const timestamps = result.timestamp;
-    const closes = result.indicators.quote[0].close;
-    const t = [], c = [];
+    const q = result.indicators.quote[0];
+    const closes = q.close, opens = q.open, highs = q.high, lows = q.low;
+    const t = [], c = [], o = [], h = [], l = [];
     for (let i = 0; i < timestamps.length; i++) {
       if (closes[i] != null) {
         t.push(timestamps[i]);
         c.push(closes[i]);
+        o.push(opens[i] ?? closes[i]);
+        h.push(highs[i] ?? closes[i]);
+        l.push(lows[i] ?? closes[i]);
       }
     }
-    res.json({ s: "ok", t, c });
+    res.json({ s: "ok", t, c, o, h, l });
   } catch (err) {
     res.status(502).json({ error: "Failed to fetch chart data" });
   }

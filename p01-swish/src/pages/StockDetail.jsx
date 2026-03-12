@@ -43,16 +43,22 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
   const stockName = seedStock?.name ?? symbol;
   const sector = seedStock?.sector ?? null;
 
-  // Fetch quote for stats
+  // Poll quote every 30s for live price
   useEffect(() => {
-    (async () => {
+    const fetchQuote = async () => {
       try {
         const res = await fetch(`${baseUrl}/api/quote/${encodeURIComponent(symbol)}`);
         const data = await res.json();
         if (data.c > 0) setQuote(data);
       } catch { /* ignore */ }
-    })();
+    };
+    fetchQuote();
+    const id = setInterval(fetchQuote, 30000);
+    return () => clearInterval(id);
   }, [symbol]);
+
+  // Raw OHLC data for stats
+  const [rawOhlc, setRawOhlc] = useState(null);
 
   // Fetch candle data from Yahoo Finance via proxy
   const fetchCandles = useCallback(async (r) => {
@@ -68,16 +74,39 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
           price: data.c[i],
           time: formatTime(t, r),
         })));
+        setRawOhlc({ o: data.o, h: data.h, l: data.l, c: data.c });
       } else {
         setCandles([]);
+        setRawOhlc(null);
       }
     } catch {
       setCandles([]);
+      setRawOhlc(null);
     }
     setLoading(false);
   }, [symbol]);
 
   useEffect(() => { fetchCandles(range); }, [range, fetchCandles]);
+
+  // Derive stats from candle OHLC data for the selected range
+  const rangeStats = (() => {
+    if (range === "1D" && quote) {
+      return [
+        ["OPEN", quote.o],
+        ["HIGH", quote.h],
+        ["LOW", quote.l],
+        ["PREV CLOSE", quote.pc],
+      ];
+    }
+    if (!rawOhlc || !rawOhlc.o.length) return null;
+    const prefix = range === "1W" ? "7D" : range;
+    return [
+      [`${prefix} OPEN`, rawOhlc.o[0]],
+      [`${prefix} HIGH`, Math.max(...rawOhlc.h)],
+      [`${prefix} LOW`, Math.min(...rawOhlc.l)],
+      ["START PRICE", rawOhlc.c[0]],
+    ];
+  })();
 
   // Compute change dynamically from candle data for selected range
   const firstPrice = candles.length >= 2 ? candles[0].price : null;
@@ -176,19 +205,14 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
         </Card>
       </Reveal>
 
-      {quote && (
+      {rangeStats && (
         <Reveal delay={0.1}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "12px", marginBottom: "20px" }}>
-            {[
-              ["Open", quote.o],
-              ["High", quote.h],
-              ["Low", quote.l],
-              ["Prev Close", quote.pc],
-            ].map(([label, val]) => (
+            {rangeStats.map(([label, val]) => (
               <Card key={label} style={{ padding: "18px 20px" }}>
                 <div style={{ color: T.inkFaint, fontSize: "11px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "6px" }}>{label}</div>
                 <div style={{ color: T.ink, fontSize: "18px", fontWeight: 700, letterSpacing: "-0.4px", fontVariantNumeric: "tabular-nums" }}>
-                  ${val?.toFixed(2) ?? "—"}
+                  {val != null ? `$${val.toFixed(2)}` : "—"}
                 </div>
               </Card>
             ))}
