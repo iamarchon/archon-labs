@@ -83,12 +83,21 @@ const StockRow = ({ stock, onTrade, onWatch, watched }) => {
       <Sparkline positive={pos} width={56} height={20} />
 
       <div style={{ textAlign:"right", minWidth:"80px" }}>
-        <div style={{ color:T.ink, fontWeight:600, fontSize:"14px", fontVariantNumeric:"tabular-nums" }}>
-          ${stock.price?.toFixed(2) ?? "—"}
-        </div>
-        <div style={{ color: pos ? T.green : T.red, fontSize:"12px", fontWeight:500 }}>
-          {pos ? "+" : ""}{stock.changePct?.toFixed(2) ?? "0.00"}%
-        </div>
+        {stock.price != null ? (
+          <>
+            <div style={{ color:T.ink, fontWeight:600, fontSize:"14px", fontVariantNumeric:"tabular-nums" }}>
+              ${stock.price.toFixed(2)}
+            </div>
+            <div style={{ color: pos ? T.green : T.red, fontSize:"12px", fontWeight:500 }}>
+              {pos ? "+" : ""}{(stock.changePct ?? 0).toFixed(2)}%
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ color:T.ghost, fontWeight:600, fontSize:"14px" }}>$...</div>
+            <div style={{ color:T.ghost, fontSize:"12px" }}>—</div>
+          </>
+        )}
       </div>
 
       <div style={{
@@ -142,6 +151,17 @@ export default function StockSearch({ onTrade, onWatch, watchlist = [] }) {
     ? FEATURED
     : FEATURED.filter(s => s.sector === sector);
 
+  const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
+
+  const fetchQuote = useCallback(async (symbol) => {
+    try {
+      const res = await fetch(`${baseUrl}/api/quote/${encodeURIComponent(symbol)}`);
+      const data = await res.json();
+      if (data.c && data.c > 0) return { price: data.c, changePct: data.dp ?? 0 };
+    } catch { /* fall through */ }
+    return null;
+  }, [baseUrl]);
+
   const doSearch = useCallback(async (q) => {
     if (!q || q.length < 1) {
       setSearchMode(false);
@@ -164,13 +184,17 @@ export default function StockSearch({ onTrade, onWatch, watchlist = [] }) {
         found = (data.result || [])
           .filter(r => r.type === "Common Stock" && !r.symbol.includes("."))
           .slice(0, 12)
-          .map(r => ({
-            ticker:    r.symbol,
-            name:      r.description,
-            price:     null,
-            changePct: null,
-            sector:    null,
-          }));
+          .map(r => {
+            // Use featured data if available
+            const feat = FEATURED.find(f => f.ticker === r.symbol);
+            return feat || {
+              ticker:    r.symbol,
+              name:      r.description,
+              price:     null,
+              changePct: null,
+              sector:    null,
+            };
+          });
       } else {
         const q2 = q.toLowerCase();
         found = FEATURED.filter(s =>
@@ -178,7 +202,22 @@ export default function StockSearch({ onTrade, onWatch, watchlist = [] }) {
           s.name.toLowerCase().includes(q2)
         );
       }
+
       setResults(found);
+      setSearching(false);
+
+      // Fetch live quotes for results missing prices
+      const needQuotes = found.filter(s => s.price == null);
+      if (needQuotes.length > 0) {
+        const quotes = await Promise.all(needQuotes.map(s => fetchQuote(s.ticker)));
+        setResults(prev => prev.map(s => {
+          if (s.price != null) return s;
+          const idx = needQuotes.findIndex(n => n.ticker === s.ticker);
+          const q = idx >= 0 ? quotes[idx] : null;
+          return q ? { ...s, price: q.price, changePct: q.changePct } : s;
+        }));
+      }
+      return;
     } catch {
       const q2 = q.toLowerCase();
       setResults(FEATURED.filter(s =>
@@ -187,7 +226,7 @@ export default function StockSearch({ onTrade, onWatch, watchlist = [] }) {
       ));
     }
     setSearching(false);
-  }, []);
+  }, [fetchQuote]);
 
   useEffect(() => {
     clearTimeout(debounceRef.current);

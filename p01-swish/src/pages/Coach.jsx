@@ -24,7 +24,8 @@ export default function Coach() {
         .filter(m => m.role !== "coach" || m !== newMessages[0])
         .map(m => ({ role: m.role === "coach" ? "assistant" : "user", content: m.text }));
 
-      const res = await fetch("http://localhost:3001/api/coach", {
+      const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
+      const res = await fetch(`${baseUrl}/api/coach`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
