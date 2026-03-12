@@ -13,6 +13,7 @@ export default function LeaguesTile({ userId }) {
   const [joinCode, setJoinCode] = useState("");
   const [createdCode, setCreatedCode] = useState(null);
   const [formError, setFormError] = useState(null);
+  const [formSuccess, setFormSuccess] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [expandedLeague, setExpandedLeague] = useState(null);
   const [leagueMembers, setLeagueMembers] = useState({});
@@ -57,6 +58,7 @@ export default function LeaguesTile({ userId }) {
     if (joinCode.length < 6) return;
     setFormLoading(true);
     setFormError(null);
+    setFormSuccess(null);
     try {
       const res = await fetch(`${baseUrl}/api/leagues/join`, {
         method: "POST",
@@ -64,9 +66,13 @@ export default function LeaguesTile({ userId }) {
         body: JSON.stringify({ code: joinCode.toUpperCase(), userId }),
       });
       const data = await res.json();
-      if (data.success) {
+      if (data.alreadyMember) {
+        setFormSuccess("You're already part of this league! 🎉");
+        setJoinCode("");
+      } else if (data.success) {
         setJoinCode("");
         setShowJoin(false);
+        setFormSuccess(null);
         fetchLeagues();
       } else {
         setFormError(data.error || "Code not found. Check with your teacher.");
@@ -92,6 +98,7 @@ export default function LeaguesTile({ userId }) {
     }
   };
 
+  // TODO Session 6: Add navigator.share() for mobile sharing
   const copyCode = (code) => {
     navigator.clipboard?.writeText(code);
   };
@@ -103,11 +110,11 @@ export default function LeaguesTile({ userId }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>My Leagues 🏆</div>
         <div style={{ display: "flex", gap: "8px" }}>
-          <button onClick={() => { setShowCreate(v => !v); setShowJoin(false); setCreatedCode(null); setFormError(null); }}
+          <button onClick={() => { setShowCreate(v => !v); setShowJoin(false); setCreatedCode(null); setFormError(null); setFormSuccess(null); }}
             style={{ background: T.accent, color: T.white, border: "none", borderRadius: "8px", padding: "6px 14px", fontSize: "12px", fontWeight: 600, cursor: "pointer", transition: "opacity .15s" }}
             onMouseEnter={e => e.currentTarget.style.opacity = ".88"}
             onMouseLeave={e => e.currentTarget.style.opacity = "1"}>Create</button>
-          <button onClick={() => { setShowJoin(v => !v); setShowCreate(false); setCreatedCode(null); setFormError(null); }}
+          <button onClick={() => { setShowJoin(v => !v); setShowCreate(false); setCreatedCode(null); setFormError(null); setFormSuccess(null); }}
             style={{ background: T.bg, color: T.ink, border: `1px solid ${T.line}`, borderRadius: "8px", padding: "6px 14px", fontSize: "12px", fontWeight: 600, cursor: "pointer", transition: "all .15s" }}>Join</button>
         </div>
       </div>
@@ -118,6 +125,7 @@ export default function LeaguesTile({ userId }) {
           {createdCode ? (
             <div style={{ textAlign: "center" }}>
               <div style={{ color: T.ink, fontSize: "14px", fontWeight: 600, marginBottom: "8px" }}>Share this code with your class:</div>
+              {/* TODO Session 6: Add navigator.share() for mobile sharing */}
               <div onClick={() => copyCode(createdCode)}
                 style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: T.white, padding: "10px 20px", borderRadius: "10px", border: `1px solid ${T.line}`, cursor: "pointer" }}>
                 <span style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "2px", color: T.accent }}>{createdCode}</span>
@@ -153,6 +161,7 @@ export default function LeaguesTile({ userId }) {
             </button>
           </div>
           {formError && <div style={{ color: T.red, fontSize: "12px", marginTop: "8px" }}>{formError}</div>}
+          {formSuccess && <div style={{ color: T.green, fontSize: "12px", marginTop: "8px", fontWeight: 500 }}>{formSuccess}</div>}
         </div>
       )}
 
@@ -173,7 +182,13 @@ export default function LeaguesTile({ userId }) {
                 onMouseLeave={e => { if (expandedLeague !== league.id) e.currentTarget.style.background = "transparent"; }}>
                 <div>
                   <div style={{ color: T.ink, fontSize: "14px", fontWeight: 600 }}>{league.name}</div>
-                  <div style={{ color: T.inkFaint, fontSize: "12px", marginTop: "2px" }}>{league.member_count} member{league.member_count !== 1 ? "s" : ""}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "2px" }}>
+                    <span style={{ color: T.inkFaint, fontSize: "12px" }}>{league.member_count} member{league.member_count !== 1 ? "s" : ""}</span>
+                    <span onClick={e => { e.stopPropagation(); copyCode(league.code); }}
+                      style={{ color: T.accent, fontSize: "11px", fontWeight: 500, cursor: "pointer" }}>
+                      Code: {league.code} 📋
+                    </span>
+                  </div>
                 </div>
                 <span style={{ color: T.inkFaint, fontSize: "12px", transform: expandedLeague === league.id ? "rotate(180deg)" : "none", transition: "transform .2s" }}>▼</span>
               </div>

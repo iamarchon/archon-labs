@@ -139,7 +139,10 @@ Example: ["You're 100% in tech — try diversifying.", "Your cash ratio is high.
     });
 
     const data = await response.json();
-    const text = data.content?.[0]?.text || "[]";
+    const text = (data.content?.[0]?.text || "[]")
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
+      .trim();
     try {
       const insights = JSON.parse(text);
       res.json({ insights });
@@ -189,10 +192,18 @@ app.post("/api/leagues/join", async (req, res) => {
       .maybeSingle();
     if (!league) return res.status(404).json({ error: "Code not found. Check with your teacher." });
 
+    // Check if already a member
+    const { data: existing } = await supabaseAdmin
+      .from("league_members")
+      .select("id")
+      .eq("league_id", league.id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (existing) return res.json({ success: true, alreadyMember: true });
+
     const { error } = await supabaseAdmin
       .from("league_members")
       .insert({ league_id: league.id, user_id: userId });
-    if (error?.code === "23505") return res.json({ success: true, message: "Already a member" });
     if (error) return res.status(400).json({ error: error.message });
 
     res.json({ success: true });

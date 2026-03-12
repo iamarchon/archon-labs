@@ -50,6 +50,10 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
 
   // Global leaderboard preview
   const [leaderboard, setLeaderboard] = useState([]);
+  const [lbTab, setLbTab] = useState("global");
+  const [dashLeagues, setDashLeagues] = useState([]);
+  const [dashLeagueMembers, setDashLeagueMembers] = useState({});
+  const [expandedDashLeague, setExpandedDashLeague] = useState(null);
 
   useEffect(() => {
     if (!dbUser) return;
@@ -85,6 +89,30 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
       } catch { /* ignore */ }
     })();
   }, []);
+
+  // Fetch user's leagues for dashboard leaderboard toggle
+  useEffect(() => {
+    if (!dbUser) return;
+    (async () => {
+      try {
+        const res = await fetch(`${baseUrl}/api/leagues/${dbUser.id}`);
+        const data = await res.json();
+        setDashLeagues(data.leagues || []);
+      } catch { /* ignore */ }
+    })();
+  }, [dbUser]);
+
+  const toggleDashLeague = async (leagueId) => {
+    if (expandedDashLeague === leagueId) { setExpandedDashLeague(null); return; }
+    setExpandedDashLeague(leagueId);
+    if (!dashLeagueMembers[leagueId]) {
+      try {
+        const res = await fetch(`${baseUrl}/api/leagues/members/${leagueId}`);
+        const data = await res.json();
+        setDashLeagueMembers(prev => ({ ...prev, [leagueId]: data.members || [] }));
+      } catch { /* ignore */ }
+    }
+  };
 
   const filteredSnapshots = (() => {
     const r = PRANGE.find(x => x.label === perfRange);
@@ -212,29 +240,69 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
 
         <Reveal delay={0.12}>
           <Card style={{ padding: "28px 30px", height: "100%" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "22px" }}>
-              <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Leaderboard</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <div style={{ display: "flex", gap: "4px", background: T.bg, borderRadius: "8px", padding: "2px" }}>
+                <button onClick={() => setLbTab("global")} style={{ background: lbTab === "global" ? T.white : "transparent", color: lbTab === "global" ? T.ink : T.inkFaint, border: "none", borderRadius: "6px", padding: "5px 10px", fontSize: "11px", fontWeight: 600, cursor: "pointer", boxShadow: lbTab === "global" ? "0 1px 3px rgba(0,0,0,.08)" : "none", transition: "all .15s" }}>Global</button>
+                <button onClick={() => setLbTab("leagues")} style={{ background: lbTab === "leagues" ? T.white : "transparent", color: lbTab === "leagues" ? T.ink : T.inkFaint, border: "none", borderRadius: "6px", padding: "5px 10px", fontSize: "11px", fontWeight: 600, cursor: "pointer", boxShadow: lbTab === "leagues" ? "0 1px 3px rgba(0,0,0,.08)" : "none", transition: "all .15s" }}>Leagues</button>
+              </div>
               <button onClick={() => navigate("/leaderboard")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>Full table</button>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-              {leaderboard.length === 0 ? (
-                <div style={{ color: T.inkFaint, fontSize: "13px", textAlign: "center", padding: "20px 0" }}>No traders yet</div>
-              ) : leaderboard.map((entry, i) => {
-                const rank = i + 1;
-                const isUser = entry.user_id === dbUser?.id;
-                return (
-                  <div key={entry.user_id} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 12px", borderRadius: "10px", background: isUser ? `${T.accent}08` : "transparent", border: isUser ? `1px solid ${T.accent}20` : "1px solid transparent" }}>
-                    <div style={{ width: "22px", fontSize: "14px", textAlign: "center", color: [null, "#c9862a", "#8e8e93", "#7d4f2a"][rank] || T.inkFaint, fontWeight: 700 }}>
-                      {rank <= 3 ? ["🥇", "🥈", "🥉"][rank - 1] : `#${rank}`}
+
+            {lbTab === "global" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                {leaderboard.length === 0 ? (
+                  <div style={{ color: T.inkFaint, fontSize: "13px", textAlign: "center", padding: "20px 0" }}>No traders yet</div>
+                ) : leaderboard.map((entry, i) => {
+                  const rank = i + 1;
+                  const isUser = entry.user_id === dbUser?.id;
+                  return (
+                    <div key={entry.user_id} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 12px", borderRadius: "10px", background: isUser ? `${T.accent}08` : "transparent", border: isUser ? `1px solid ${T.accent}20` : "1px solid transparent" }}>
+                      <div style={{ width: "22px", fontSize: "14px", textAlign: "center", color: [null, "#c9862a", "#8e8e93", "#7d4f2a"][rank] || T.inkFaint, fontWeight: 700 }}>
+                        {rank <= 3 ? ["🥇", "🥈", "🥉"][rank - 1] : `#${rank}`}
+                      </div>
+                      <div style={{ flex: 1 }}><span style={{ color: isUser ? T.accent : T.ink, fontSize: "13px", fontWeight: isUser ? 700 : 500 }}>@{entry.username}</span></div>
+                      <div style={{ color: entry.gain_pct >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 600 }}>
+                        {entry.gain_pct >= 0 ? "+" : ""}{entry.gain_pct.toFixed(1)}%
+                      </div>
                     </div>
-                    <div style={{ flex: 1 }}><span style={{ color: isUser ? T.accent : T.ink, fontSize: "13px", fontWeight: isUser ? 700 : 500 }}>@{entry.username}</span></div>
-                    <div style={{ color: entry.gain_pct >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 600 }}>
-                      {entry.gain_pct >= 0 ? "+" : ""}{entry.gain_pct.toFixed(1)}%
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                {dashLeagues.length === 0 ? (
+                  <div style={{ color: T.inkFaint, fontSize: "13px", textAlign: "center", padding: "20px 0" }}>No leagues yet</div>
+                ) : dashLeagues.map(league => (
+                  <div key={league.id}>
+                    <div onClick={() => toggleDashLeague(league.id)}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", borderRadius: "8px", cursor: "pointer", transition: "background .15s" }}
+                      onMouseEnter={e => e.currentTarget.style.background = T.bg}
+                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                      <div>
+                        <span style={{ color: T.ink, fontSize: "13px", fontWeight: 600 }}>{league.name}</span>
+                        <span style={{ color: T.inkFaint, fontSize: "11px", marginLeft: "8px" }}>{league.member_count}</span>
+                      </div>
+                      <span style={{ color: T.inkFaint, fontSize: "10px", transform: expandedDashLeague === league.id ? "rotate(180deg)" : "none", transition: "transform .2s" }}>▼</span>
                     </div>
+                    {expandedDashLeague === league.id && dashLeagueMembers[league.id] && (
+                      <div style={{ padding: "4px 10px 8px", animation: "fadeIn .2s ease" }}>
+                        {dashLeagueMembers[league.id].map((m, i) => (
+                          <div key={m.user_id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "5px 8px", borderRadius: "6px", background: m.user_id === dbUser?.id ? `${T.accent}08` : "transparent" }}>
+                            <span style={{ width: "18px", fontSize: "11px", fontWeight: 700, color: i < 3 ? ["#c9862a", "#8e8e93", "#7d4f2a"][i] : T.inkFaint, textAlign: "center" }}>
+                              {i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}
+                            </span>
+                            <span style={{ flex: 1, color: m.user_id === dbUser?.id ? T.accent : T.ink, fontSize: "12px", fontWeight: m.user_id === dbUser?.id ? 600 : 400 }}>@{m.username}</span>
+                            <span style={{ color: m.gain_pct >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 600 }}>
+                              {m.gain_pct >= 0 ? "+" : ""}{m.gain_pct.toFixed(1)}%
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
         </Reveal>
       </div>

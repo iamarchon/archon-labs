@@ -14,8 +14,8 @@ export default function TradeSuccessModal({ trade, isFirstTrade, onClose }) {
   const total = (stock.price * shares).toFixed(2);
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.22)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", animation: "fadeIn .16s ease" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: T.white, borderRadius: "22px", padding: "44px 38px 34px", width: "380px", boxShadow: "0 40px 80px rgba(0,0,0,.14)", animation: "sheetUp .26s cubic-bezier(.34,1.56,.64,1)", textAlign: "center" }}>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.22)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", animation: "fadeIn .16s ease" }}>
+      <div onClick={e => e.stopPropagation()} style={{ position: "relative", zIndex: 1001, background: T.white, borderRadius: "22px", padding: "44px 38px 34px", width: "380px", boxShadow: "0 40px 80px rgba(0,0,0,.14)", animation: "sheetUp .26s cubic-bezier(.34,1.56,.64,1)", textAlign: "center" }}>
         <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: T.greenBg, border: `2px solid ${T.green}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", animation: "scaleIn .3s cubic-bezier(.34,1.56,.64,1)" }}>
           <span style={{ fontSize: "28px", color: T.green }}>✓</span>
         </div>

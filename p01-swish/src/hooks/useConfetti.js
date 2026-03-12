@@ -1,17 +1,19 @@
 import confetti from "canvas-confetti";
 import { useCallback } from "react";
 
+const Z = 1002; // Above TradeSuccessModal (z-index: 1000)
+
 export default function useConfetti() {
   const fireConfetti = useCallback((type = "trade") => {
     const colors = ["#0071e3", "#ffffff", "#34d399"];
 
     if (type === "firstTrade") {
-      // Initial gold burst
       confetti({
         particleCount: 200,
         spread: 100,
         origin: { y: 0.6 },
         colors: ["#ffd700", "#0071e3", "#ffffff"],
+        zIndex: Z,
       });
     }
 
@@ -21,6 +23,7 @@ export default function useConfetti() {
         spread: 90,
         origin: { y: 0.6 },
         colors: ["#ffd700", "#0071e3", "#ffffff"],
+        zIndex: Z,
       });
       return;
     }
@@ -36,6 +39,7 @@ export default function useConfetti() {
         spread: 55,
         origin: { x: 0 },
         colors,
+        zIndex: Z,
       });
       confetti({
         particleCount: 15,
@@ -43,6 +47,7 @@ export default function useConfetti() {
         spread: 55,
         origin: { x: 1 },
         colors,
+        zIndex: Z,
       });
     }, 200);
   }, []);
