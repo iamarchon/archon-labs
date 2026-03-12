@@ -188,60 +188,70 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
           </div>
 
           <div style={{ display: "flex", marginTop: "24px", paddingTop: "28px", borderTop: `1px solid ${T.line}` }}>
-            {(() => {
-              const LEVELS = [
-                { name: "Bronze", emoji: "🥉", threshold: 0 },
-                { name: "Silver", emoji: "🥈", threshold: 100 },
-                { name: "Gold", emoji: "🥇", threshold: 300 },
-                { name: "Platinum", emoji: "💎", threshold: 750 },
-                { name: "Legend", emoji: "👑", threshold: 2000 },
-              ];
-              const currentIdx = LEVELS.findIndex(l => l.name === level);
-              const nextLevel = currentIdx < LEVELS.length - 1 ? LEVELS[currentIdx + 1] : null;
-              const progressPct = nextLevel
-                ? ((xp - LEVELS[currentIdx].threshold) / (nextLevel.threshold - LEVELS[currentIdx].threshold)) * 100
-                : 100;
-
-              const simpleTiles = [
-                ["Invested", `$${portfolioValue.toFixed(2)}`],
-                ["Available Cash", `$${cash.toFixed(2)}`],
-                ["Streak", `${streak} days 🔥`],
-              ];
-
-              return (
-                <>
-                  {simpleTiles.map((stat, i) => (
-                    <div key={stat[0]} style={{ flex: 1, textAlign: "center", borderRight: `1px solid ${T.line}` }}>
-                      <div style={{ color: T.inkFaint, fontSize: "10.5px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "5px" }}>{stat[0]}</div>
-                      <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>{stat[1]}</div>
-                    </div>
-                  ))}
-                  {/* XP tile with progress bar */}
-                  <div style={{ flex: 1, textAlign: "center", borderRight: `1px solid ${T.line}`, padding: "0 8px" }}>
-                    <div style={{ color: T.inkFaint, fontSize: "10.5px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "5px" }}>XP</div>
-                    <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px", fontVariantNumeric: "tabular-nums" }}>{xp.toLocaleString()}</div>
-                    <div style={{ height: "4px", background: "rgba(0,0,0,.06)", borderRadius: "2px", overflow: "hidden", marginTop: "6px" }}>
-                      <div style={{ height: "100%", width: `${Math.min(progressPct, 100)}%`, background: T.accent, borderRadius: "2px", transition: "width .4s ease" }} />
-                    </div>
-                    <div style={{ color: T.inkFaint, fontSize: "9px", marginTop: "3px", fontVariantNumeric: "tabular-nums" }}>
-                      {nextLevel ? `${xp} / ${nextLevel.threshold} to ${nextLevel.name}` : "Max level!"}
-                    </div>
-                  </div>
-                  {/* Level tile with emoji */}
-                  <div style={{ flex: 1, textAlign: "center" }}>
-                    <div style={{ color: T.inkFaint, fontSize: "10.5px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "5px" }}>Level</div>
-                    <div style={{ fontSize: "20px", lineHeight: 1, marginBottom: "2px" }}>{LEVELS[currentIdx]?.emoji}</div>
-                    <div style={{ color: T.ink, fontSize: "14px", fontWeight: 700, letterSpacing: "-0.3px" }}>{level}</div>
-                  </div>
-                </>
-              );
-            })()}
+            {[["Invested", `$${portfolioValue.toFixed(2)}`], ["Available Cash", `$${cash.toFixed(2)}`]].map((stat, i, arr) => (
+              <div key={stat[0]} style={{ flex: 1, textAlign: "center", borderRight: i < arr.length - 1 ? `1px solid ${T.line}` : "none" }}>
+                <div style={{ color: T.inkFaint, fontSize: "10.5px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "5px" }}>{stat[0]}</div>
+                <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>{stat[1]}</div>
+              </div>
+            ))}
           </div>
         </Card>
       </Reveal>
 
-      {/* AI Insights */}
+      {/* Your Progress */}
       <Reveal delay={0.06}>
+        <Card style={{ padding: "28px 30px", marginBottom: "20px" }}>
+          <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px", marginBottom: "22px" }}>Your Progress 🏆</div>
+          {(() => {
+            const LEVELS = [
+              { name: "Bronze", emoji: "🥉", threshold: 0 },
+              { name: "Silver", emoji: "🥈", threshold: 100 },
+              { name: "Gold", emoji: "🥇", threshold: 300 },
+              { name: "Platinum", emoji: "💎", threshold: 750 },
+              { name: "Legend", emoji: "👑", threshold: 2000 },
+            ];
+            const currentIdx = LEVELS.findIndex(l => l.name === level);
+            const nextLevel = currentIdx < LEVELS.length - 1 ? LEVELS[currentIdx + 1] : null;
+            const progressPct = nextLevel
+              ? ((xp - LEVELS[currentIdx].threshold) / (nextLevel.threshold - LEVELS[currentIdx].threshold)) * 100
+              : 100;
+            return (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                {/* XP */}
+                <div style={{ background: T.bg, borderRadius: "14px", padding: "20px" }}>
+                  <div style={{ color: T.ink, fontSize: "28px", fontWeight: 700, letterSpacing: "-0.8px", fontVariantNumeric: "tabular-nums" }}>{xp.toLocaleString()}</div>
+                  <div style={{ color: T.inkFaint, fontSize: "11px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginTop: "2px" }}>XP earned</div>
+                  <div style={{ height: "6px", background: "rgba(0,0,0,.06)", borderRadius: "3px", overflow: "hidden", marginTop: "14px" }}>
+                    <div style={{ height: "100%", width: `${Math.min(progressPct, 100)}%`, background: T.accent, borderRadius: "3px", transition: "width .4s ease" }} />
+                  </div>
+                  <div style={{ color: T.inkFaint, fontSize: "11px", marginTop: "6px", fontVariantNumeric: "tabular-nums" }}>
+                    {nextLevel ? `${xp} / ${nextLevel.threshold} to ${nextLevel.name}` : "Max level reached!"}
+                  </div>
+                </div>
+                {/* Level */}
+                <div style={{ background: T.bg, borderRadius: "14px", padding: "20px" }}>
+                  <div style={{ fontSize: "28px", lineHeight: 1 }}>{LEVELS[currentIdx]?.emoji}</div>
+                  <div style={{ color: T.ink, fontSize: "22px", fontWeight: 700, letterSpacing: "-0.5px", marginTop: "6px" }}>{level}</div>
+                  <div style={{ color: T.inkFaint, fontSize: "11px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginTop: "2px" }}>Current level</div>
+                </div>
+                {/* Streak */}
+                <div style={{ background: T.bg, borderRadius: "14px", padding: "20px" }}>
+                  <div style={{ color: T.ink, fontSize: "28px", fontWeight: 700, letterSpacing: "-0.8px", fontVariantNumeric: "tabular-nums" }}>🔥 {streak}</div>
+                  <div style={{ color: T.inkFaint, fontSize: "11px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginTop: "2px" }}>Day streak</div>
+                </div>
+                {/* Total trades */}
+                <div style={{ background: T.bg, borderRadius: "14px", padding: "20px" }}>
+                  <div style={{ color: T.ink, fontSize: "28px", fontWeight: 700, letterSpacing: "-0.8px", fontVariantNumeric: "tabular-nums" }}>{totalTrades.toLocaleString()}</div>
+                  <div style={{ color: T.inkFaint, fontSize: "11px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginTop: "2px" }}>Total trades</div>
+                </div>
+              </div>
+            );
+          })()}
+        </Card>
+      </Reveal>
+
+      {/* AI Insights */}
+      <Reveal delay={0.1}>
         <div style={{ marginBottom: "20px" }}>
           <InsightsTile
             holdings={holdings} cash={cash} totalValue={totalValue}
@@ -253,7 +263,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
 
       {/* Challenges + Leaderboard */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
-        <Reveal delay={0.08}>
+        <Reveal delay={0.14}>
           <Card style={{ padding: "28px 30px", height: "100%" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "22px" }}>
               <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Challenges</div>
@@ -280,7 +290,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
           </Card>
         </Reveal>
 
-        <Reveal delay={0.12}>
+        <Reveal delay={0.18}>
           <Card style={{ padding: "28px 30px", height: "100%" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <div style={{ display: "flex", gap: "4px", background: T.bg, borderRadius: "8px", padding: "2px" }}>
@@ -350,14 +360,14 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
       </div>
 
       {/* My Leagues */}
-      <Reveal delay={0.14}>
+      <Reveal delay={0.22}>
         <div style={{ marginBottom: "20px" }}>
           <LeaguesTile userId={dbUser?.id} />
         </div>
       </Reveal>
 
       {/* Holdings */}
-      <Reveal delay={0.16}>
+      <Reveal delay={0.26}>
         <Card style={{ padding: "28px 30px", marginBottom: "20px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
             <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Your Holdings</div>
@@ -395,7 +405,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
       </Reveal>
 
       {/* Market Movers */}
-      <Reveal delay={0.2}>
+      <Reveal delay={0.3}>
         <Card style={{ padding: "28px 30px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
             <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Market Movers</div>

@@ -16,7 +16,8 @@
       "Bash(vercel env:*)",
       "Bash(vercel:*)",
       "Bash(mkdir:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(npx vercel:*)"
     ]
   }
 }

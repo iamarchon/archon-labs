@@ -38,6 +38,7 @@ function AppShell() {
   const [tradeFirstTrade, setTradeFirstTrade] = useState(false);
   const { fireConfetti } = useConfetti();
   const prevLevelRef = useRef(null);
+  const initialLoadDone = useRef(false);
 
   const onTradeComplete = useCallback(async () => {
     await refreshUser();
@@ -64,13 +65,20 @@ function AppShell() {
   const username = dbUser?.username ?? "trader";
   const totalTrades = dbUser?.total_trades ?? 0;
 
-  // Detect level up
+  // Detect level up — skip the initial load so reload doesn't trigger confetti
   useEffect(() => {
+    if (!initialLoadDone.current) {
+      if (dbUser) {
+        prevLevelRef.current = level;
+        initialLoadDone.current = true;
+      }
+      return;
+    }
     if (prevLevelRef.current && prevLevelRef.current !== level) {
       fireConfetti("levelUp");
     }
     prevLevelRef.current = level;
-  }, [level, fireConfetti]);
+  }, [level, fireConfetti, dbUser]);
 
   // Save portfolio snapshot helper
   const saveSnapshot = useCallback(async (value) => {
