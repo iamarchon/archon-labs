@@ -5,13 +5,18 @@ export const STOCK_CATEGORIES = {
   NFLX: "Media", SPOT: "Media", DIS: "Media",
   SNAP: "Social", META: "Social",
   PYPL: "Fintech", COIN: "Crypto",
-  BTC: "Crypto", ETH: "Crypto", SOL: "Crypto", DOGE: "Crypto",
+  BTC: "Crypto", ETH: "Crypto", BNB: "Crypto", SOL: "Crypto", XRP: "Crypto",
+  DOGE: "Crypto", ADA: "Crypto", AVAX: "Crypto", SHIB: "Crypto", DOT: "Crypto",
+  MATIC: "Crypto", LTC: "Crypto", UNI: "Crypto", LINK: "Crypto", ATOM: "Crypto",
+  XLM: "Crypto", ALGO: "Crypto", ICP: "Crypto", FIL: "Crypto", NEAR: "Crypto",
   NKE: "Consumer",
   AMZN: "Retail",
   CMG: "Food", SBUX: "Food",
   ABNB: "Travel", UBER: "Transport",
-  SPY: "ETF", QQQ: "ETF", VTI: "ETF", IWM: "ETF",
-  GLD: "ETF", TLT: "ETF", ARKK: "ETF", VNQ: "ETF",
+  SPY: "ETF", VOO: "ETF", QQQ: "ETF", VTI: "ETF", IWM: "ETF", IVV: "ETF",
+  GLD: "ETF", TLT: "ETF", ARKK: "ETF", VNQ: "ETF", SCHD: "ETF", VGT: "ETF",
+  XLF: "ETF", XLE: "ETF", SOXX: "ETF", DIA: "ETF", VEA: "ETF", VWO: "ETF",
+  BND: "ETF", IEMG: "ETF",
 };
 
 export const CATEGORY_ICONS = {

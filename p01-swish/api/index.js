@@ -66,27 +66,77 @@ app.get("/api/quote/:symbol", async (req, res) => {
   }
 });
 
-/* ── GET /api/crypto/quote/:symbol — CoinGecko crypto price ── */
+/* ── Crypto API routes — CoinGecko ── */
+
+// Symbol → CoinGecko ID map for common coins (used by quote-by-symbol)
 const CRYPTO_ID_MAP = {
-  BTC: "bitcoin", ETH: "ethereum", SOL: "solana", DOGE: "dogecoin",
-  ADA: "cardano", XRP: "ripple", DOT: "polkadot", AVAX: "avalanche-2",
+  BTC:"bitcoin",ETH:"ethereum",BNB:"binancecoin",SOL:"solana",XRP:"ripple",
+  DOGE:"dogecoin",ADA:"cardano",AVAX:"avalanche-2",SHIB:"shiba-inu",DOT:"polkadot",
+  MATIC:"matic-network",LTC:"litecoin",UNI:"uniswap",LINK:"chainlink",ATOM:"cosmos",
+  XLM:"stellar",ALGO:"algorand",ICP:"internet-computer",FIL:"filecoin",NEAR:"near",
 };
 
-app.get("/api/crypto/quote/:symbol", async (req, res) => {
+// GET /api/crypto/quote/:id — price by CoinGecko ID or symbol
+app.get("/api/crypto/quote/:id", async (req, res) => {
   try {
-    const sym = req.params.symbol.toUpperCase();
-    const id = CRYPTO_ID_MAP[sym];
-    if (!id) return res.status(400).json({ error: `Unknown crypto symbol: ${sym}` });
-
+    const param = req.params.id;
+    // Try as symbol first, then as CoinGecko ID
+    const id = CRYPTO_ID_MAP[param.toUpperCase()] || param.toLowerCase();
     const url = `https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd&include_24hr_change=true`;
     const response = await fetch(url);
     const data = await response.json();
     const coin = data[id];
     if (!coin) return res.json({ c: 0, dp: 0 });
-
     res.json({ c: coin.usd, dp: coin.usd_24h_change ?? 0 });
   } catch (err) {
     res.status(502).json({ error: "Failed to fetch crypto quote" });
+  }
+});
+
+// GET /api/crypto/top — top 20 coins by market cap
+let cryptoTopCache = { ts: 0, data: null };
+const CRYPTO_TOP_TTL = 5 * 60 * 1000; // 5 min
+
+app.get("/api/crypto/top", async (req, res) => {
+  try {
+    if (cryptoTopCache.data && Date.now() - cryptoTopCache.ts < CRYPTO_TOP_TTL) {
+      return res.json(cryptoTopCache.data);
+    }
+    const url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=false&price_change_percentage=24h";
+    const response = await fetch(url);
+    const data = await response.json();
+    const coins = (data || []).map(c => ({
+      id: c.id,
+      symbol: (c.symbol || "").toUpperCase(),
+      name: c.name,
+      price: c.current_price,
+      changePct: c.price_change_percentage_24h ?? 0,
+      image: c.image,
+    }));
+    cryptoTopCache = { ts: Date.now(), data: { coins } };
+    res.json({ coins });
+  } catch (err) {
+    res.status(502).json({ error: "Failed to fetch top crypto" });
+  }
+});
+
+// GET /api/crypto/search?q=term — search coins via CoinGecko
+app.get("/api/crypto/search", async (req, res) => {
+  const q = req.query.q;
+  if (!q) return res.status(400).json({ error: "q required" });
+  try {
+    const url = `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(q)}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    const coins = (data.coins || []).slice(0, 12).map(c => ({
+      id: c.id,
+      symbol: (c.symbol || "").toUpperCase(),
+      name: c.name,
+      image: c.large || c.thumb,
+    }));
+    res.json({ coins });
+  } catch (err) {
+    res.status(502).json({ error: "Failed to search crypto" });
   }
 });
 
