@@ -119,13 +119,15 @@ const MOVER_SYMBOLS = ["AAPL","NVDA","TSLA","AMZN","GOOGL","NFLX","MSFT","RBLX",
 const MOVER_CANDLE_MAP = {
   "1W": { interval: "60m", range: "5d"  },
   "1M": { interval: "1d",  range: "1mo" },
+  "3M": { interval: "1d",  range: "3mo" },
+  "1Y": { interval: "1wk", range: "1y"  },
 };
 
 app.get("/api/movers", async (req, res) => {
   try {
     const range = (req.query.range || "1D").toUpperCase();
-    if (!["1D", "1W", "1M"].includes(range)) {
-      return res.status(400).json({ error: "Invalid range. Use: 1D, 1W, 1M" });
+    if (!["1D", "1W", "1M", "3M", "1Y"].includes(range)) {
+      return res.status(400).json({ error: "Invalid range. Use: 1D, 1W, 1M, 3M, 1Y" });
     }
 
     const finnhubKey = process.env.FINNHUB_API_KEY;
@@ -152,7 +154,7 @@ app.get("/api/movers", async (req, res) => {
           } catch { /* sparkline optional */ }
           return { symbol, price: q.c, changePercent, trending: changePercent >= 0 ? "up" : "down", sparkline };
         } else {
-          // 1W or 1M: use candle data
+          // 1W/1M/3M/1Y: use candle data
           const config = MOVER_CANDLE_MAP[range];
           const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${config.interval}&range=${config.range}`;
           const resp = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
@@ -282,6 +284,43 @@ app.get("/api/news/:symbol", async (req, res) => {
   }
 });
 
+/* ── Watchlist API routes ── */
+app.get("/api/watchlist", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const userId = req.query.userId;
+  if (!userId) return res.status(400).json({ error: "userId required" });
+  try {
+    const { data } = await supabaseAdmin.from("watchlist").select("symbol, created_at").eq("user_id", userId).order("created_at", { ascending: false });
+    res.json({ items: data || [] });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch watchlist" });
+  }
+});
+
+app.post("/api/watchlist/add", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const { userId, symbol } = req.body;
+  if (!userId || !symbol) return res.status(400).json({ error: "userId and symbol required" });
+  try {
+    await supabaseAdmin.from("watchlist").upsert({ user_id: userId, symbol: symbol.toUpperCase() }, { onConflict: "user_id,symbol" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to add to watchlist" });
+  }
+});
+
+app.post("/api/watchlist/remove", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const { userId, symbol } = req.body;
+  if (!userId || !symbol) return res.status(400).json({ error: "userId and symbol required" });
+  try {
+    await supabaseAdmin.from("watchlist").delete().eq("user_id", userId).eq("symbol", symbol.toUpperCase());
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to remove from watchlist" });
+  }
+});
+
 /* ── POST /api/insights — AI portfolio insights via Claude Haiku ── */
 app.post("/api/insights", async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -290,6 +329,17 @@ app.post("/api/insights", async (req, res) => {
   }
 
   try {
+    // Build watchlist context if provided
+    let watchlistContext = "";
+    const wl = req.body.watchlist;
+    if (Array.isArray(wl) && wl.length > 0) {
+      const items = wl.map(w => {
+        const days = w.daysSince ?? 0;
+        return `${w.symbol} - watched ${days} day${days !== 1 ? "s" : ""}`;
+      }).join(", ");
+      watchlistContext = `\nThe user is also watching these stocks (not yet bought): [${items}]\nConsider their watchlist when giving insights — e.g. if they've been watching a stock for many days, suggest whether it might be time to buy or keep watching.`;
+    }
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -303,7 +353,7 @@ app.post("/api/insights", async (req, res) => {
         system: `You are Swish, an AI finance coach for young investors.
 Analyse this user's portfolio data and give exactly 3 short,
 punchy, actionable insights. Each insight max 20 words.
-Be encouraging but honest. Use simple language for teens.
+Be encouraging but honest. Use simple language for teens.${watchlistContext}
 Return ONLY a JSON array of 3 strings, no other text.
 Example: ["You're 100% in tech — try diversifying.", "Your cash ratio is high. Put it to work!", "AAPL is up 22% this year. Strong long-term hold."]`,
         messages: [{ role: "user", content: JSON.stringify(req.body) }],

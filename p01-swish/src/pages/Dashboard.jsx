@@ -9,13 +9,16 @@ import Sparkline from "../components/Sparkline";
 import ProgressBar from "../components/ProgressBar";
 import InsightsTile from "../components/InsightsTile";
 import LeaguesTile from "../components/LeaguesTile";
+import RangeTabs from "../components/RangeTabs";
 
 const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
 const PRANGE = [
+  { label: "1D", days: 1 },
   { label: "1W", days: 7 },
   { label: "1M", days: 30 },
-  { label: "ALL", days: 9999 },
+  { label: "3M", days: 90 },
+  { label: "1Y", days: 365 },
 ];
 
 const PerfTooltip = ({ active, payload }) => {
@@ -29,7 +32,7 @@ const PerfTooltip = ({ active, payload }) => {
   );
 };
 
-export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, onClaimXp, fireConfetti }) {
+export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, onClaimXp, fireConfetti, watchlist = [], watchlistItems = [], toggleWatch }) {
   const navigate = useNavigate();
 
   const portfolioValue = holdings.reduce((sum, h) => {
@@ -44,7 +47,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
 
   // Portfolio snapshots
   const [snapshots, setSnapshots] = useState([]);
-  const [perfRange, setPerfRange] = useState("ALL");
+  const [perfRange, setPerfRange] = useState("1Y");
   const [sessionDelta, setSessionDelta] = useState(null);
 
   // Global leaderboard preview
@@ -176,7 +179,8 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
     })();
   }, [moversRange]);
 
-  const moversRangeLabel = moversRange === "1D" ? "Today" : moversRange === "1W" ? "Past week" : "Past month";
+  const MOVERS_LABELS = { "1D": "Today", "1W": "Past week", "1M": "Past month", "3M": "Past 3 months", "1Y": "Past year" };
+  const moversRangeLabel = MOVERS_LABELS[moversRange] || "Today";
 
   // Holdings time range + price history
   const [holdingsRange, setHoldingsRange] = useState("1D");
@@ -225,10 +229,11 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
   })();
 
   // Range-based P&L for hero subtitle
-  const rangeLabel = perfRange === "1W" ? "this week" : perfRange === "1M" ? "this month" : "all time";
+  const RANGE_LABELS = { "1D": "today", "1W": "this week", "1M": "this month", "3M": "3 months", "1Y": "this year" };
+  const rangeLabel = RANGE_LABELS[perfRange] || "this year";
   const rangeBaseline = (() => {
     if (filteredSnapshots.length >= 2) return filteredSnapshots[0].value;
-    if (perfRange === "ALL") return 10000;
+    if (perfRange === "1Y") return 10000;
     // No snapshot for this window — fall back to all-time
     if (snapshots.length >= 1) return Number(snapshots[0].total_value ?? 10000);
     return 10000;
@@ -282,15 +287,8 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
                     <Area type="monotone" dataKey="value" stroke={perfColor} strokeWidth={2} fill="url(#perfFill)" dot={false} />
                   </AreaChart>
                 </ResponsiveContainer>
-                <div style={{ display: "flex", gap: "4px", justifyContent: "center", marginTop: "10px" }}>
-                  {PRANGE.map(r => (
-                    <button key={r.label} onClick={() => setPerfRange(r.label)} style={{
-                      background: perfRange === r.label ? T.accent : "transparent",
-                      color: perfRange === r.label ? T.white : T.inkFaint,
-                      border: "none", borderRadius: "6px", padding: "4px 12px",
-                      fontSize: "11px", fontWeight: 600, cursor: "pointer", transition: "all .15s",
-                    }}>{r.label}</button>
-                  ))}
+                <div style={{ display: "flex", justifyContent: "center", marginTop: "10px" }}>
+                  <RangeTabs selected={perfRange} onChange={setPerfRange} />
                 </div>
               </>
             ) : (
@@ -320,18 +318,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
               <div style={{ color: T.inkFaint, fontSize: "11px", fontWeight: 500, letterSpacing: "0.03em", marginTop: "2px" }}>{moversRangeLabel}</div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div style={{ display: "flex", gap: "4px", background: T.bg, borderRadius: "8px", padding: "2px" }}>
-                {["1D", "1W", "1M"].map(r => (
-                  <button key={r} onClick={() => setMoversRange(r)} style={{
-                    background: moversRange === r ? T.white : "transparent",
-                    color: moversRange === r ? T.ink : T.inkFaint,
-                    border: "none", borderRadius: "6px", padding: "4px 10px",
-                    fontSize: "11px", fontWeight: 600, cursor: "pointer",
-                    boxShadow: moversRange === r ? "0 1px 3px rgba(0,0,0,.08)" : "none",
-                    transition: "all .15s",
-                  }}>{r}</button>
-                ))}
-              </div>
+              <RangeTabs selected={moversRange} onChange={setMoversRange} />
               <button onClick={() => navigate("/markets")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>All stocks</button>
             </div>
           </div>
@@ -369,24 +356,67 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
         </Card>
       </Reveal>
 
-      {/* Row 3: Your Holdings — full width list */}
+      {/* Row 3: Watchlist */}
+      {watchlist.length > 0 && (
+        <Reveal delay={0.06}>
+          <Card style={{ padding: "28px 30px", marginBottom: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Watchlist 👀</div>
+              <button onClick={() => navigate("/markets")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>Browse Markets</button>
+            </div>
+            <div>
+              {watchlist.map((symbol, i) => {
+                const s = stocks.find(x => x.ticker === symbol);
+                const price = livePrices[symbol] ?? s?.price;
+                const changePct = s?.changePct ?? 0;
+                const name = s?.name ?? symbol;
+                return (
+                  <div key={symbol}>
+                    <div
+                      onClick={() => navigate(`/stock/${symbol}`)}
+                      style={{ display: "flex", alignItems: "center", padding: "14px 4px", cursor: "pointer", transition: "background .15s", borderRadius: "8px" }}
+                      onMouseEnter={e => e.currentTarget.style.background = T.bg}
+                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", letterSpacing: "-0.2px" }}>{symbol}</div>
+                        <div style={{ color: T.inkSub, fontSize: "12px", marginTop: "1px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</div>
+                      </div>
+                      <div style={{ textAlign: "right", minWidth: "110px" }}>
+                        {price != null ? (
+                          <>
+                            <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", fontVariantNumeric: "tabular-nums" }}>${price.toFixed(2)}</div>
+                            <div style={{ color: changePct >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 600, marginTop: "1px", fontVariantNumeric: "tabular-nums" }}>
+                              {changePct >= 0 ? "+" : ""}{changePct.toFixed(2)}%
+                            </div>
+                          </>
+                        ) : (
+                          <div style={{ color: T.ghost, fontWeight: 600, fontSize: "14px" }}>$...</div>
+                        )}
+                      </div>
+                      <button
+                        onClick={e => { e.stopPropagation(); toggleWatch(symbol); }}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "#e67e22", fontSize: "18px", padding: "4px 8px", marginLeft: "8px", flexShrink: 0 }}
+                      >★</button>
+                    </div>
+                    {i < watchlist.length - 1 && (
+                      <div style={{ height: "1px", background: T.line, margin: "0 4px" }} />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        </Reveal>
+      )}
+
+      {/* Row 4: Your Holdings — full width list */}
       <Reveal delay={0.08}>
         <Card style={{ padding: "28px 30px", marginBottom: "16px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
             <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Your Holdings</div>
             {holdings.length > 0 && (
-              <div style={{ display: "flex", gap: "4px", background: T.bg, borderRadius: "8px", padding: "2px" }}>
-                {["1D", "1W", "1M", "3M", "1Y"].map(r => (
-                  <button key={r} onClick={() => setHoldingsRange(r)} style={{
-                    background: holdingsRange === r ? T.white : "transparent",
-                    color: holdingsRange === r ? T.ink : T.inkFaint,
-                    border: "none", borderRadius: "6px", padding: "4px 10px",
-                    fontSize: "11px", fontWeight: 600, cursor: "pointer",
-                    boxShadow: holdingsRange === r ? "0 1px 3px rgba(0,0,0,.08)" : "none",
-                    transition: "all .15s",
-                  }}>{r}</button>
-                ))}
-              </div>
+              <RangeTabs selected={holdingsRange} onChange={setHoldingsRange} />
             )}
           </div>
           {holdings.length === 0 ? (
@@ -491,6 +521,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
             holdings={holdings} cash={cash} totalValue={totalValue}
             totalTrades={totalTrades} portfolioGain={portfolioGain}
             livePrices={livePrices} stocks={stocks}
+            watchlistItems={watchlistItems}
             cardStyle={{ height: "100%" }}
           />
         </Reveal>

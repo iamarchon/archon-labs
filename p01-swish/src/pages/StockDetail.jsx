@@ -4,8 +4,7 @@ import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { T } from "../tokens";
 import Reveal from "../components/Reveal";
 import Card from "../components/Card";
-
-const RANGES = ["1D", "1W", "1M", "3M", "1Y"];
+import RangeTabs from "../components/RangeTabs";
 const RANGE_LABELS = { "1D": "Today", "1W": "Past week", "1M": "Past month", "3M": "Past 3 months", "1Y": "Past year" };
 
 const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
@@ -209,20 +208,8 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
             </ResponsiveContainer>
           )}
 
-          <div style={{ display: "flex", gap: "6px", marginTop: "16px", justifyContent: "center" }}>
-            {RANGES.map(r => (
-              <button
-                key={r}
-                onClick={() => setRange(r)}
-                style={{
-                  background: range === r ? T.accent : T.bg,
-                  color: range === r ? T.white : T.inkSub,
-                  border: "none", borderRadius: "8px", padding: "7px 16px",
-                  fontSize: "13px", fontWeight: range === r ? 600 : 400,
-                  cursor: "pointer", transition: "all .18s ease",
-                }}
-              >{r}</button>
-            ))}
+          <div style={{ display: "flex", justifyContent: "center", marginTop: "16px" }}>
+            <RangeTabs selected={range} onChange={setRange} />
           </div>
         </Card>
       </Reveal>

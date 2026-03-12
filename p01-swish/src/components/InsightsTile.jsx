@@ -4,7 +4,7 @@ import Card from "./Card";
 
 const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
-export default function InsightsTile({ holdings = [], cash = 10000, totalValue = 10000, totalTrades = 0, portfolioGain = 0, livePrices = {}, stocks = [], cardStyle = {} }) {
+export default function InsightsTile({ holdings = [], cash = 10000, totalValue = 10000, totalTrades = 0, portfolioGain = 0, livePrices = {}, stocks = [], watchlistItems = [], cardStyle = {} }) {
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -27,6 +27,12 @@ export default function InsightsTile({ holdings = [], cash = 10000, totalValue =
         };
       });
 
+      // Build watchlist context with days since watched
+      const wlData = watchlistItems.map(w => {
+        const days = Math.floor((Date.now() - new Date(w.created_at).getTime()) / 86400000);
+        return { symbol: w.symbol, daysSince: days };
+      });
+
       const res = await fetch(`${baseUrl}/api/insights`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -36,6 +42,7 @@ export default function InsightsTile({ holdings = [], cash = 10000, totalValue =
           totalValue,
           totalTrades,
           portfolioGain,
+          watchlist: wlData,
         }),
       });
 
@@ -49,7 +56,7 @@ export default function InsightsTile({ holdings = [], cash = 10000, totalValue =
       setError("Couldn't load insights right now. Try again later.");
     }
     setLoading(false);
-  }, [holdings, cash, totalValue, totalTrades, portfolioGain, livePrices, stocks]);
+  }, [holdings, cash, totalValue, totalTrades, portfolioGain, livePrices, stocks, watchlistItems]);
 
   // Auto-fetch once
   if (!fetched.current && (holdings.length > 0 || totalTrades > 0)) {

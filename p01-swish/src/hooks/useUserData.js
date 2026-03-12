@@ -22,6 +22,7 @@ export default function useUserData() {
   const [dbUser, setDbUser] = useState(null);
   const [holdings, setHoldings] = useState([]);
   const [watchlist, setWatchlist] = useState([]);
+  const [watchlistItems, setWatchlistItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const clerkId = clerkUser?.id;
@@ -68,11 +69,18 @@ export default function useUserData() {
         setHoldings(h || []);
 
         // Fetch watchlist
-        const { data: w } = await supabase
-          .from("watchlist")
-          .select("*")
-          .eq("user_id", user.id);
-        setWatchlist((w || []).map(row => row.ticker));
+        try {
+          const { data: w } = await supabase
+            .from("watchlist")
+            .select("symbol, created_at")
+            .eq("user_id", user.id);
+          const items = w || [];
+          setWatchlistItems(items);
+          setWatchlist(items.map(row => row.symbol));
+        } catch {
+          setWatchlistItems([]);
+          setWatchlist([]);
+        }
       }
     } catch (err) {
       console.error("Failed to load user data:", err);
@@ -94,13 +102,15 @@ export default function useUserData() {
         .from("watchlist")
         .delete()
         .eq("user_id", dbUser.id)
-        .eq("ticker", ticker);
+        .eq("symbol", ticker);
       setWatchlist(prev => prev.filter(t => t !== ticker));
+      setWatchlistItems(prev => prev.filter(w => w.symbol !== ticker));
     } else {
       await supabase
         .from("watchlist")
-        .insert({ user_id: dbUser.id, ticker });
+        .insert({ user_id: dbUser.id, symbol: ticker });
       setWatchlist(prev => [...prev, ticker]);
+      setWatchlistItems(prev => [...prev, { symbol: ticker, created_at: new Date().toISOString() }]);
     }
   }, [dbUser, watchlist]);
 
@@ -133,6 +143,7 @@ export default function useUserData() {
     user: dbUser,
     holdings,
     watchlist,
+    watchlistItems,
     loading: loading || !clerkLoaded,
     toggleWatch,
     refreshUser,

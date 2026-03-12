@@ -32,7 +32,7 @@ function AppShell() {
   const tickers = useMemo(() => SEED_STOCKS.map(s => s.ticker), []);
   const livePrices = useLivePrices(tickers);
   const {
-    user: dbUser, holdings, watchlist, loading: userLoading,
+    user: dbUser, holdings, watchlist, watchlistItems, loading: userLoading,
     toggleWatch, refreshUser, refreshHoldings, xpToLevel,
   } = useUserData();
   const [tradeStock, setTradeStock] = useState(null);
@@ -224,7 +224,9 @@ function AppShell() {
                 dbUser={dbUser} saveSnapshot={saveSnapshot}
                 totalTrades={totalTrades} totalValue={totalValue}
                 portfolioGain={portfolioGain}
-                onClaimXp={onClaimXp} fireConfetti={fireConfetti} />
+                onClaimXp={onClaimXp} fireConfetti={fireConfetti}
+                watchlist={watchlist} watchlistItems={watchlistItems}
+                toggleWatch={toggleWatch} />
             } />
             <Route path="/markets" element={
               <Markets onTrade={goToStock} watchlist={watchlist} onWatch={toggleWatch} />
