@@ -968,6 +968,54 @@ app.get("/api/scenarios/progress", async (req, res) => {
   }
 });
 
+/* ── GET /api/teacher/class-progress/:userId — Lessons & scenarios stats scoped to class ── */
+app.get("/api/teacher/class-progress/:userId", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const teacherId = req.params.userId;
+  try {
+    // Find teacher's league
+    const { data: leagues } = await supabaseAdmin.from("leagues").select("id").eq("created_by", teacherId).limit(1);
+    const leagueId = leagues?.[0]?.id;
+    if (!leagueId) return res.json({ avgLessons: 0, avgScenarios: 0, studentBreakdown: [] });
+
+    // Get student user_ids (exclude teacher)
+    const { data: members } = await supabaseAdmin.from("league_members").select("user_id, users(username)").eq("league_id", leagueId);
+    const studentIds = (members || []).filter(m => m.user_id !== teacherId).map(m => m.user_id);
+    if (studentIds.length === 0) return res.json({ avgLessons: 0, avgScenarios: 0, studentBreakdown: [] });
+
+    // Query completions scoped to class members
+    const [lessonRes, scenarioRes] = await Promise.all([
+      supabaseAdmin.from("lesson_completions").select("user_id, lesson_id").in("user_id", studentIds),
+      supabaseAdmin.from("scenario_completions").select("user_id, scenario_id").in("user_id", studentIds),
+    ]);
+    const lessonRows = lessonRes.data || [];
+    const scenarioRows = scenarioRes.data || [];
+
+    // Build per-student breakdown
+    const usernameMap = {};
+    (members || []).forEach(m => { if (m.users) usernameMap[m.user_id] = m.users.username; });
+
+    const breakdown = studentIds.map(sid => {
+      const lc = lessonRows.filter(r => r.user_id === sid).length;
+      const sc = scenarioRows.filter(r => r.user_id === sid).length;
+      return { userId: sid, username: usernameMap[sid] || "Unknown", lessonsCompleted: lc, scenariosCompleted: sc };
+    });
+
+    const totalL = breakdown.reduce((s, b) => s + b.lessonsCompleted, 0);
+    const totalS = breakdown.reduce((s, b) => s + b.scenariosCompleted, 0);
+    const n = breakdown.length;
+
+    res.json({
+      avgLessons: n > 0 ? +(totalL / n).toFixed(1) : 0,
+      avgScenarios: n > 0 ? +(totalS / n).toFixed(1) : 0,
+      studentBreakdown: breakdown,
+    });
+  } catch (err) {
+    console.error("class-progress error:", err);
+    res.status(500).json({ error: "Failed to load class progress" });
+  }
+});
+
 /* ── POST /api/teacher-insights/class — AI coaching for entire class ── */
 app.post("/api/teacher-insights/class", async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -991,6 +1039,7 @@ app.post("/api/teacher-insights/class", async (req, res) => {
       .select("user_id, users(id, username, xp, cash, total_trades, streak, last_active)")
       .eq("league_id", teacherLeague.league_id);
 
+    const studentIds = (members || []).filter(m => m.user_id !== teacherId).map(m => m.user_id);
     const students = (members || [])
       .filter(m => m.user_id !== teacherId)
       .map(m => {
@@ -1007,14 +1056,29 @@ app.post("/api/teacher-insights/class", async (req, res) => {
 
     if (students.length === 0) return res.json({ tips: ["No students have joined yet. Share your class code!"] });
 
+    // Fetch lesson & scenario completions for class members
+    const [lessonRes, scenarioRes] = await Promise.all([
+      supabaseAdmin.from("lesson_completions").select("user_id, lesson_id").in("user_id", studentIds),
+      supabaseAdmin.from("scenario_completions").select("user_id, scenario_id").in("user_id", studentIds),
+    ]);
+    const lessonRows = lessonRes.data || [];
+    const scenarioRows = scenarioRes.data || [];
+    students.forEach(s => {
+      const sid = (members || []).find(m => m.users?.username === s.username)?.user_id;
+      s.lessonsCompleted = sid ? lessonRows.filter(r => r.user_id === sid).length : 0;
+      s.scenariosCompleted = sid ? scenarioRows.filter(r => r.user_id === sid).length : 0;
+    });
+    const avgLessons = (students.reduce((a, s) => a + s.lessonsCompleted, 0) / students.length).toFixed(1);
+    const avgScenarios = (students.reduce((a, s) => a + s.scenariosCompleted, 0) / students.length).toFixed(1);
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 400,
-        system: `You are Swish, an AI assistant for teachers managing a virtual stock trading class for students aged 8-18. Analyse the class data and provide 3-5 actionable coaching tips. Be specific about student names when relevant. Focus on engagement, learning gaps, and teaching opportunities. Return ONLY a JSON array of strings, no other text.`,
-        messages: [{ role: "user", content: JSON.stringify({ students }) }],
+        system: `You are Swish, an AI assistant for teachers managing a virtual stock trading class for students aged 8-18. The class has 20 lessons and 8 investment scenarios available. Analyse the class data including lesson/scenario completion rates and provide 3-5 actionable coaching tips. Be specific about student names when relevant. Focus on engagement, learning gaps, lesson/scenario progress, and teaching opportunities. Return ONLY a JSON array of strings, no other text.`,
+        messages: [{ role: "user", content: JSON.stringify({ students, classAverages: { avgLessonsCompleted: avgLessons, avgScenariosCompleted: avgScenarios, totalLessons: 20, totalScenarios: 8 } }) }],
       }),
     });
     const data = await response.json();

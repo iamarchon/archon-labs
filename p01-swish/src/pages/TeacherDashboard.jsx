@@ -34,6 +34,8 @@ const SORTABLE_COLS = [
   { key: "gain_pct",    label: "% Gain",           align: "right"  },
   { key: "trades",      label: "Trades",           align: "right"  },
   { key: "xp",          label: "XP",               align: "right"  },
+  { key: "lessons",     label: "Lessons",          align: "right"  },
+  { key: "scenarios",   label: "Scenarios",        align: "right"  },
   { key: "last_active", label: "Last Active",      align: "right"  },
   { key: "status",      label: "Status",           align: "center" },
 ];
@@ -74,6 +76,9 @@ export default function TeacherDashboard({ dbUser }) {
   const [classInsights, setClassInsights]         = useState(null);
   const [classInsightsLoading, setClassInsightsLoading] = useState(false);
 
+  // Class progress (lessons & scenarios)
+  const [classProgress, setClassProgress] = useState({ avgLessons: 0, avgScenarios: 0, studentBreakdown: [] });
+
   // Student detail panel
   const [studentTips, setStudentTips]             = useState(null);
   const [studentTipsLoading, setStudentTipsLoading] = useState(false);
@@ -103,6 +108,13 @@ export default function TeacherDashboard({ dbUser }) {
           status:      statusFromGainPct(m.gain_pct ?? 0),
         }));
         setMembers(ranked);
+
+        // Fetch class lesson/scenario progress
+        try {
+          const cpRes = await fetch(`${baseUrl}/api/teacher/class-progress/${dbUser.id}`);
+          const cpData = await cpRes.json();
+          setClassProgress(cpData);
+        } catch { /* graceful fallback */ }
       } catch (err) {
         console.error("TeacherDashboard: failed to load league data", err);
       }
@@ -144,7 +156,15 @@ export default function TeacherDashboard({ dbUser }) {
     setSortKey(key);
   }, [sortKey]);
 
-  const sorted = [...members].sort((a, b) => {
+  // Merge class progress into members for table display
+  const progressMap = {};
+  (classProgress.studentBreakdown || []).forEach(s => { progressMap[s.userId] = s; });
+  const membersWithProgress = members.map(m => {
+    const p = progressMap[m.user_id ?? m.id];
+    return { ...m, lessons: p?.lessonsCompleted ?? 0, scenarios: p?.scenariosCompleted ?? 0 };
+  });
+
+  const sorted = [...membersWithProgress].sort((a, b) => {
     let av = a[sortKey], bv = b[sortKey];
     if (typeof av === "string") av = av.toLowerCase();
     if (typeof bv === "string") bv = bv.toLowerCase();
@@ -420,6 +440,12 @@ export default function TeacherDashboard({ dbUser }) {
                       <td style={{ textAlign: "right", padding: "10px 12px", borderBottom: `1px solid ${T.line}`, color: T.inkSub }}>
                         {(m.xp ?? 0).toLocaleString()}
                       </td>
+                      <td style={{ textAlign: "right", padding: "10px 12px", borderBottom: `1px solid ${T.line}`, color: T.inkSub }}>
+                        {m.lessons}/20
+                      </td>
+                      <td style={{ textAlign: "right", padding: "10px 12px", borderBottom: `1px solid ${T.line}`, color: T.inkSub }}>
+                        {m.scenarios}/8
+                      </td>
                       <td style={{ textAlign: "right", padding: "10px 12px", borderBottom: `1px solid ${T.line}`, color: T.inkFaint, fontSize: 12 }}>
                         {m.last_active}
                       </td>
@@ -458,11 +484,13 @@ export default function TeacherDashboard({ dbUser }) {
           {/* Class Stats */}
           <Card hover={false} style={{ padding: "28px 32px" }}>
             <h2 style={S.sectionTitle}>Class Stats</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
               <StatTile label="Total Students" value={totalStudents} />
               <StatTile label="Avg Portfolio Gain" value={fmtPct(avgGain)} color={avgGain >= 0 ? T.green : T.red} />
               <StatTile label="Most Active" value={mostActive} />
               <StatTile label="Total Combined Value" value={fmt$(totalValue)} />
+              <StatTile label="Avg Lessons Completed" value={`${classProgress.avgLessons} / 20`} color={T.accent} />
+              <StatTile label="Avg Scenarios Completed" value={`${classProgress.avgScenarios} / 8`} color="#8b5cf6" />
             </div>
           </Card>
         </div>
