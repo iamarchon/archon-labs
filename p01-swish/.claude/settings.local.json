@@ -15,7 +15,8 @@
       "Bash(npm:*)",
       "Bash(vercel env:*)",
       "Bash(vercel:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(rm:*)"
     ]
   }
 }

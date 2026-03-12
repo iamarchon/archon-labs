@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { UserButton } from "@clerk/react";
 import { T } from "../tokens";
-import XpPopup from "./XpPopup";
 
 const NAV = [
   { to: "/",            label: "Dashboard"   },
@@ -12,24 +11,13 @@ const NAV = [
   { to: "/coach",       label: "Coach"       },
 ];
 
-export default function TopNav({ xp = 0, level = "Bronze" }) {
+export default function TopNav() {
   const [scrolled, setScrolled] = useState(false);
-  const [showXp, setShowXp] = useState(false);
-  const closeTimer = useRef(null);
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 6);
     window.addEventListener("scroll", fn, { passive: true });
     return () => window.removeEventListener("scroll", fn);
-  }, []);
-
-  const handleEnter = useCallback(() => {
-    clearTimeout(closeTimer.current);
-    setShowXp(true);
-  }, []);
-
-  const handleLeave = useCallback(() => {
-    closeTimer.current = setTimeout(() => setShowXp(false), 300);
   }, []);
 
   return (
@@ -73,26 +61,6 @@ export default function TopNav({ xp = 0, level = "Bronze" }) {
           ))}
         </nav>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div
-            style={{ position: "relative" }}
-            onMouseEnter={handleEnter}
-            onMouseLeave={handleLeave}
-          >
-            <button
-              onClick={() => setShowXp(v => !v)}
-              style={{ fontSize: "12px", color: T.inkSub, background: T.bg, padding: "5px 13px", borderRadius: "20px", fontWeight: 500, border: "none", cursor: "pointer", transition: "background .15s" }}
-            >
-              {xp.toLocaleString()} XP · {level}
-            </button>
-            {showXp && (
-              <div
-                onMouseEnter={handleEnter}
-                onMouseLeave={handleLeave}
-              >
-                <XpPopup xp={xp} level={level} onClose={() => setShowXp(false)} />
-              </div>
-            )}
-          </div>
           <UserButton afterSignOutUrl="/" />
         </div>
       </div>

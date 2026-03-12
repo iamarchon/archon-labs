@@ -146,7 +146,7 @@ function AppShell() {
     <>
       <ScrollToTop />
       <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: T.bg }}>
-        <TopNav xp={xp} level={level} />
+        <TopNav />
         <div style={{ height: "52px", flexShrink: 0 }} />
         <TickerStrip stocks={stocks} />
         <main style={{ flex: 1, background: T.bg }}>
