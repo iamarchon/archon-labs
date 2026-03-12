@@ -283,12 +283,15 @@ app.get("/api/news/:symbol", async (req, res) => {
   }
 });
 
-/* ── Watchlist API routes ── */
+/* ── Watchlist API routes ──
+   DB column is "ticker" but frontend uses "symbol" — map on the way in/out.
+   After running: ALTER TABLE watchlist RENAME COLUMN ticker TO symbol;
+   you can remove the ticker↔symbol mapping below.                        ── */
 app.get("/api/watchlist", async (req, res) => {
   const userId = req.query.userId;
   if (!userId) return res.status(400).json({ error: "userId required" });
   if (!supabaseAdmin) {
-    console.error("watchlist GET: supabaseAdmin is null — check VITE_SUPABASE_URL and SUPABASE_SERVICE_KEY env vars");
+    console.error("watchlist GET: supabaseAdmin is null");
     return res.status(500).json({ error: "Supabase not configured" });
   }
   try {
@@ -300,7 +303,12 @@ app.get("/api/watchlist", async (req, res) => {
       console.error("watchlist GET error:", JSON.stringify(error));
       return res.status(500).json({ error: error.message });
     }
-    res.json({ items: data || [] });
+    // Map DB "ticker" column to frontend "symbol" key
+    const items = (data || []).map(row => ({
+      symbol: row.symbol || row.ticker,
+      created_at: row.created_at,
+    }));
+    res.json({ items });
   } catch (err) {
     console.error("watchlist GET exception:", err);
     res.status(500).json({ error: err.message });
@@ -311,26 +319,35 @@ app.post("/api/watchlist/add", async (req, res) => {
   const { userId, symbol } = req.body;
   if (!userId || !symbol) return res.status(400).json({ error: "userId and symbol required" });
   if (!supabaseAdmin) {
-    console.error("watchlist ADD: supabaseAdmin is null — check VITE_SUPABASE_URL and SUPABASE_SERVICE_KEY env vars");
+    console.error("watchlist ADD: supabaseAdmin is null");
     return res.status(500).json({ error: "Supabase not configured" });
   }
   try {
-    // Delete first then insert to avoid unique constraint issues
-    await supabaseAdmin
-      .from("watchlist")
-      .delete()
-      .eq("user_id", userId)
-      .eq("symbol", symbol.toUpperCase());
+    const sym = symbol.toUpperCase();
+    // Delete first to avoid unique constraint issues (works with both column names)
+    await supabaseAdmin.from("watchlist").delete().eq("user_id", userId).eq("ticker", sym);
+    await supabaseAdmin.from("watchlist").delete().eq("user_id", userId).eq("symbol", sym);
 
-    const { data, error } = await supabaseAdmin
+    // Try insert with "ticker" column (current DB schema), fall back to "symbol"
+    let { data, error } = await supabaseAdmin
       .from("watchlist")
-      .insert({ user_id: userId, symbol: symbol.toUpperCase() })
+      .insert({ user_id: userId, ticker: sym })
       .select();
+    if (error) {
+      // Column might be "symbol" if migration was run
+      const retry = await supabaseAdmin
+        .from("watchlist")
+        .insert({ user_id: userId, symbol: sym })
+        .select();
+      data = retry.data;
+      error = retry.error;
+    }
     if (error) {
       console.error("watchlist ADD error:", JSON.stringify(error));
       return res.status(500).json({ error: error.message });
     }
-    res.json({ success: true, item: data?.[0] ?? null });
+    const item = data?.[0];
+    res.json({ success: true, item: item ? { symbol: item.symbol || item.ticker, created_at: item.created_at } : null });
   } catch (err) {
     console.error("watchlist ADD exception:", err);
     res.status(500).json({ error: err.message });
@@ -341,19 +358,14 @@ app.post("/api/watchlist/remove", async (req, res) => {
   const { userId, symbol } = req.body;
   if (!userId || !symbol) return res.status(400).json({ error: "userId and symbol required" });
   if (!supabaseAdmin) {
-    console.error("watchlist REMOVE: supabaseAdmin is null — check VITE_SUPABASE_URL and SUPABASE_SERVICE_KEY env vars");
+    console.error("watchlist REMOVE: supabaseAdmin is null");
     return res.status(500).json({ error: "Supabase not configured" });
   }
   try {
-    const { error } = await supabaseAdmin
-      .from("watchlist")
-      .delete()
-      .eq("user_id", userId)
-      .eq("symbol", symbol.toUpperCase());
-    if (error) {
-      console.error("watchlist REMOVE error:", JSON.stringify(error));
-      return res.status(500).json({ error: error.message });
-    }
+    const sym = symbol.toUpperCase();
+    // Delete matching either column name
+    await supabaseAdmin.from("watchlist").delete().eq("user_id", userId).eq("ticker", sym);
+    await supabaseAdmin.from("watchlist").delete().eq("user_id", userId).eq("symbol", sym);
     res.json({ success: true });
   } catch (err) {
     console.error("watchlist REMOVE exception:", err);
