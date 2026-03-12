@@ -6,6 +6,7 @@ import Reveal from "../components/Reveal";
 import Card from "../components/Card";
 
 const RANGES = ["1D", "1W", "1M", "3M", "1Y"];
+const RANGE_LABELS = { "1D": "Today", "1W": "Past week", "1M": "Past month", "3M": "Past 3 months", "1Y": "Past year" };
 
 const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
@@ -39,8 +40,6 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
   const seedStock = stocks?.find(s => s.ticker === symbol);
   const livePrice = livePrices[symbol];
   const currentPrice = livePrice ?? seedStock?.price ?? quote?.c ?? null;
-  const changePct = quote?.dp ?? seedStock?.changePct ?? 0;
-  const changeAmt = quote?.d ?? 0;
   const stockName = seedStock?.name ?? symbol;
   const sector = seedStock?.sector ?? null;
 
@@ -80,7 +79,14 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
 
   useEffect(() => { fetchCandles(range); }, [range, fetchCandles]);
 
-  const chartColor = candles.length >= 2 && candles[candles.length - 1].price >= candles[0].price
+  // Compute change dynamically from candle data for selected range
+  const firstPrice = candles.length >= 2 ? candles[0].price : null;
+  const lastPrice = candles.length >= 2 ? candles[candles.length - 1].price : null;
+  const changeAmt = firstPrice != null ? lastPrice - firstPrice : (quote?.d ?? 0);
+  const changePct = firstPrice != null ? (changeAmt / firstPrice) * 100 : (quote?.dp ?? seedStock?.changePct ?? 0);
+  const rangeLabel = RANGE_LABELS[range] || range;
+
+  const chartColor = candles.length >= 2 && lastPrice >= firstPrice
     ? T.green : candles.length >= 2 ? T.red : T.accent;
 
   const tickInterval = candles.length > 5 ? Math.floor(candles.length / 5) : 1;
@@ -108,6 +114,7 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
             </div>
             <div style={{ color: changePct >= 0 ? T.green : T.red, fontSize: "15px", fontWeight: 600, marginTop: "2px" }}>
               {changeAmt >= 0 ? "+" : ""}{changeAmt.toFixed(2)} ({changePct >= 0 ? "+" : ""}{changePct.toFixed(2)}%)
+              <span style={{ color: T.inkFaint, fontWeight: 400, fontSize: "12px", marginLeft: "6px" }}>{rangeLabel}</span>
             </div>
           </div>
         </div>
