@@ -8,5 +8,6 @@ dist
 .vercel
 
 # Session prompt files
+sessions/
 session*.txt
 prompt.txt
