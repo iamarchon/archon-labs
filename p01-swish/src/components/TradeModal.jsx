@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { T } from "../tokens";
 
 export default function TradeModal({ stock, onClose, onTrade, cash = 10000, holdings = [], success, isFirstTrade }) {
-  const [action, setAction] = useState("BUY");
+  const [action, setAction] = useState(stock.defaultAction || "BUY");
   const [shares, setShares] = useState(1);
 
   useEffect(() => {

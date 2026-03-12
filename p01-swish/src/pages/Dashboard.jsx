@@ -102,6 +102,30 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
     })();
   }, [dbUser]);
 
+  // Holdings time range + price history
+  const [holdingsRange, setHoldingsRange] = useState("1D");
+  const [holdingsPriceHistory, setHoldingsPriceHistory] = useState({});
+
+  useEffect(() => {
+    if (holdings.length === 0) return;
+    const tickers = holdings.map(h => h.ticker);
+    (async () => {
+      const results = {};
+      await Promise.all(tickers.map(async (ticker) => {
+        try {
+          const res = await fetch(`${baseUrl}/api/candles?symbol=${encodeURIComponent(ticker)}&range=${holdingsRange}`);
+          const data = await res.json();
+          if (data.s === "ok" && data.c?.length >= 2) {
+            const first = data.c[0];
+            const last = data.c[data.c.length - 1];
+            results[ticker] = { changePct: ((last - first) / first) * 100 };
+          }
+        } catch { /* ignore */ }
+      }));
+      setHoldingsPriceHistory(results);
+    })();
+  }, [holdings, holdingsRange]);
+
   const toggleDashLeague = async (leagueId) => {
     if (expandedDashLeague === leagueId) { setExpandedDashLeague(null); return; }
     setExpandedDashLeague(leagueId);
@@ -222,36 +246,66 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
         </Card>
       </Reveal>
 
-      {/* Row 3: Your Holdings — full width */}
+      {/* Row 3: Your Holdings — full width list */}
       <Reveal delay={0.08}>
         <Card style={{ padding: "28px 30px", marginBottom: "16px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
             <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Your Holdings</div>
+            {holdings.length > 0 && (
+              <div style={{ display: "flex", gap: "4px", background: T.bg, borderRadius: "8px", padding: "2px" }}>
+                {["1D", "1W", "1M", "3M", "1Y"].map(r => (
+                  <button key={r} onClick={() => setHoldingsRange(r)} style={{
+                    background: holdingsRange === r ? T.white : "transparent",
+                    color: holdingsRange === r ? T.ink : T.inkFaint,
+                    border: "none", borderRadius: "6px", padding: "4px 10px",
+                    fontSize: "11px", fontWeight: 600, cursor: "pointer",
+                    boxShadow: holdingsRange === r ? "0 1px 3px rgba(0,0,0,.08)" : "none",
+                    transition: "all .15s",
+                  }}>{r}</button>
+                ))}
+              </div>
+            )}
           </div>
           {holdings.length === 0 ? (
             <div style={{ padding: "32px", textAlign: "center", color: T.inkSub, fontSize: "14px" }}>
               No holdings yet. Head to Markets to make your first trade.
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(holdings.length, 4)},1fr)`, gap: "12px" }}>
-              {holdings.map(h => {
+            <div>
+              {holdings.map((h, i) => {
                 const s = stocks.find(x => x.ticker === h.ticker);
                 if (!s) return null;
                 const shares = Number(h.shares), avgCost = Number(h.avg_cost);
-                const val = s.price * shares, cost = avgCost * shares, g = val - cost, gPct = cost > 0 ? (g / cost) * 100 : 0;
+                const currentPrice = s.price;
+                const val = currentPrice * shares;
+                const rangeData = holdingsPriceHistory[h.ticker];
+                const pct = rangeData ? rangeData.changePct : ((currentPrice - avgCost) / avgCost) * 100;
                 return (
-                  <div key={h.ticker} onClick={() => onTrade(s)} style={{ padding: "18px 20px", borderRadius: T.r, background: T.bg, border: `1px solid ${T.line}`, cursor: "pointer", transition: "all .18s ease" }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = T.ghost; e.currentTarget.style.background = T.white; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = T.line; e.currentTarget.style.background = T.bg; }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
-                      <div>
-                        <div style={{ color: T.ink, fontWeight: 700, fontSize: "15px", letterSpacing: "-0.2px" }}>{s.ticker}</div>
-                        <div style={{ color: T.inkSub, fontSize: "12px", marginTop: "2px" }}>{shares} shares</div>
+                  <div key={h.ticker}>
+                    <div
+                      onClick={() => navigate(`/stock/${s.ticker}`)}
+                      style={{ display: "flex", alignItems: "center", padding: "14px 4px", cursor: "pointer", transition: "background .15s", borderRadius: "8px" }}
+                      onMouseEnter={e => e.currentTarget.style.background = T.bg}
+                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", letterSpacing: "-0.2px" }}>{s.ticker}</div>
+                        <div style={{ color: T.inkSub, fontSize: "12px", marginTop: "1px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
                       </div>
-                      <Sparkline positive={gPct >= 0} width={52} height={20} />
+                      <div style={{ textAlign: "center", minWidth: "120px" }}>
+                        <div style={{ color: T.ink, fontSize: "13px", fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>{shares} shares</div>
+                        <div style={{ color: T.inkFaint, fontSize: "11px", marginTop: "1px", fontVariantNumeric: "tabular-nums" }}>avg ${avgCost.toFixed(2)}</div>
+                      </div>
+                      <div style={{ textAlign: "right", minWidth: "110px" }}>
+                        <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", fontVariantNumeric: "tabular-nums" }}>${currentPrice.toFixed(2)}</div>
+                        <div style={{ color: pct >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 600, marginTop: "1px", fontVariantNumeric: "tabular-nums" }}>
+                          {pct >= 0 ? "+" : ""}{pct.toFixed(2)}%
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ color: T.ink, fontWeight: 700, fontSize: "17px", letterSpacing: "-0.4px", fontVariantNumeric: "tabular-nums" }}>${val.toFixed(2)}</div>
-                    <div style={{ color: gPct >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 500, marginTop: "2px" }}>{gPct >= 0 ? "+" : ""}{gPct.toFixed(2)}%</div>
+                    {i < holdings.length - 1 && (
+                      <div style={{ height: "1px", background: T.line, margin: "0 4px" }} />
+                    )}
                   </div>
                 );
               })}

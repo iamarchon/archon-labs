@@ -199,13 +199,13 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
       <Reveal delay={0.14}>
         <div style={{ display: "flex", gap: "12px" }}>
           <button
-            onClick={() => onTrade({ ticker: symbol, name: stockName, price: currentPrice, changePct, sector })}
+            onClick={() => onTrade({ ticker: symbol, name: stockName, price: currentPrice, changePct, sector, defaultAction: "BUY" })}
             style={{ flex: 1, padding: "16px", borderRadius: "14px", border: "none", cursor: "pointer", background: T.accent, color: T.white, fontWeight: 600, fontSize: "16px", transition: "opacity .15s" }}
             onMouseEnter={e => e.currentTarget.style.opacity = ".88"}
             onMouseLeave={e => e.currentTarget.style.opacity = "1"}
           >Buy {symbol}</button>
           <button
-            onClick={() => onTrade({ ticker: symbol, name: stockName, price: currentPrice, changePct, sector })}
+            onClick={() => onTrade({ ticker: symbol, name: stockName, price: currentPrice, changePct, sector, defaultAction: "SELL" })}
             style={{ flex: 1, padding: "16px", borderRadius: "14px", border: `2px solid ${T.line}`, cursor: "pointer", background: T.white, color: T.ink, fontWeight: 600, fontSize: "16px", transition: "all .15s" }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = T.red; e.currentTarget.style.color = T.red; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = T.line; e.currentTarget.style.color = T.ink; }}
