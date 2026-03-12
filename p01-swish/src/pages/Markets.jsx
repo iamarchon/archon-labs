@@ -9,7 +9,7 @@ export default function Markets({ onTrade, watchlist, onWatch }) {
         <div style={{ marginBottom: "28px" }}>
           <h1 style={{ fontSize: "32px", fontWeight: 700, letterSpacing: "-0.8px", color: T.ink }}>Markets</h1>
           <p style={{ color: T.inkSub, fontSize: "15px", marginTop: "5px" }}>
-            Search any stock — 8,000+ US-listed companies
+            Search stocks & crypto — 8,000+ US-listed companies + top coins
           </p>
         </div>
       </Reveal>

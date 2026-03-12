@@ -44,7 +44,7 @@ export default function Learn({ dbUser, refreshUser, fireConfetti }) {
         await fetch(`${baseUrl}/api/lessons/complete`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: dbUser.id, lessonId: activeLesson.id, score }),
+          body: JSON.stringify({ userId: dbUser.id, lessonId: activeLesson.id, score, xpReward: activeLesson.xpReward }),
         });
         if (fireConfetti) fireConfetti("trade");
         if (refreshUser) await refreshUser();
@@ -235,12 +235,18 @@ export default function Learn({ dbUser, refreshUser, fireConfetti }) {
                 <div style={{ color: T.ink, fontSize: "15px", fontWeight: 700, letterSpacing: "-0.2px", marginBottom: "8px", lineHeight: 1.3 }}>
                   {lesson.title}
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                   <span style={{ color: T.inkFaint, fontSize: "12px" }}>{lesson.duration}</span>
                   <span style={{
                     fontSize: "10px", fontWeight: 600, color: T.accent,
                     background: `${T.accent}10`, padding: "2px 8px", borderRadius: "4px",
                   }}>+{lesson.xpReward} XP</span>
+                  {lesson.unlocksScenario && (
+                    <span style={{
+                      fontSize: "10px", fontWeight: 600, color: "#D97757",
+                      background: "#D9775712", padding: "2px 8px", borderRadius: "4px",
+                    }}>Unlocks scenario</span>
+                  )}
                 </div>
               </Card>
             </Reveal>

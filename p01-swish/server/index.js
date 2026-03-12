@@ -66,6 +66,30 @@ app.get("/api/quote/:symbol", async (req, res) => {
   }
 });
 
+/* ── GET /api/crypto/quote/:symbol — CoinGecko crypto price ── */
+const CRYPTO_ID_MAP = {
+  BTC: "bitcoin", ETH: "ethereum", SOL: "solana", DOGE: "dogecoin",
+  ADA: "cardano", XRP: "ripple", DOT: "polkadot", AVAX: "avalanche-2",
+};
+
+app.get("/api/crypto/quote/:symbol", async (req, res) => {
+  try {
+    const sym = req.params.symbol.toUpperCase();
+    const id = CRYPTO_ID_MAP[sym];
+    if (!id) return res.status(400).json({ error: `Unknown crypto symbol: ${sym}` });
+
+    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd&include_24hr_change=true`;
+    const response = await fetch(url);
+    const data = await response.json();
+    const coin = data[id];
+    if (!coin) return res.json({ c: 0, dp: 0 });
+
+    res.json({ c: coin.usd, dp: coin.usd_24h_change ?? 0 });
+  } catch (err) {
+    res.status(502).json({ error: "Failed to fetch crypto quote" });
+  }
+});
+
 /* ── GET /api/candles — Yahoo Finance chart data (free, no key) ── */
 const YAHOO_RANGE_MAP = {
   "1D": { interval: "5m",  range: "1d"  },
@@ -194,6 +218,7 @@ const COMPANY_NAMES = {
   PYPL:"PayPal Holdings",SQ:"Block Inc.",COIN:"Coinbase Global",
   UBER:"Uber Technologies",ABNB:"Airbnb Inc.",SHOP:"Shopify Inc.",
   SNAP:"Snap Inc.",
+  BTC:"Bitcoin",ETH:"Ethereum",SOL:"Solana",DOGE:"Dogecoin",
 };
 
 app.get("/api/news/:symbol", async (req, res) => {
@@ -639,7 +664,7 @@ const CHALLENGE_DEFS = [
   { id:"streak_30", title:"Legendary Streak", description:"Log in 30 days in a row", xpReward:500, category:"streak", difficulty:"hard", type:"one-time", eval:(d)=>{const c=Math.min(d.streak,30);return{current:c,target:30,percent:(c/30)*100,completed:c>=30}} },
   { id:"first_lesson", title:"Student", description:"Complete your first lesson", xpReward:30, category:"learning", difficulty:"easy", type:"one-time", eval:(d)=>{const c=Math.min(d.lessonCount,1);return{current:c,target:1,percent:c>=1?100:0,completed:c>=1}} },
   { id:"five_lessons", title:"Scholar", description:"Complete 5 lessons", xpReward:100, category:"learning", difficulty:"medium", type:"one-time", eval:(d)=>{const c=Math.min(d.lessonCount,5);return{current:c,target:5,percent:(c/5)*100,completed:c>=5}} },
-  { id:"all_lessons", title:"Master Investor", description:"Complete all 15 lessons", xpReward:500, category:"learning", difficulty:"hard", type:"one-time", eval:(d)=>{const c=Math.min(d.lessonCount,15);return{current:c,target:15,percent:(c/15)*100,completed:c>=15}} },
+  { id:"all_lessons", title:"Master Investor", description:"Complete all 20 lessons", xpReward:500, category:"learning", difficulty:"hard", type:"one-time", eval:(d)=>{const c=Math.min(d.lessonCount,20);return{current:c,target:20,percent:(c/20)*100,completed:c>=20}} },
 ];
 
 function getMonday() {
@@ -773,9 +798,12 @@ app.post("/api/lessons/complete", async (req, res) => {
     if (existing) return res.json({ success: true, alreadyCompleted: true, xpAwarded: 0 });
     const { error: insertErr } = await supabaseAdmin.from("lesson_completions").insert({ user_id: userId, lesson_id: lessonId, score });
     if (insertErr) return res.status(500).json({ error: insertErr.message });
-    let xpReward = 20;
-    if (lessonId > 10) xpReward = 50;
-    else if (lessonId > 5) xpReward = 35;
+    let xpReward = req.body.xpReward ?? 20;
+    if (![20, 35, 50].includes(xpReward)) {
+      if (lessonId > 10) xpReward = 50;
+      else if (lessonId > 5) xpReward = 35;
+      else xpReward = 20;
+    }
     const { data: user } = await supabaseAdmin.from("users").select("xp").eq("id", userId).single();
     const newXp = (user?.xp ?? 0) + xpReward;
     await supabaseAdmin.from("users").update({ xp: newXp }).eq("id", userId);

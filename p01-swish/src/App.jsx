@@ -20,6 +20,7 @@ import Coach from "./pages/Coach";
 import StockDetail from "./pages/StockDetail";
 import Challenges from "./pages/Challenges";
 import TeacherDashboard from "./pages/TeacherDashboard";
+import Scenarios from "./pages/Scenarios";
 import RoleSelect from "./components/RoleSelect";
 import useNotifications from "./hooks/useNotifications";
 
@@ -254,6 +255,9 @@ function AppShell() {
               <Challenges dbUser={dbUser} onClaimXp={onClaimXp} fireConfetti={fireConfetti} />
             } />
             <Route path="/learn" element={<Learn dbUser={dbUser} refreshUser={refreshUser} fireConfetti={fireConfetti} />} />
+            <Route path="/scenarios" element={
+              <Scenarios dbUser={dbUser} onClaimXp={onClaimXp} fireConfetti={fireConfetti} />
+            } />
             <Route path="/teacher" element={<TeacherDashboard dbUser={dbUser} />} />
             <Route path="/leaderboard" element={<Leaderboard userId={dbUser?.id} />} />
             <Route path="/coach" element={<Coach />} />

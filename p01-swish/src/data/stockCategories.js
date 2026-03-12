@@ -5,6 +5,7 @@ export const STOCK_CATEGORIES = {
   NFLX: "Media", SPOT: "Media", DIS: "Media",
   SNAP: "Social", META: "Social",
   PYPL: "Fintech", COIN: "Crypto",
+  BTC: "Crypto", ETH: "Crypto", SOL: "Crypto", DOGE: "Crypto",
   NKE: "Consumer",
   AMZN: "Retail",
   CMG: "Food", SBUX: "Food",

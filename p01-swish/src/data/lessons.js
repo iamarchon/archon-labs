@@ -6,6 +6,7 @@ export const LESSONS = [
     category: "Beginner",
     duration: "3 min read",
     xpReward: 20,
+    unlocksScenario: "compound_interest",
     content: `When you buy a stock, you're buying a tiny piece of ownership in a real company. If you own one share of Apple, you literally own a fraction of every Apple Store, every iPhone design, and every dollar the company earns. Companies sell shares to raise money — when a company does this for the first time, it's called an IPO, or Initial Public Offering. That's the moment a private company becomes public and anyone can buy in.
 
 As a stockholder, you get two main ways to make money. First, the stock price can go up — if you buy at $50 and it rises to $75, you've made $25 per share just by holding it. Second, some companies pay dividends, which are small cash payments sent to shareholders every quarter. Think of dividends like a thank-you bonus for being an owner. Not all companies pay them — fast-growing tech companies usually reinvest profits instead.
@@ -144,6 +145,7 @@ Two important concepts are support and resistance. Support is a price level wher
     category: "Beginner",
     duration: "3 min read",
     xpReward: 20,
+    unlocksScenario: "diversification",
     content: `You've probably heard the saying "don't put all your eggs in one basket." That's diversification in a nutshell. If you put 100% of your money into a single stock and that company tanks, you lose everything. But if you spread your money across 20 different stocks in different industries, one bad pick won't destroy your whole portfolio. Diversification is the closest thing to a free lunch in investing.
 
 The key is spreading your money across different sectors — categories of the economy like technology, healthcare, energy, consumer goods, and finance. These sectors don't all move in the same direction at the same time. When oil prices crash, energy stocks might drop but airline stocks could rise because fuel costs less. When interest rates go up, banks might do well while tech stocks struggle. By owning stocks in multiple sectors, you smooth out the bumps.
@@ -190,6 +192,7 @@ Diversification doesn't mean you'll never lose money — the whole market can dr
     category: "Beginner",
     duration: "3 min read",
     xpReward: 20,
+    unlocksScenario: "hot_tip",
     content: `Here's a fundamental truth about investing: the potential for higher returns always comes with higher risk. A savings account at a bank is super safe — you'll never lose money — but it might only earn you 1-2% per year. Stocks, on the other hand, have returned about 10% per year on average over the past century, but in any given year they could drop 20%, 30%, or more. The extra return is your reward for accepting that uncertainty.
 
 Volatility is how wildly a stock's price swings up and down. A stock that moves 5% a day is highly volatile. A stock that barely moves is low volatility. Volatile stocks can make you a lot of money fast, but they can also lose you a lot of money fast. Penny stocks and cryptocurrency are some of the most volatile things you can invest in. Blue-chip companies like Johnson & Johnson or Procter & Gamble tend to be much steadier.
@@ -376,6 +379,7 @@ Understanding sectors also helps you avoid accidental concentration. If you own 
     category: "Intermediate",
     duration: "4 min read",
     xpReward: 35,
+    unlocksScenario: "market_crash_2008",
     content: `A bull market is when stock prices rise 20% or more from a recent low, and the overall mood is optimistic. During a bull market, the economy is usually growing, unemployment is low, and companies are reporting strong profits. Investors feel confident and keep buying, which pushes prices even higher. The longest bull market in U.S. history ran from March 2009 to February 2020 — nearly 11 years where the S&P 500 went up over 400%.
 
 A bear market is the opposite — a decline of 20% or more from a recent high. Bear markets happen when the economy slows, corporate earnings drop, and fear takes over. Investors rush to sell, driving prices lower, which scares more people into selling. It becomes a negative spiral. Bear markets feel terrible when you're in one, but here's the key stat: the average bear market lasts about 9 to 16 months, while the average bull market lasts about 3 to 5 years. Bulls are longer and stronger.
@@ -470,6 +474,7 @@ When earnings "beat" expectations, the stock usually goes up — but not always.
     category: "Advanced",
     duration: "5 min read",
     xpReward: 50,
+    unlocksScenario: "ipo_frenzy",
     content: `Technical analysis is the practice of using charts, patterns, and mathematical indicators to predict where a stock price might go next. Unlike fundamental analysis (which looks at a company's actual business), technical analysis only cares about price and volume data. The core idea is that all known information is already reflected in the price, and that price patterns tend to repeat because human psychology doesn't change. It's controversial — some investors swear by it, others call it astrology — but millions of traders use it every day.
 
 Moving averages are the most fundamental technical tool. A 50-day moving average (50 MA) takes the average closing price over the last 50 trading days and plots it as a smooth line on the chart. The 200-day moving average does the same over 200 days. When the stock price is above its 200-day MA, it's generally in a long-term uptrend. When it's below, it's in a downtrend. A "golden cross" — when the 50-day MA crosses above the 200-day MA — is considered a strong bullish signal. A "death cross" is the opposite and signals trouble ahead.
@@ -691,6 +696,240 @@ The math of starting early is staggering and it's the biggest advantage you have
           "The government gives bonuses to young investors"
         ],
         correct: 2,
+      },
+    ],
+  },
+  {
+    id: 16,
+    title: "What is an ETF?",
+    category: "Beginner",
+    duration: "3 min read",
+    xpReward: 20,
+    unlocksScenario: "market_crash_2008",
+    content: `An Exchange Traded Fund, or ETF, is a basket of stocks bundled into a single ticker that you can buy and sell on the stock market just like a regular share. Instead of picking individual companies one by one, you can buy one share of an ETF and instantly own a tiny piece of dozens or even hundreds of companies. Think of it like a sampler platter at a restaurant — instead of committing to one dish, you get a taste of everything.
+
+ETFs and mutual funds might sound similar, but there's an important difference in how they trade. An ETF trades on the stock exchange throughout the day, just like Apple or Nike stock — the price changes every second the market is open, and you can buy or sell anytime. Mutual funds, on the other hand, only trade once per day after the market closes. Everyone who bought or sold that day gets the same end-of-day price. ETFs also tend to have lower fees than mutual funds, making them more cost-effective for most investors.
+
+Some of the most popular ETFs are SPY, which tracks the S&P 500 (the 500 largest U.S. companies), QQQ, which tracks the Nasdaq-100 (heavy on tech companies like Apple, Microsoft, and Google), and VTI, which tracks the total U.S. stock market — basically every publicly traded company in America. These are great starting points for any investor because they give you broad exposure to the market in a single purchase.
+
+ETFs are especially great for beginners because they offer instant diversification with very low fees. Instead of researching individual companies and risking everything on one stock, you can spread your money across the entire market. If one company in the ETF does badly, the others can make up for it. Warren Buffett himself has said that most people would be better off just buying a low-cost S&P 500 index fund — and that's essentially what SPY is.`,
+    quiz: [
+      {
+        question: "What does ETF stand for?",
+        options: [
+          "Exchange Traded Fund",
+          "Electronic Trading Format",
+          "Equity Transfer Fund",
+          "Enhanced Tax Filing"
+        ],
+        correct: 0,
+      },
+      {
+        question: "Why are ETFs good for beginners?",
+        options: [
+          "Instant diversification with low fees",
+          "They guarantee profits",
+          "They only go up",
+          "They pay the highest dividends"
+        ],
+        correct: 0,
+      },
+      {
+        question: "Which of these is a broad market ETF?",
+        options: [
+          "SPY",
+          "AAPL",
+          "BRK.B",
+          "GME"
+        ],
+        correct: 0,
+      },
+    ],
+  },
+  {
+    id: 17,
+    title: "Index Funds & Passive Investing",
+    category: "Beginner",
+    duration: "4 min read",
+    xpReward: 20,
+    content: `A stock market index is a way to measure how a group of stocks is performing overall. The S&P 500, for example, tracks the 500 largest publicly traded companies in the United States — names like Apple, Microsoft, Amazon, and JPMorgan. The Dow Jones Industrial Average is older and more famous, but it only tracks 30 large companies. The Nasdaq Composite is heavily weighted toward technology companies. When people say "the market was up today," they're usually talking about one of these indexes.
+
+Passive investing means buying a fund that simply mirrors an index, rather than trying to pick individual winning stocks. An S&P 500 index fund, for example, owns all 500 stocks in the same proportions as the index itself. Active investing is the opposite — a fund manager researches companies, makes predictions, and picks stocks they think will outperform. Active funds charge higher fees because you're paying for the manager's expertise and research team.
+
+Here's the surprising truth: most active fund managers fail to beat the index over long periods. According to the SPIVA scorecard, which tracks this data, over 90% of actively managed funds underperform the S&P 500 over a 15-year period. That means the vast majority of professional stock pickers — with teams of analysts, expensive data, and decades of experience — do worse than a simple index fund that just buys everything.
+
+The most famous example of this is Warren Buffett's million-dollar bet. In 2007, Buffett bet a hedge fund manager $1 million that a simple S&P 500 index fund would outperform a basket of hedge funds over 10 years. By 2017, the result wasn't even close — the index fund returned 125% while the hedge funds returned only about 36%. Buffett won decisively, proving that for most people, passive investing in low-cost index funds is the smartest strategy.`,
+    quiz: [
+      {
+        question: "What is the S&P 500?",
+        options: [
+          "An index tracking the 500 largest US companies",
+          "A stock that costs $500",
+          "A type of savings account",
+          "A government bond"
+        ],
+        correct: 0,
+      },
+      {
+        question: "What does passive investing mean?",
+        options: [
+          "Buying an index fund instead of picking stocks",
+          "Not checking your portfolio",
+          "Only buying bonds",
+          "Investing less than $100"
+        ],
+        correct: 0,
+      },
+      {
+        question: "Who famously bet that an index fund would beat hedge funds?",
+        options: [
+          "Warren Buffett",
+          "Elon Musk",
+          "Jeff Bezos",
+          "Mark Zuckerberg"
+        ],
+        correct: 0,
+      },
+    ],
+  },
+  {
+    id: 18,
+    title: "What is Crypto?",
+    category: "Intermediate",
+    duration: "5 min read",
+    xpReward: 35,
+    unlocksScenario: "ipo_frenzy",
+    content: `Cryptocurrency runs on a technology called blockchain, which is essentially a digital ledger that records every transaction ever made. Unlike a bank, where one company controls all the records, a blockchain is decentralized — thousands of computers around the world each keep a copy of the ledger and verify new transactions together. No single person, company, or government controls it. This is what makes crypto fundamentally different from traditional money or stocks.
+
+Bitcoin and Ethereum are the two biggest cryptocurrencies, but they serve very different purposes. Bitcoin, created in 2009 by the mysterious Satoshi Nakamoto, is often called "digital gold" — it's designed to be a store of value with a fixed supply of 21 million coins that will ever exist. Ethereum, launched in 2015, is more like a platform — it lets developers build applications on top of its blockchain, from digital art (NFTs) to decentralized finance (DeFi) tools. Think of Bitcoin as digital gold you hold, and Ethereum as a digital operating system.
+
+Crypto is dramatically more volatile than stocks, and it's important to understand why. Crypto markets trade 24 hours a day, 7 days a week — there's no closing bell to cool things down. There are no company earnings or revenue to anchor the price to reality — crypto prices are driven almost entirely by sentiment, hype, and speculation. The total crypto market is also much smaller than the stock market, which means big trades can move prices much more. Bitcoin has dropped 50% or more multiple times in its history, only to recover and reach new highs. That kind of rollercoaster is normal in crypto but would be extraordinary for stocks.
+
+There are real risks with crypto that every investor should understand. Unlike stocks, there's no company behind most cryptocurrencies — no CEO, no earnings reports, no board of directors. Regulation is still evolving, and governments could crack down at any time. Hacks and scams are common — billions of dollars have been stolen from crypto exchanges and DeFi protocols. Most financial experts suggest keeping crypto to a small portion of your portfolio — typically 1-5% at most — and only investing money you could afford to lose entirely.`,
+    quiz: [
+      {
+        question: "What makes crypto different from stocks?",
+        options: [
+          "No company behind it and it trades 24/7",
+          "It always goes up",
+          "It's backed by the government",
+          "It pays dividends"
+        ],
+        correct: 0,
+      },
+      {
+        question: "What is Bitcoin often compared to?",
+        options: [
+          "Digital gold",
+          "Digital cash",
+          "Digital bonds",
+          "Digital real estate"
+        ],
+        correct: 0,
+      },
+      {
+        question: "What % of a portfolio do most experts suggest for crypto?",
+        options: [
+          "A small portion (1-5%)",
+          "At least 50%",
+          "All of it",
+          "None ever"
+        ],
+        correct: 0,
+      },
+    ],
+  },
+  {
+    id: 19,
+    title: "Understanding Bonds",
+    category: "Intermediate",
+    duration: "4 min read",
+    xpReward: 35,
+    unlocksScenario: "inflation",
+    content: `A bond is essentially a loan that you make to a company or a government. When you buy a bond, you're lending your money for a set period of time, and in return, the borrower promises to pay you back the full amount (called the "face value" or "par value") plus regular interest payments along the way. The U.S. government issues Treasury bonds, which are considered some of the safest investments in the world because the government has never failed to pay its debts. Companies issue corporate bonds to raise money for expansion, new projects, or operations.
+
+Bonds and stocks have very different risk profiles. Stocks represent ownership — you share in the company's profits and losses, and the price can swing wildly. Bonds represent debt — you're a lender, not an owner, and you get paid back before stockholders if a company goes bankrupt. This makes bonds generally safer than stocks, but the trade-off is lower returns. Over the long term, stocks have averaged about 10% annual returns while bonds have averaged about 4-5%. Bonds are like the tortoise in the race — slow and steady, but reliable.
+
+Bonds and stocks often move in opposite directions, which is why they work so well together in a portfolio. When the economy is uncertain or a recession hits, investors tend to sell risky stocks and buy safe bonds — this is called a "flight to safety." The increased demand for bonds pushes their prices up. Conversely, when the economy is booming and everyone is optimistic, investors sell bonds to buy stocks, pushing bond prices down. This inverse relationship is one of the most important concepts in portfolio construction.
+
+One of the trickiest things about bonds is how interest rates affect their prices — they move in opposite directions. When the Federal Reserve raises interest rates, new bonds are issued with higher rates, making existing bonds with lower rates less attractive. So existing bond prices fall. When rates drop, existing bonds with higher rates become more valuable, so their prices rise. This inverse relationship between rates and bond prices is crucial to understand. If you hold a bond to maturity, the price fluctuations don't matter — you'll get your full face value back. But if you need to sell early, interest rate changes can affect how much you get.`,
+    quiz: [
+      {
+        question: "What is a bond?",
+        options: [
+          "A loan you make to a company or government",
+          "A share of ownership in a company",
+          "A type of cryptocurrency",
+          "A savings account"
+        ],
+        correct: 0,
+      },
+      {
+        question: "How do bonds compare to stocks in terms of risk?",
+        options: [
+          "Generally lower risk but lower returns",
+          "Higher risk and higher returns",
+          "Exactly the same risk",
+          "No risk at all"
+        ],
+        correct: 0,
+      },
+      {
+        question: "What happens to bond prices when interest rates rise?",
+        options: [
+          "Bond prices fall",
+          "Bond prices rise",
+          "Nothing changes",
+          "Bonds expire"
+        ],
+        correct: 0,
+      },
+    ],
+  },
+  {
+    id: 20,
+    title: "Building Your First Portfolio",
+    category: "Advanced",
+    duration: "5 min read",
+    xpReward: 50,
+    unlocksScenario: "side_hustle",
+    content: `The classic 3-fund portfolio is one of the simplest and most effective investment strategies ever created. It consists of just three holdings: a U.S. stock index fund (like VTI), an international stock index fund (like VXUS), and a bond index fund (like BND). That's it. With just these three funds, you own a piece of virtually every publicly traded company in the world plus a cushion of bonds for stability. Many of the world's most successful investors have endorsed this approach because it provides maximum diversification with minimum complexity and fees.
+
+How you split your money between stocks and bonds depends largely on your age and risk tolerance. A common guideline is the "110 minus your age" rule — subtract your age from 110 and put that percentage in stocks, with the rest in bonds. If you're 15, that means 95% stocks and 5% bonds. The logic is straightforward: when you're young, you have decades to ride out market crashes, so you can afford to be aggressive with more stocks. As you get older and closer to needing the money, you gradually shift toward bonds for stability. Within the stock portion, a typical split is about 60-70% U.S. and 30-40% international.
+
+Rebalancing is the maintenance that keeps your portfolio on track. Let's say you start with 80% stocks and 20% bonds. After a great year for stocks, your allocation might drift to 90% stocks and 10% bonds — now you're taking on more risk than you planned. Rebalancing means selling some of the winners and buying more of the laggards to get back to your target percentages. Most experts recommend checking your allocation once or twice a year and rebalancing whenever it drifts more than 5% from your target. It feels counterintuitive to sell your winners, but it enforces the discipline of buying low and selling high.
+
+Dollar cost averaging, or DCA, is the strategy of investing a fixed amount of money at regular intervals — say $50 every week or $200 every month — regardless of whether the market is up or down. When prices are high, your fixed amount buys fewer shares. When prices are low, it buys more shares. Over time, this averages out your purchase price and removes the impossible task of trying to time the market perfectly. Studies show that DCA reduces volatility in your portfolio and takes the emotion out of investing. Instead of agonizing over whether today is a good day to invest, you just invest consistently and let time do the heavy lifting.`,
+    quiz: [
+      {
+        question: "What is the 3-fund portfolio?",
+        options: [
+          "US stocks, international stocks, and bonds",
+          "Three different tech stocks",
+          "Three cryptocurrencies",
+          "Three savings accounts"
+        ],
+        correct: 0,
+      },
+      {
+        question: "What is dollar cost averaging?",
+        options: [
+          "Investing a fixed amount regularly regardless of price",
+          "Only buying when stocks are cheap",
+          "Selling when prices double",
+          "Putting all money in at once"
+        ],
+        correct: 0,
+      },
+      {
+        question: "How often should you typically rebalance?",
+        options: [
+          "Once or twice per year",
+          "Every day",
+          "Every hour",
+          "Never"
+        ],
+        correct: 0,
       },
     ],
   },

@@ -24,6 +24,15 @@ const FEATURED = [
   { ticker:"AMD",   name:"Advanced Micro Devices",price:168.90, changePct:+2.30, sector:"Tech"     },
 ];
 
+const CRYPTO_ASSETS = [
+  { ticker:"BTC",  name:"Bitcoin",    price:null, changePct:null, sector:"Crypto", isCrypto:true },
+  { ticker:"ETH",  name:"Ethereum",   price:null, changePct:null, sector:"Crypto", isCrypto:true },
+  { ticker:"SOL",  name:"Solana",     price:null, changePct:null, sector:"Crypto", isCrypto:true },
+  { ticker:"DOGE", name:"Dogecoin",   price:null, changePct:null, sector:"Crypto", isCrypto:true },
+];
+
+const ALL_FEATURED = [...FEATURED, ...CRYPTO_ASSETS];
+
 const SECTORS = ["All", "Tech", "Media", "Gaming", "Social", "Fintech", "Consumer", "Auto", "Retail", "Food", "Travel", "Crypto", "Transport"];
 
 const Sparkline = ({ positive, width = 56, height = 20 }) => {
@@ -149,13 +158,44 @@ export default function StockSearch({ onTrade, onWatch, watchlist = [] }) {
   const debounceRef                 = useRef(null);
   const inputRef                    = useRef(null);
 
-  const featured = sector === "All"
-    ? FEATURED
-    : FEATURED.filter(s => s.sector === sector);
-
+  const [cryptoPrices, setCryptoPrices] = useState({});
   const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
+  // Fetch crypto prices on mount
+  useEffect(() => {
+    CRYPTO_ASSETS.forEach(async (coin) => {
+      try {
+        const res = await fetch(`${baseUrl}/api/crypto/quote/${coin.ticker}`);
+        const data = await res.json();
+        if (data.c && data.c > 0) {
+          setCryptoPrices(prev => ({ ...prev, [coin.ticker]: { price: data.c, changePct: data.dp ?? 0 } }));
+        }
+      } catch { /* ignore */ }
+    });
+  }, [baseUrl]);
+
+  const featuredWithCrypto = ALL_FEATURED.map(s => {
+    if (s.isCrypto && cryptoPrices[s.ticker]) {
+      return { ...s, price: cryptoPrices[s.ticker].price, changePct: cryptoPrices[s.ticker].changePct };
+    }
+    return s;
+  });
+
+  const featured = sector === "All"
+    ? featuredWithCrypto
+    : featuredWithCrypto.filter(s => s.sector === sector);
+
   const fetchQuote = useCallback(async (symbol) => {
+    // Check if it's crypto
+    const cryptoAsset = CRYPTO_ASSETS.find(c => c.ticker === symbol);
+    if (cryptoAsset) {
+      try {
+        const res = await fetch(`${baseUrl}/api/crypto/quote/${encodeURIComponent(symbol)}`);
+        const data = await res.json();
+        if (data.c && data.c > 0) return { price: data.c, changePct: data.dp ?? 0 };
+      } catch { /* fall through */ }
+      return null;
+    }
     try {
       const res = await fetch(`${baseUrl}/api/quote/${encodeURIComponent(symbol)}`);
       const data = await res.json();
@@ -188,7 +228,7 @@ export default function StockSearch({ onTrade, onWatch, watchlist = [] }) {
           .slice(0, 12)
           .map(r => {
             // Use featured data if available
-            const feat = FEATURED.find(f => f.ticker === r.symbol);
+            const feat = ALL_FEATURED.find(f => f.ticker === r.symbol);
             return feat || {
               ticker:    r.symbol,
               name:      r.description,
@@ -199,7 +239,7 @@ export default function StockSearch({ onTrade, onWatch, watchlist = [] }) {
           });
       } else {
         const q2 = q.toLowerCase();
-        found = FEATURED.filter(s =>
+        found = ALL_FEATURED.filter(s =>
           s.ticker.toLowerCase().includes(q2) ||
           s.name.toLowerCase().includes(q2)
         );
@@ -222,7 +262,7 @@ export default function StockSearch({ onTrade, onWatch, watchlist = [] }) {
       return;
     } catch {
       const q2 = q.toLowerCase();
-      setResults(FEATURED.filter(s =>
+      setResults(ALL_FEATURED.filter(s =>
         s.ticker.toLowerCase().includes(q2) ||
         s.name.toLowerCase().includes(q2)
       ));
