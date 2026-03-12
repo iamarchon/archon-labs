@@ -913,9 +913,13 @@ app.get("/api/scenarios/progress", async (req, res) => {
 app.get("/api/teacher/class-progress/:userId", async (req, res) => {
   if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
   const teacherId = req.params.userId;
+  const leagueIdParam = req.query.leagueId;
   try {
-    const { data: leagues } = await supabaseAdmin.from("leagues").select("id").eq("created_by", teacherId).limit(1);
-    const leagueId = leagues?.[0]?.id;
+    let leagueId = leagueIdParam;
+    if (!leagueId) {
+      const { data: leagues } = await supabaseAdmin.from("leagues").select("id").eq("created_by", teacherId).limit(1);
+      leagueId = leagues?.[0]?.id;
+    }
     if (!leagueId) return res.json({ avgLessons: 0, avgScenarios: 0, studentBreakdown: [] });
     const { data: members } = await supabaseAdmin.from("league_members").select("user_id, users(username)").eq("league_id", leagueId);
     const studentIds = (members || []).filter(m => m.user_id !== teacherId).map(m => m.user_id);
@@ -948,13 +952,17 @@ app.post("/api/teacher-insights/class", async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "ANTHROPIC_API_KEY not set" });
   if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
-  const { teacherId } = req.body;
+  const { teacherId, leagueId: reqLeagueId } = req.body;
   if (!teacherId) return res.status(400).json({ error: "teacherId required" });
   try {
-    const { data: memberships } = await supabaseAdmin.from("league_members").select("league_id, leagues(id, created_by)").eq("user_id", teacherId);
-    const teacherLeague = (memberships || []).find(m => m.leagues?.created_by === teacherId);
-    if (!teacherLeague) return res.json({ tips: ["No class found. Create a league first."] });
-    const { data: members } = await supabaseAdmin.from("league_members").select("user_id, users(id, username, xp, cash, total_trades, streak, last_active)").eq("league_id", teacherLeague.league_id);
+    let targetLeagueId = reqLeagueId;
+    if (!targetLeagueId) {
+      const { data: memberships } = await supabaseAdmin.from("league_members").select("league_id, leagues(id, created_by)").eq("user_id", teacherId);
+      const teacherLeague = (memberships || []).find(m => m.leagues?.created_by === teacherId);
+      if (!teacherLeague) return res.json({ tips: ["No class found. Create a league first."] });
+      targetLeagueId = teacherLeague.league_id;
+    }
+    const { data: members } = await supabaseAdmin.from("league_members").select("user_id, users(id, username, xp, cash, total_trades, streak, last_active)").eq("league_id", targetLeagueId);
     const studentIds = (members || []).filter(m => m.user_id !== teacherId).map(m => m.user_id);
     const students = (members || []).filter(m => m.user_id !== teacherId).map(m => {
       const u = m.users;
