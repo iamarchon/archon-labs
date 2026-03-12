@@ -198,9 +198,71 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
         </Card>
       </Reveal>
 
-      {/* Row 2: Your Progress + Your Insights */}
+      {/* Row 2: Market Movers — full width */}
+      <Reveal delay={0.04}>
+        <Card style={{ padding: "28px 30px", marginBottom: "16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+            <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Market Movers</div>
+            <button onClick={() => navigate("/markets")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>All stocks</button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "10px" }}>
+            {[...stocks].sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct)).slice(0, 5).map(s => (
+              <div key={s.ticker} onClick={() => onTrade(s)} style={{ padding: "16px", borderRadius: T.r, background: T.bg, border: `1px solid ${T.line}`, cursor: "pointer", transition: "all .18s ease", textAlign: "center" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = T.ghost; e.currentTarget.style.background = T.white; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = T.line; e.currentTarget.style.background = T.bg; }}>
+                <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", letterSpacing: "-0.2px", marginBottom: "8px" }}>{s.ticker}</div>
+                <Sparkline positive={s.changePct >= 0} width={64} height={24} />
+                <div style={{ marginTop: "8px" }}>
+                  <div style={{ color: T.ink, fontWeight: 600, fontSize: "13px", fontVariantNumeric: "tabular-nums" }}>${s.price.toFixed(2)}</div>
+                  <div style={{ color: s.changePct >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 500, marginTop: "2px" }}>{s.changePct >= 0 ? "+" : ""}{s.changePct.toFixed(2)}%</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </Reveal>
+
+      {/* Row 3: Your Holdings — full width */}
+      <Reveal delay={0.08}>
+        <Card style={{ padding: "28px 30px", marginBottom: "16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+            <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Your Holdings</div>
+          </div>
+          {holdings.length === 0 ? (
+            <div style={{ padding: "32px", textAlign: "center", color: T.inkSub, fontSize: "14px" }}>
+              No holdings yet. Head to Markets to make your first trade.
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(holdings.length, 4)},1fr)`, gap: "12px" }}>
+              {holdings.map(h => {
+                const s = stocks.find(x => x.ticker === h.ticker);
+                if (!s) return null;
+                const shares = Number(h.shares), avgCost = Number(h.avg_cost);
+                const val = s.price * shares, cost = avgCost * shares, g = val - cost, gPct = cost > 0 ? (g / cost) * 100 : 0;
+                return (
+                  <div key={h.ticker} onClick={() => onTrade(s)} style={{ padding: "18px 20px", borderRadius: T.r, background: T.bg, border: `1px solid ${T.line}`, cursor: "pointer", transition: "all .18s ease" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = T.ghost; e.currentTarget.style.background = T.white; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = T.line; e.currentTarget.style.background = T.bg; }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
+                      <div>
+                        <div style={{ color: T.ink, fontWeight: 700, fontSize: "15px", letterSpacing: "-0.2px" }}>{s.ticker}</div>
+                        <div style={{ color: T.inkSub, fontSize: "12px", marginTop: "2px" }}>{shares} shares</div>
+                      </div>
+                      <Sparkline positive={gPct >= 0} width={52} height={20} />
+                    </div>
+                    <div style={{ color: T.ink, fontWeight: 700, fontSize: "17px", letterSpacing: "-0.4px", fontVariantNumeric: "tabular-nums" }}>${val.toFixed(2)}</div>
+                    <div style={{ color: gPct >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 500, marginTop: "2px" }}>{gPct >= 0 ? "+" : ""}{gPct.toFixed(2)}%</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      </Reveal>
+
+      {/* Row 4: Your Progress + Your Insights — side by side */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", alignItems: "stretch", marginBottom: "16px" }}>
-        <Reveal delay={0.06}>
+        <Reveal delay={0.1}>
           <Card style={{ padding: "28px 30px", height: "100%" }}>
             <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px", marginBottom: "22px" }}>Your Progress 🏆</div>
             {(() => {
@@ -247,7 +309,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
           </Card>
         </Reveal>
 
-        <Reveal delay={0.08}>
+        <Reveal delay={0.12}>
           <InsightsTile
             holdings={holdings} cash={cash} totalValue={totalValue}
             totalTrades={totalTrades} portfolioGain={portfolioGain}
@@ -257,36 +319,13 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
         </Reveal>
       </div>
 
-      {/* Row 3: Challenges + Leaderboard */}
+      {/* Row 5: My Leagues + Leaderboard — side by side */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", alignItems: "stretch", marginBottom: "16px" }}>
-        <Reveal delay={0.1}>
-          <Card style={{ padding: "28px 30px", height: "100%" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "22px" }}>
-              <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Challenges</div>
-              <button style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>See all</button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-              {CHALLENGES.map(ch => (
-                <div key={ch.id}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
-                    <div>
-                      <div style={{ color: T.ink, fontSize: "14px", fontWeight: 600, letterSpacing: "-0.2px" }}>{ch.title}</div>
-                      <div style={{ color: T.inkSub, fontSize: "12px", marginTop: "2px" }}>{ch.desc}</div>
-                    </div>
-                    <div style={{ textAlign: "right", flexShrink: 0, marginLeft: "12px" }}>
-                      <div style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.04em", color: ch.color, background: `${ch.color}12`, padding: "3px 8px", borderRadius: "5px" }}>+{ch.xp} XP</div>
-                      <div style={{ color: T.inkFaint, fontSize: "11px", marginTop: "3px" }}>{ch.due}</div>
-                    </div>
-                  </div>
-                  <ProgressBar value={ch.progress} color={ch.color} />
-                  <div style={{ color: T.inkFaint, fontSize: "11px", marginTop: "4px", textAlign: "right" }}>{ch.progress}%</div>
-                </div>
-              ))}
-            </div>
-          </Card>
+        <Reveal delay={0.14}>
+          <LeaguesTile userId={dbUser?.id} cardStyle={{ height: "100%" }} />
         </Reveal>
 
-        <Reveal delay={0.12}>
+        <Reveal delay={0.16}>
           <Card style={{ padding: "28px 30px", height: "100%" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <div style={{ display: "flex", gap: "4px", background: T.bg, borderRadius: "8px", padding: "2px" }}>
@@ -355,67 +394,28 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
         </Reveal>
       </div>
 
-      {/* Row 4: My Leagues + Your Holdings */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", alignItems: "stretch", marginBottom: "16px" }}>
-        <Reveal delay={0.14}>
-          <LeaguesTile userId={dbUser?.id} cardStyle={{ height: "100%" }} />
-        </Reveal>
-
-        <Reveal delay={0.16}>
-          <Card style={{ padding: "28px 30px", height: "100%" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-              <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Your Holdings</div>
-            </div>
-            {holdings.length === 0 ? (
-              <div style={{ padding: "32px", textAlign: "center", color: T.inkSub, fontSize: "14px" }}>
-                No holdings yet. Head to Markets to make your first trade.
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {holdings.map(h => {
-                  const s = stocks.find(x => x.ticker === h.ticker);
-                  if (!s) return null;
-                  const shares = Number(h.shares), avgCost = Number(h.avg_cost);
-                  const val = s.price * shares, cost = avgCost * shares, g = val - cost, gPct = cost > 0 ? (g / cost) * 100 : 0;
-                  return (
-                    <div key={h.ticker} onClick={() => onTrade(s)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderRadius: "12px", background: T.bg, border: `1px solid ${T.line}`, cursor: "pointer", transition: "all .18s ease" }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = T.ghost; e.currentTarget.style.background = T.white; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = T.line; e.currentTarget.style.background = T.bg; }}>
-                      <div>
-                        <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", letterSpacing: "-0.2px" }}>{s.ticker}</div>
-                        <div style={{ color: T.inkSub, fontSize: "11px", marginTop: "1px" }}>{shares} shares</div>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", fontVariantNumeric: "tabular-nums" }}>${val.toFixed(2)}</div>
-                        <div style={{ color: gPct >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 500, marginTop: "1px" }}>{gPct >= 0 ? "+" : ""}{gPct.toFixed(2)}%</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
-        </Reveal>
-      </div>
-
-      {/* Row 5: Market Movers — full width */}
+      {/* Row 6: Challenges — full width */}
       <Reveal delay={0.18}>
         <Card style={{ padding: "28px 30px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-            <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Market Movers</div>
-            <button onClick={() => navigate("/markets")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>All stocks</button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "22px" }}>
+            <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Challenges</div>
+            <button style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>See all</button>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "10px" }}>
-            {[...stocks].sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct)).slice(0, 5).map(s => (
-              <div key={s.ticker} onClick={() => onTrade(s)} style={{ padding: "16px", borderRadius: T.r, background: T.bg, border: `1px solid ${T.line}`, cursor: "pointer", transition: "all .18s ease", textAlign: "center" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = T.ghost; e.currentTarget.style.background = T.white; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = T.line; e.currentTarget.style.background = T.bg; }}>
-                <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", letterSpacing: "-0.2px", marginBottom: "8px" }}>{s.ticker}</div>
-                <Sparkline positive={s.changePct >= 0} width={64} height={24} />
-                <div style={{ marginTop: "8px" }}>
-                  <div style={{ color: T.ink, fontWeight: 600, fontSize: "13px", fontVariantNumeric: "tabular-nums" }}>${s.price.toFixed(2)}</div>
-                  <div style={{ color: s.changePct >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 500, marginTop: "2px" }}>{s.changePct >= 0 ? "+" : ""}{s.changePct.toFixed(2)}%</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            {CHALLENGES.map(ch => (
+              <div key={ch.id}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+                  <div>
+                    <div style={{ color: T.ink, fontSize: "14px", fontWeight: 600, letterSpacing: "-0.2px" }}>{ch.title}</div>
+                    <div style={{ color: T.inkSub, fontSize: "12px", marginTop: "2px" }}>{ch.desc}</div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0, marginLeft: "12px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.04em", color: ch.color, background: `${ch.color}12`, padding: "3px 8px", borderRadius: "5px" }}>+{ch.xp} XP</div>
+                    <div style={{ color: T.inkFaint, fontSize: "11px", marginTop: "3px" }}>{ch.due}</div>
+                  </div>
                 </div>
+                <ProgressBar value={ch.progress} color={ch.color} />
+                <div style={{ color: T.inkFaint, fontSize: "11px", marginTop: "4px", textAlign: "right" }}>{ch.progress}%</div>
               </div>
             ))}
           </div>
