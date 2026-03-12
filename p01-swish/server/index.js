@@ -749,6 +749,125 @@ app.post("/api/challenges/complete", async (req, res) => {
   }
 });
 
+/* ── POST /api/user/role — Set user role (student/teacher) ── */
+app.post("/api/user/role", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const { userId, role } = req.body;
+  if (!userId || !role) return res.status(400).json({ error: "userId and role required" });
+  try {
+    const { error } = await supabaseAdmin.from("users").update({ role }).eq("id", userId);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to set role" });
+  }
+});
+
+/* ── POST /api/lessons/complete — Complete a lesson quiz ── */
+app.post("/api/lessons/complete", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const { userId, lessonId, score } = req.body;
+  if (!userId || !lessonId) return res.status(400).json({ error: "userId and lessonId required" });
+  try {
+    const { data: existing } = await supabaseAdmin.from("lesson_completions").select("id").eq("user_id", userId).eq("lesson_id", lessonId).maybeSingle();
+    if (existing) return res.json({ success: true, alreadyCompleted: true, xpAwarded: 0 });
+    const { error: insertErr } = await supabaseAdmin.from("lesson_completions").insert({ user_id: userId, lesson_id: lessonId, score });
+    if (insertErr) return res.status(500).json({ error: insertErr.message });
+    let xpReward = 20;
+    if (lessonId > 10) xpReward = 50;
+    else if (lessonId > 5) xpReward = 35;
+    const { data: user } = await supabaseAdmin.from("users").select("xp").eq("id", userId).single();
+    const newXp = (user?.xp ?? 0) + xpReward;
+    await supabaseAdmin.from("users").update({ xp: newXp }).eq("id", userId);
+    res.json({ success: true, xpAwarded: xpReward, newXp });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to complete lesson" });
+  }
+});
+
+/* ── GET /api/lessons/progress — Get completed lesson IDs ── */
+app.get("/api/lessons/progress", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const userId = req.query.userId;
+  if (!userId) return res.status(400).json({ error: "userId required" });
+  try {
+    const { data } = await supabaseAdmin.from("lesson_completions").select("lesson_id, score, completed_at").eq("user_id", userId);
+    res.json({ completions: data || [] });
+  } catch {
+    res.json({ completions: [] });
+  }
+});
+
+/* ── POST /api/teacher-insights/class — AI coaching for entire class ── */
+app.post("/api/teacher-insights/class", async (req, res) => {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: "ANTHROPIC_API_KEY not set" });
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const { teacherId } = req.body;
+  if (!teacherId) return res.status(400).json({ error: "teacherId required" });
+  try {
+    const { data: memberships } = await supabaseAdmin.from("league_members").select("league_id, leagues(id, created_by)").eq("user_id", teacherId);
+    const teacherLeague = (memberships || []).find(m => m.leagues?.created_by === teacherId);
+    if (!teacherLeague) return res.json({ tips: ["No class found. Create a league first."] });
+    const { data: members } = await supabaseAdmin.from("league_members").select("user_id, users(id, username, xp, cash, total_trades, streak, last_active)").eq("league_id", teacherLeague.league_id);
+    const students = (members || []).filter(m => m.user_id !== teacherId).map(m => {
+      const u = m.users;
+      return { username: u.username, xp: u.xp ?? 0, trades: u.total_trades ?? 0, streak: u.streak ?? 0, cash: Number(u.cash ?? 10000), lastActive: u.last_active };
+    });
+    if (students.length === 0) return res.json({ tips: ["No students have joined yet. Share your class code!"] });
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001", max_tokens: 400,
+        system: `You are Swish, an AI assistant for teachers managing a virtual stock trading class for students aged 8-18. Analyse the class data and provide 3-5 actionable coaching tips. Be specific about student names when relevant. Focus on engagement, learning gaps, and teaching opportunities. Return ONLY a JSON array of strings, no other text.`,
+        messages: [{ role: "user", content: JSON.stringify({ students }) }],
+      }),
+    });
+    const data = await response.json();
+    const text = (data.content?.[0]?.text || "[]").replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    try { const tips = JSON.parse(text); res.json({ tips: Array.isArray(tips) ? tips : [text] }); } catch { res.json({ tips: [text] }); }
+  } catch (err) {
+    res.status(500).json({ error: "Failed to generate class insights" });
+  }
+});
+
+/* ── POST /api/teacher-insights/student — AI coaching for single student ── */
+app.post("/api/teacher-insights/student", async (req, res) => {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: "ANTHROPIC_API_KEY not set" });
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const { studentId } = req.body;
+  if (!studentId) return res.status(400).json({ error: "studentId required" });
+  try {
+    const { data: user } = await supabaseAdmin.from("users").select("*").eq("id", studentId).single();
+    if (!user) return res.status(404).json({ error: "Student not found" });
+    const { data: holdings } = await supabaseAdmin.from("holdings").select("*").eq("user_id", studentId);
+    const { data: transactions } = await supabaseAdmin.from("transactions").select("ticker, action, shares, price, created_at").eq("user_id", studentId).order("created_at", { ascending: false }).limit(20);
+    let lessonCount = 0;
+    try { const { count } = await supabaseAdmin.from("lesson_completions").select("*", { count: "exact", head: true }).eq("user_id", studentId); lessonCount = count || 0; } catch {}
+    const studentData = {
+      username: user.username, xp: user.xp ?? 0, trades: user.total_trades ?? 0, streak: user.streak ?? 0, cash: Number(user.cash),
+      holdings: (holdings || []).map(h => ({ ticker: h.ticker, shares: Number(h.shares), avgCost: Number(h.avg_cost) })),
+      recentTrades: (transactions || []).slice(0, 10), lessonsCompleted: lessonCount,
+    };
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001", max_tokens: 300,
+        system: `You are Swish, an AI coaching assistant helping a teacher understand a specific student's investing progress. Analyse this student's data and provide 2-3 personalised coaching tips. Be specific and actionable. Reference their actual holdings and behavior. Return ONLY a JSON array of strings, no other text.`,
+        messages: [{ role: "user", content: JSON.stringify(studentData) }],
+      }),
+    });
+    const data = await response.json();
+    const text = (data.content?.[0]?.text || "[]").replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    try { const tips = JSON.parse(text); res.json({ tips: Array.isArray(tips) ? tips : [text] }); } catch { res.json({ tips: [text] }); }
+  } catch (err) {
+    res.status(500).json({ error: "Failed to generate student insights" });
+  }
+});
+
 // Local dev: start server. Vercel uses the export.
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {

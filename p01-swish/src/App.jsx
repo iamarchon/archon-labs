@@ -19,6 +19,8 @@ import Leaderboard from "./pages/Leaderboard";
 import Coach from "./pages/Coach";
 import StockDetail from "./pages/StockDetail";
 import Challenges from "./pages/Challenges";
+import TeacherDashboard from "./pages/TeacherDashboard";
+import RoleSelect from "./components/RoleSelect";
 import useNotifications from "./hooks/useNotifications";
 
 function ScrollToTop() {
@@ -188,6 +190,12 @@ function AppShell() {
     navigate(`/stock/${stock.ticker}`);
   }, [navigate]);
 
+  // Role selection for new users
+  const handleRoleSelect = useCallback(async (role) => {
+    await refreshUser();
+    if (role === "teacher") navigate("/teacher");
+  }, [refreshUser, navigate]);
+
   if (userLoading) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: T.bg }}>
@@ -199,6 +207,11 @@ function AppShell() {
         </div>
       </div>
     );
+  }
+
+  // Show role selection if user has no role set yet
+  if (dbUser && !dbUser.role) {
+    return <RoleSelect userId={dbUser.id} onSelect={handleRoleSelect} />;
   }
 
   const portfolioValue = holdings.reduce((sum, h) => {
@@ -218,6 +231,7 @@ function AppShell() {
         <main style={{ flex: 1, background: T.bg }}>
           <Routes>
             <Route path="/" element={
+              dbUser?.role === "teacher" ? <Navigate to="/teacher" replace /> :
               <Dashboard stocks={stocks} onTrade={goToStock}
                 holdings={holdings} cash={cash} xp={xp} level={level}
                 streak={streak} username={username} livePrices={livePrices}
@@ -239,7 +253,8 @@ function AppShell() {
             <Route path="/challenges" element={
               <Challenges dbUser={dbUser} onClaimXp={onClaimXp} fireConfetti={fireConfetti} />
             } />
-            <Route path="/learn" element={<Learn />} />
+            <Route path="/learn" element={<Learn dbUser={dbUser} refreshUser={refreshUser} fireConfetti={fireConfetti} />} />
+            <Route path="/teacher" element={<TeacherDashboard dbUser={dbUser} />} />
             <Route path="/leaderboard" element={<Leaderboard userId={dbUser?.id} />} />
             <Route path="/coach" element={<Coach />} />
           </Routes>
