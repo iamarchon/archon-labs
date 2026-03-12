@@ -56,6 +56,7 @@ const StockRow = ({ stock, onTrade, onWatch, watched }) => {
 
   return (
     <div
+      onClick={() => onTrade(stock)}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
@@ -64,6 +65,7 @@ const StockRow = ({ stock, onTrade, onWatch, watched }) => {
         background: hov ? T.bg : T.white,
         transition: "background 0.14s ease",
         borderBottom: `1px solid ${T.line}`,
+        cursor: "pointer",
       }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -108,7 +110,7 @@ const StockRow = ({ stock, onTrade, onWatch, watched }) => {
         flexShrink: 0,
       }}>
         <button
-          onClick={() => onWatch(stock.ticker)}
+          onClick={e => { e.stopPropagation(); onWatch(stock.ticker); }}
           style={{
             background: watched ? `${T.accent}10` : "none",
             border: `1px solid ${watched ? T.accent+"40" : T.line}`,
@@ -121,7 +123,7 @@ const StockRow = ({ stock, onTrade, onWatch, watched }) => {
           {watched ? "★ Watching" : "☆ Watch"}
         </button>
         <button
-          onClick={() => onTrade(stock)}
+          onClick={e => { e.stopPropagation(); onTrade(stock); }}
           style={{
             background: T.accent, border: "none", borderRadius: "8px",
             cursor: "pointer", padding: "6px 14px",

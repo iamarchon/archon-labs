@@ -66,6 +66,28 @@ app.get("/api/quote/:symbol", async (req, res) => {
   }
 });
 
+/* ── GET /api/candles — Finnhub stock candles (historic chart) ── */
+app.get("/api/candles", async (req, res) => {
+  const apiKey = process.env.FINNHUB_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: "FINNHUB_API_KEY not set in .env" });
+  }
+
+  try {
+    const { symbol, resolution, from, to } = req.query;
+    if (!symbol || !resolution || !from || !to) {
+      return res.status(400).json({ error: "Missing required params: symbol, resolution, from, to" });
+    }
+    const response = await fetch(
+      `https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(symbol.toUpperCase())}&resolution=${resolution}&from=${from}&to=${to}&token=${apiKey}`
+    );
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({ error: "Failed to reach Finnhub API" });
+  }
+});
+
 // Local dev: start server. Vercel uses the export.
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {

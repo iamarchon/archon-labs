@@ -1,12 +1,32 @@
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { T } from "../tokens";
 import { LEADERBOARD, CHALLENGES } from "../data";
+import supabase from "../lib/supabase";
 import Reveal from "../components/Reveal";
 import Card from "../components/Card";
 import Sparkline from "../components/Sparkline";
 import ProgressBar from "../components/ProgressBar";
 
-export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {} }) {
+const PRANGE = [
+  { label: "1W", days: 7 },
+  { label: "1M", days: 30 },
+  { label: "ALL", days: 9999 },
+];
+
+const PerfTooltip = ({ active, payload }) => {
+  if (!active || !payload?.length) return null;
+  const p = payload[0].payload;
+  return (
+    <div style={{ background: T.ink, color: T.white, padding: "8px 14px", borderRadius: "10px", fontSize: "13px", boxShadow: "0 4px 16px rgba(0,0,0,.2)" }}>
+      <div style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>${p.value.toFixed(2)}</div>
+      <div style={{ color: T.ghost, fontSize: "11px", marginTop: "2px" }}>{p.label}</div>
+    </div>
+  );
+};
+
+export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot }) {
   const navigate = useNavigate();
 
   const portfolioValue = holdings.reduce((sum, h) => {
@@ -18,7 +38,49 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
   }, 0);
   const total = portfolioValue + cash;
   const gain = total - 10000, gainPct = (gain / 10000) * 100;
-  const barData = [38,45,42,58,52,67,61,75,70,82,78,91,86,100];
+
+  // Portfolio snapshots
+  const [snapshots, setSnapshots] = useState([]);
+  const [perfRange, setPerfRange] = useState("ALL");
+  const [sessionDelta, setSessionDelta] = useState(null);
+
+  useEffect(() => {
+    if (!dbUser) return;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("portfolio_snapshots")
+          .select("total_value, created_at")
+          .eq("user_id", dbUser.id)
+          .order("created_at", { ascending: true });
+        if (data?.length) {
+          setSnapshots(data);
+          const lastVal = Number(data[data.length - 1].total_value);
+          const delta = total - lastVal;
+          if (Math.abs(delta) > 0.01) setSessionDelta(delta);
+        }
+      } catch { /* ignore */ }
+    })();
+  }, [dbUser, total]);
+
+  // Save snapshot on dashboard load
+  useEffect(() => {
+    if (dbUser && total > 0) saveSnapshot?.(total);
+  }, [dbUser, total, saveSnapshot]);
+
+  const filteredSnapshots = (() => {
+    const r = PRANGE.find(x => x.label === perfRange);
+    const cutoff = Date.now() - r.days * 86400000;
+    const filtered = snapshots.filter(s => new Date(s.created_at).getTime() > cutoff);
+    return filtered.map(s => ({
+      value: Number(s.total_value),
+      label: new Date(s.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    }));
+  })();
+
+  const perfColor = filteredSnapshots.length >= 2
+    ? filteredSnapshots[filteredSnapshots.length - 1].value >= 10000 ? T.green : T.red
+    : T.accent;
 
   return (
     <div style={{ maxWidth: "960px", margin: "0 auto", padding: "40px 28px 100px" }}>
@@ -36,14 +98,50 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
                 <span style={{ color: gain >= 0 ? T.green : T.red, fontSize: "17px", fontWeight: 600 }}>{gain >= 0 ? "▲" : "▼"} {gain >= 0 ? "+" : ""}{gainPct.toFixed(2)}%</span>
                 <span style={{ color: T.inkFaint, fontSize: "15px" }}>{gain >= 0 ? "+" : "−"}${Math.abs(gain).toFixed(2)} all time</span>
               </div>
-            </div>
-            <div style={{ display: "flex", gap: "4px", alignItems: "flex-end", height: "56px" }}>
-              {barData.map((h, i) => (
-                <div key={i} style={{ width: "14px", height: `${h}%`, background: i === barData.length - 1 ? T.accent : `${T.accent}22`, borderRadius: "4px 4px 0 0", transition: "height .8s cubic-bezier(.25,.46,.45,.94)" }} />
-              ))}
+              {sessionDelta != null && (
+                <div style={{ color: sessionDelta >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 500, marginTop: "6px", animation: "fadeIn .4s ease" }}>
+                  {sessionDelta >= 0 ? "↑" : "↓"} {sessionDelta >= 0 ? "+" : ""}${sessionDelta.toFixed(2)} since last session
+                </div>
+              )}
             </div>
           </div>
-          <div style={{ display: "flex", marginTop: "36px", paddingTop: "28px", borderTop: `1px solid ${T.line}` }}>
+
+          {/* Portfolio performance chart */}
+          <div style={{ marginTop: "28px" }}>
+            {filteredSnapshots.length >= 2 ? (
+              <>
+                <ResponsiveContainer width="100%" height={120}>
+                  <AreaChart data={filteredSnapshots} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+                    <defs>
+                      <linearGradient id="perfFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={perfColor} stopOpacity={0.12} />
+                        <stop offset="100%" stopColor={perfColor} stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="label" hide />
+                    <Tooltip content={<PerfTooltip />} cursor={{ stroke: T.ghost, strokeDasharray: "4 4" }} />
+                    <Area type="monotone" dataKey="value" stroke={perfColor} strokeWidth={2} fill="url(#perfFill)" dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+                <div style={{ display: "flex", gap: "4px", justifyContent: "center", marginTop: "10px" }}>
+                  {PRANGE.map(r => (
+                    <button key={r.label} onClick={() => setPerfRange(r.label)} style={{
+                      background: perfRange === r.label ? T.accent : "transparent",
+                      color: perfRange === r.label ? T.white : T.inkFaint,
+                      border: "none", borderRadius: "6px", padding: "4px 12px",
+                      fontSize: "11px", fontWeight: 600, cursor: "pointer", transition: "all .15s",
+                    }}>{r.label}</button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div style={{ padding: "20px 0", textAlign: "center", color: T.inkFaint, fontSize: "13px" }}>
+                Keep trading to build your performance history
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: "flex", marginTop: "24px", paddingTop: "28px", borderTop: `1px solid ${T.line}` }}>
             {[["Invested", `$${portfolioValue.toFixed(2)}`], ["Available Cash", `$${cash.toFixed(2)}`], ["XP", xp.toLocaleString()], ["Level", level], ["Streak", `${streak} days 🔥`]].map((stat, i, arr) => (
               <div key={stat[0]} style={{ flex: 1, textAlign: "center", borderRight: i < arr.length - 1 ? `1px solid ${T.line}` : "none" }}>
                 <div style={{ color: T.inkFaint, fontSize: "10.5px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "5px" }}>{stat[0]}</div>

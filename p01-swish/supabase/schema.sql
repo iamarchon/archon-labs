@@ -43,6 +43,17 @@ create table if not exists watchlist (
   unique(user_id, ticker)
 );
 
+-- ── Portfolio Snapshots ──
+create table if not exists portfolio_snapshots (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid references users(id) on delete cascade,
+  total_value numeric not null,
+  created_at  timestamptz default now()
+);
+
+-- ── Users: add total_trades column ──
+alter table users add column if not exists total_trades integer default 0;
+
 -- ── Row Level Security ──
 -- RLS is DISABLED because auth is handled by Clerk at the app level.
 -- The Supabase client uses the anon key; all access control is enforced

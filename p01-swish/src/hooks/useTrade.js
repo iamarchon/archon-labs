@@ -23,7 +23,7 @@ export default function useTrade(userId, onComplete) {
       // Get current user data
       const { data: user, error: userErr } = await supabase
         .from("users")
-        .select("cash, xp")
+        .select("cash, xp, total_trades")
         .eq("id", userId)
         .single();
 
@@ -37,10 +37,10 @@ export default function useTrade(userId, onComplete) {
           return;
         }
 
-        // Deduct cash + add XP
+        // Deduct cash + add XP + increment trades
         const { error: cashErr } = await supabase
           .from("users")
-          .update({ cash: user.cash - total, xp: user.xp + 10 })
+          .update({ cash: user.cash - total, xp: user.xp + 10, total_trades: (user.total_trades || 0) + 1 })
           .eq("id", userId);
         if (cashErr) throw new Error(`Update cash failed: ${cashErr.message}`);
 
@@ -86,10 +86,10 @@ export default function useTrade(userId, onComplete) {
           return;
         }
 
-        // Add cash + add XP
+        // Add cash + add XP + increment trades
         const { error: sellCashErr } = await supabase
           .from("users")
-          .update({ cash: user.cash + total, xp: user.xp + 10 })
+          .update({ cash: user.cash + total, xp: user.xp + 10, total_trades: (user.total_trades || 0) + 1 })
           .eq("id", userId);
         if (sellCashErr) throw new Error(`Update cash failed: ${sellCashErr.message}`);
 

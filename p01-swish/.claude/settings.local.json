@@ -12,7 +12,10 @@
       "Bash(xxd .env:*)",
       "Bash(iconv:*)",
       "Bash(powershell:*)",
-      "Bash(npm:*)"
+      "Bash(npm:*)",
+      "Bash(vercel env:*)",
+      "Bash(vercel:*)",
+      "Bash(mkdir:*)"
     ]
   }
 }
