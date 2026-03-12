@@ -30,7 +30,7 @@ export default function TopNav() {
       borderBottom: `1px solid ${scrolled ? T.line : "transparent"}`,
       transition: "border-color .3s ease, background .3s ease",
     }}>
-      <div style={{ maxWidth: "1020px", margin: "0 auto", height: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px" }}>
+      <div style={{ maxWidth: "1200px", margin: "0 auto", height: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 24px" }}>
         <NavLink to="/" style={{ fontSize: "17px", fontWeight: 700, letterSpacing: "-0.4px", color: T.ink, textDecoration: "none", userSelect: "none" }}>
           swish<span style={{ color: T.accent }}>.</span>
         </NavLink>

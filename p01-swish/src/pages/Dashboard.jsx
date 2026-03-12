@@ -129,7 +129,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
     : T.accent;
 
   return (
-    <div style={{ maxWidth: "960px", margin: "0 auto", padding: "40px 28px 100px" }}>
+    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px 24px 100px" }}>
 
       {/* Hero */}
       <Reveal>
