@@ -130,14 +130,13 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
     return day === 0 ? 1 : day === 1 ? 7 : 8 - day;
   };
 
-  // Top 3: claimable first, then closest to completion (exclude completed)
+  // Top 3: skip claimed/completed, claimable first, then closest to 100%
   const topChallenges = [...challenges]
+    .filter(c => !c.completedAt)
     .sort((a, b) => {
-      const aClaimable = a.percent >= 100 && !a.completedAt ? 1 : 0;
-      const bClaimable = b.percent >= 100 && !b.completedAt ? 1 : 0;
+      const aClaimable = a.percent >= 100 ? 1 : 0;
+      const bClaimable = b.percent >= 100 ? 1 : 0;
       if (aClaimable !== bClaimable) return bClaimable - aClaimable;
-      if (a.completedAt && !b.completedAt) return 1;
-      if (!a.completedAt && b.completedAt) return -1;
       return b.percent - a.percent;
     })
     .slice(0, 3);
