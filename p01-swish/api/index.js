@@ -280,6 +280,43 @@ app.get("/api/leagues/members/:leagueId", async (req, res) => {
   }
 });
 
+/* ── POST /api/streak — Update daily login streak ── */
+app.post("/api/streak", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const { userId } = req.body;
+  if (!userId) return res.status(400).json({ error: "userId required" });
+
+  try {
+    const { data: user } = await supabaseAdmin
+      .from("users")
+      .select("streak, last_active")
+      .eq("id", userId)
+      .single();
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    const today = new Date().toISOString().split("T")[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+    let newStreak;
+    if (user.last_active === today) {
+      return res.json({ streak: user.streak ?? 0 });
+    } else if (user.last_active === yesterday) {
+      newStreak = (user.streak ?? 0) + 1;
+    } else {
+      newStreak = 1;
+    }
+
+    await supabaseAdmin
+      .from("users")
+      .update({ streak: newStreak, last_active: today })
+      .eq("id", userId);
+
+    res.json({ streak: newStreak });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update streak" });
+  }
+});
+
 /* ── GET /api/leaderboard — Global leaderboard by % gain ── */
 app.get("/api/leaderboard", async (req, res) => {
   if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });

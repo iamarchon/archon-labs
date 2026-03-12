@@ -65,6 +65,20 @@ function AppShell() {
   const username = dbUser?.username ?? "trader";
   const totalTrades = dbUser?.total_trades ?? 0;
 
+  // Update daily login streak
+  useEffect(() => {
+    if (!dbUser?.id) return;
+    const base = import.meta.env.DEV ? "http://localhost:3001" : "";
+    fetch(`${base}/api/streak`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: dbUser.id }),
+    })
+      .then(r => r.json())
+      .then(() => refreshUser())
+      .catch(() => {});
+  }, [dbUser?.id, refreshUser]);
+
   // Detect level up — skip the initial load so reload doesn't trigger confetti
   useEffect(() => {
     if (!initialLoadDone.current) {
