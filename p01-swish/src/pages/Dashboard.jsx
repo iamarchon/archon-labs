@@ -159,23 +159,24 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
     setClaimingId(null);
   };
 
-  // Market Movers — synced with hero perfRange
+  // Market Movers — own independent range
   const [movers, setMovers] = useState([]);
   const [moversLoading, setMoversLoading] = useState(true);
+  const [moversRange, setMoversRange] = useState("1D");
 
   useEffect(() => {
     setMoversLoading(true);
     (async () => {
       try {
-        const res = await fetch(`${baseUrl}/api/movers?range=${perfRange}`);
+        const res = await fetch(`${baseUrl}/api/movers?range=${moversRange}`);
         const data = await res.json();
         setMovers(data.movers || []);
       } catch { /* ignore */ }
       setMoversLoading(false);
     })();
-  }, [perfRange]);
+  }, [moversRange]);
 
-  const moversRangeLabel = perfRange === "1W" ? "Past week" : perfRange === "1M" ? "Past month" : "All time";
+  const moversRangeLabel = moversRange === "1D" ? "Today" : moversRange === "1W" ? "Past week" : "Past month";
 
   // Holdings time range + price history
   const [holdingsRange, setHoldingsRange] = useState("1D");
@@ -310,14 +311,30 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
         </Card>
       </Reveal>
 
-      {/* Row 2: Market Movers — full width, synced with hero range */}
+      {/* Row 2: Market Movers — full width, own range tabs */}
       <Reveal delay={0.04}>
         <Card style={{ padding: "28px 30px", marginBottom: "16px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-            <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Market Movers</div>
-            <button onClick={() => navigate("/markets")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>All stocks</button>
+            <div>
+              <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Market Movers</div>
+              <div style={{ color: T.inkFaint, fontSize: "11px", fontWeight: 500, letterSpacing: "0.03em", marginTop: "2px" }}>{moversRangeLabel}</div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ display: "flex", gap: "4px", background: T.bg, borderRadius: "8px", padding: "2px" }}>
+                {["1D", "1W", "1M"].map(r => (
+                  <button key={r} onClick={() => setMoversRange(r)} style={{
+                    background: moversRange === r ? T.white : "transparent",
+                    color: moversRange === r ? T.ink : T.inkFaint,
+                    border: "none", borderRadius: "6px", padding: "4px 10px",
+                    fontSize: "11px", fontWeight: 600, cursor: "pointer",
+                    boxShadow: moversRange === r ? "0 1px 3px rgba(0,0,0,.08)" : "none",
+                    transition: "all .15s",
+                  }}>{r}</button>
+                ))}
+              </div>
+              <button onClick={() => navigate("/markets")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>All stocks</button>
+            </div>
           </div>
-          <div style={{ color: T.inkFaint, fontSize: "11px", fontWeight: 500, letterSpacing: "0.03em", marginBottom: "18px" }}>{moversRangeLabel}</div>
           {moversLoading ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "10px" }}>
               {[0,1,2,3,4].map(i => (
