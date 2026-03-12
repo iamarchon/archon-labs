@@ -88,7 +88,8 @@ export default function TeacherDashboard({ dbUser }) {
       try {
         const res = await fetch(`${baseUrl}/api/leagues/${dbUser.id}`);
         const data = await res.json();
-        const first = Array.isArray(data) ? data[0] : data;
+        const arr = Array.isArray(data) ? data : (data.leagues || []);
+        const first = arr[0];
         if (!first) return;
         setLeague(first);
 
