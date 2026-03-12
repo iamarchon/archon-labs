@@ -113,9 +113,11 @@ app.get("/api/candles", async (req, res) => {
   }
 });
 
-/* ── GET /api/news/:symbol — AI-powered stock news via Claude + web_search ── */
+/* ── GET /api/news/:symbol — Yahoo Finance RSS + Claude AI summary ── */
+import RSSParser from "rss-parser";
+const rssParser = new RSSParser();
 const newsCache = {};
-const NEWS_CACHE_TTL = 30 * 60 * 1000;
+const NEWS_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 const COMPANY_NAMES = {
   AAPL:"Apple Inc.",NVDA:"NVIDIA Corp.",TSLA:"Tesla Inc.",AMZN:"Amazon.com",
   GOOGL:"Alphabet Inc.",NFLX:"Netflix Inc.",MSFT:"Microsoft Corp.",
@@ -126,21 +128,7 @@ const COMPANY_NAMES = {
   SNAP:"Snap Inc.",
 };
 
-function extractText(content) {
-  return (content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
-}
-
-function parseJsonArray(text) {
-  const clean = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-  const match = clean.match(/\[[\s\S]*\]/);
-  if (!match) return [];
-  try { return JSON.parse(match[0]); } catch { return []; }
-}
-
 app.get("/api/news/:symbol", async (req, res) => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: "ANTHROPIC_API_KEY not set" });
-
   const symbol = req.params.symbol.toUpperCase();
   const cached = newsCache[symbol];
   if (cached && Date.now() - cached.ts < NEWS_CACHE_TTL) {
@@ -150,65 +138,39 @@ app.get("/api/news/:symbol", async (req, res) => {
   const companyName = req.query.name || COMPANY_NAMES[symbol] || symbol;
 
   try {
-    const searchRes = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 4096,
-        tools: [{ type: "web_search_20250305" }],
-        messages: [{
-          role: "user",
-          content: `Search for the 5 most recent news articles about ${companyName} (${symbol}) stock. For each article provide: headline, source name, date, a 1-sentence summary, and the URL. Focus on product launches, earnings, partnerships, innovation — things a young investor aged 13-18 would find exciting or educational. Avoid political controversy, layoffs, adult content, or anything inappropriate for under-18s. Return your answer as ONLY a JSON array with no markdown fences and no extra text: [{"headline":"...","source":"...","date":"...","summary":"...","url":"..."}]`
-        }],
-      }),
-    });
-    const searchData = await searchRes.json();
-
-    if (searchData.error) {
-      console.error("Claude web_search error:", JSON.stringify(searchData.error));
-      return res.status(502).json({ error: "AI search failed" });
+    // Step 1: Fetch news from Yahoo Finance RSS
+    const rssUrl = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${encodeURIComponent(symbol)}&region=US&lang=en-US`;
+    let feed;
+    try {
+      feed = await rssParser.parseURL(rssUrl);
+    } catch (rssErr) {
+      console.error("RSS fetch error:", rssErr.message);
+      return res.json({ summary: "", articles: [] });
     }
 
-    const articlesText = extractText(searchData.content);
-    console.log("News raw text length:", articlesText.length, "for", symbol);
-    let articles = parseJsonArray(articlesText);
-    console.log("Parsed articles count:", articles.length, "for", symbol);
+    const rawArticles = (feed.items || []).slice(0, 8).map(item => ({
+      headline: item.title || "",
+      source: item.creator || item.source?.name || "Yahoo Finance",
+      date: item.pubDate ? new Date(item.pubDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "",
+      summary: (item.contentSnippet || item.content || "").replace(/<[^>]*>/g, "").slice(0, 200),
+      url: item.link || "",
+    }));
 
-    if (articles.length > 0) {
-      try {
-        const filterRes = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": apiKey,
-            "anthropic-version": "2023-06-01",
-          },
-          body: JSON.stringify({
-            model: "claude-haiku-4-5-20251001",
-            max_tokens: 1500,
-            messages: [{
-              role: "user",
-              content: `Review these news headlines for an under-18 audience. Remove any that involve violence, adult content, political controversy, or anything inappropriate for teenagers. Return ONLY the safe ones as a JSON array with the same fields (headline, source, date, summary, url). No markdown fences. Input: ${JSON.stringify(articles)}`
-            }],
-          }),
-        });
-        const filterData = await filterRes.json();
-        const filtered = parseJsonArray(extractText(filterData.content));
-        if (filtered.length > 0) articles = filtered;
-      } catch (err) {
-        console.error("Safety filter error:", err);
-      }
+    if (rawArticles.length === 0) {
+      const result = { summary: "", articles: [] };
+      newsCache[symbol] = { ts: Date.now(), data: result };
+      return res.json(result);
     }
 
+    // Step 2: Claude Haiku — safety filter + summary in one call
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    let articles = rawArticles.slice(0, 5);
     let summary = "";
-    if (articles.length > 0) {
+
+    if (apiKey) {
       try {
-        const sumRes = await fetch("https://api.anthropic.com/v1/messages", {
+        const headlinesList = rawArticles.map((a, i) => `${i}. ${a.headline}`).join("\n");
+        const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -217,25 +179,38 @@ app.get("/api/news/:symbol", async (req, res) => {
           },
           body: JSON.stringify({
             model: "claude-haiku-4-5-20251001",
-            max_tokens: 200,
+            max_tokens: 400,
             messages: [{
               role: "user",
-              content: `Based on these recent headlines about ${companyName} (${symbol}), write a 2-sentence plain-English summary of what's happening with ${companyName} right now. Write for a teenager — excited tone, clear, no jargon. Headlines: ${articles.map(a => a.headline).join("; ")}. Return ONLY the 2 sentences.`
+              content: `Here are recent news headlines about ${companyName} (${symbol}):\n${headlinesList}\n\n1. Write a 2-sentence summary in excited, simple language for a 15-year-old investor. No jargon.\n2. Remove any headlines about layoffs, controversy, violence, or adult content. Return only the safe ones by index.\n\nReturn ONLY JSON, no markdown fences: {"summary":"...","safeArticles":[0,1,2,3,4]}`
             }],
           }),
         });
-        const sumData = await sumRes.json();
-        summary = extractText(sumData.content).trim();
-      } catch (err) {
-        console.error("Summary generation error:", err);
+        const aiData = await aiRes.json();
+        const aiText = (aiData.content || []).filter(b => b.type === "text").map(b => b.text).join("");
+        const clean = aiText.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+        const jsonMatch = clean.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          summary = parsed.summary || "";
+          if (Array.isArray(parsed.safeArticles)) {
+            articles = parsed.safeArticles
+              .filter(i => typeof i === "number" && i >= 0 && i < rawArticles.length)
+              .map(i => rawArticles[i])
+              .slice(0, 5);
+          }
+        }
+      } catch (aiErr) {
+        console.error("Claude summary/filter error:", aiErr.message);
+        // Fall back to raw articles without AI summary
       }
     }
 
-    const result = { summary, articles: articles.slice(0, 5) };
+    const result = { summary, articles };
     newsCache[symbol] = { ts: Date.now(), data: result };
     res.json(result);
   } catch (err) {
-    console.error("News fetch error:", err);
+    console.error("News endpoint error:", err);
     res.status(502).json({ error: "Failed to fetch news" });
   }
 });
