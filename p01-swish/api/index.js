@@ -110,6 +110,200 @@ app.get("/api/candles", async (req, res) => {
   }
 });
 
+/* ── POST /api/insights — AI portfolio insights via Claude Haiku ── */
+app.post("/api/insights", async (req, res) => {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: "ANTHROPIC_API_KEY not set" });
+  }
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 200,
+        system: `You are Swish, an AI finance coach for young investors.
+Analyse this user's portfolio data and give exactly 3 short,
+punchy, actionable insights. Each insight max 20 words.
+Be encouraging but honest. Use simple language for teens.
+Return ONLY a JSON array of 3 strings, no other text.
+Example: ["You're 100% in tech — try diversifying.", "Your cash ratio is high. Put it to work!", "AAPL is up 22% this year. Strong long-term hold."]`,
+        messages: [{ role: "user", content: JSON.stringify(req.body) }],
+      }),
+    });
+
+    const data = await response.json();
+    const text = data.content?.[0]?.text || "[]";
+    try {
+      const insights = JSON.parse(text);
+      res.json({ insights });
+    } catch {
+      res.json({ insights: [text] });
+    }
+  } catch (err) {
+    res.status(502).json({ error: "Failed to generate insights" });
+  }
+});
+
+/* ── POST /api/leagues/create — Create a new league ── */
+app.post("/api/leagues/create", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const { name, userId } = req.body;
+  if (!name || !userId) return res.status(400).json({ error: "name and userId required" });
+
+  const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+  try {
+    const { data: league, error } = await supabaseAdmin
+      .from("leagues")
+      .insert({ name, code, created_by: userId })
+      .select()
+      .single();
+    if (error) return res.status(400).json({ error: error.message });
+
+    // Auto-join creator
+    await supabaseAdmin.from("league_members").insert({ league_id: league.id, user_id: userId });
+
+    res.json({ code: league.code, id: league.id });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create league" });
+  }
+});
+
+/* ── POST /api/leagues/join — Join a league by code ── */
+app.post("/api/leagues/join", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const { code, userId } = req.body;
+  if (!code || !userId) return res.status(400).json({ error: "code and userId required" });
+
+  try {
+    const { data: league } = await supabaseAdmin
+      .from("leagues")
+      .select("id")
+      .eq("code", code.toUpperCase())
+      .maybeSingle();
+    if (!league) return res.status(404).json({ error: "Code not found. Check with your teacher." });
+
+    const { error } = await supabaseAdmin
+      .from("league_members")
+      .insert({ league_id: league.id, user_id: userId });
+    if (error?.code === "23505") return res.json({ success: true, message: "Already a member" });
+    if (error) return res.status(400).json({ error: error.message });
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to join league" });
+  }
+});
+
+/* ── GET /api/leagues/:userId — List user's leagues ── */
+app.get("/api/leagues/:userId", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  try {
+    const { data: memberships } = await supabaseAdmin
+      .from("league_members")
+      .select("league_id, leagues(id, name, code)")
+      .eq("user_id", req.params.userId);
+
+    if (!memberships) return res.json({ leagues: [] });
+
+    // Get member counts
+    const leagueIds = memberships.map(m => m.league_id);
+    const leagues = await Promise.all(leagueIds.map(async (lid, i) => {
+      const { count } = await supabaseAdmin
+        .from("league_members")
+        .select("*", { count: "exact", head: true })
+        .eq("league_id", lid);
+      return {
+        id: memberships[i].leagues.id,
+        name: memberships[i].leagues.name,
+        code: memberships[i].leagues.code,
+        member_count: count || 0,
+      };
+    }));
+
+    res.json({ leagues });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch leagues" });
+  }
+});
+
+/* ── GET /api/leagues/members/:leagueId — League leaderboard ── */
+app.get("/api/leagues/members/:leagueId", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  try {
+    const { data: members } = await supabaseAdmin
+      .from("league_members")
+      .select("user_id, users(id, username, cash)")
+      .eq("league_id", req.params.leagueId);
+
+    if (!members?.length) return res.json({ members: [] });
+
+    // Get latest snapshot for each member
+    const result = await Promise.all(members.map(async (m) => {
+      const { data: snap } = await supabaseAdmin
+        .from("portfolio_snapshots")
+        .select("total_value")
+        .eq("user_id", m.user_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const value = snap ? Number(snap.total_value) : Number(m.users.cash);
+      return {
+        user_id: m.user_id,
+        username: m.users.username,
+        total_value: value,
+        gain_pct: ((value - 10000) / 10000) * 100,
+      };
+    }));
+
+    result.sort((a, b) => b.gain_pct - a.gain_pct);
+    res.json({ members: result });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch members" });
+  }
+});
+
+/* ── GET /api/leaderboard — Global leaderboard by % gain ── */
+app.get("/api/leaderboard", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  try {
+    const { data: users } = await supabaseAdmin
+      .from("users")
+      .select("id, username, xp, cash");
+
+    if (!users?.length) return res.json({ leaderboard: [] });
+
+    const result = await Promise.all(users.map(async (u) => {
+      const { data: snap } = await supabaseAdmin
+        .from("portfolio_snapshots")
+        .select("total_value")
+        .eq("user_id", u.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const value = snap ? Number(snap.total_value) : Number(u.cash);
+      return {
+        user_id: u.id,
+        username: u.username,
+        xp: u.xp,
+        total_value: value,
+        gain_pct: ((value - 10000) / 10000) * 100,
+      };
+    }));
+
+    result.sort((a, b) => b.gain_pct - a.gain_pct);
+    res.json({ leaderboard: result.slice(0, 10) });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch leaderboard" });
+  }
+});
+
 // Local dev: start server. Vercel uses the export.
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {

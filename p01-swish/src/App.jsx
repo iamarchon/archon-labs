@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from "react";
-import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { T } from "./tokens";
 import { SEED_STOCKS } from "./data";
@@ -12,9 +12,9 @@ import AuthGate from "./components/AuthGate";
 import TopNav from "./components/TopNav";
 import TickerStrip from "./components/TickerStrip";
 import TradeModal from "./components/TradeModal";
+import TradeSuccessModal from "./components/TradeSuccessModal";
 import Dashboard from "./pages/Dashboard";
 import Markets from "./pages/Markets";
-import Portfolio from "./pages/Portfolio";
 import Learn from "./pages/Learn";
 import Leaderboard from "./pages/Leaderboard";
 import Coach from "./pages/Coach";
@@ -35,7 +35,7 @@ function AppShell() {
     toggleWatch, refreshUser, refreshHoldings, xpToLevel,
   } = useUserData();
   const [tradeStock, setTradeStock] = useState(null);
-  const [toast, setToast] = useState(null);
+  const [tradeSuccess, setTradeSuccess] = useState(null);
   const { fireConfetti } = useConfetti();
   const prevLevelRef = useRef(null);
 
@@ -68,8 +68,6 @@ function AppShell() {
   useEffect(() => {
     if (prevLevelRef.current && prevLevelRef.current !== level) {
       fireConfetti("levelUp");
-      setToast({ text: `Level up! You're now ${level}`, type: "LEVEL" });
-      setTimeout(() => setToast(null), 3000);
     }
     prevLevelRef.current = level;
   }, [level, fireConfetti]);
@@ -78,7 +76,6 @@ function AppShell() {
   const saveSnapshot = useCallback(async (value) => {
     if (!dbUser) return;
     try {
-      // Check last snapshot
       const { data: last } = await supabase
         .from("portfolio_snapshots")
         .select("total_value")
@@ -105,12 +102,8 @@ function AppShell() {
     // Fire confetti
     fireConfetti(wasFirstTrade ? "firstTrade" : "trade");
 
-    // Toast
-    const toastText = wasFirstTrade
-      ? "First trade! You're officially an investor"
-      : `${action} ${shares}× ${stock.ticker} confirmed`;
-    setToast({ text: toastText, type: action });
-    setTimeout(() => setToast(null), 3000);
+    // Show success modal
+    setTradeSuccess({ stock, action, shares, isFirstTrade: wasFirstTrade });
 
     // Save snapshot after trade
     const portfolioValue = holdings.reduce((sum, h) => {
@@ -141,6 +134,13 @@ function AppShell() {
     );
   }
 
+  const portfolioValue = holdings.reduce((sum, h) => {
+    const price = livePrices[h.ticker] ?? stocks.find(x => x.ticker === h.ticker)?.price ?? Number(h.avg_cost);
+    return sum + Number(h.shares) * price;
+  }, 0);
+  const totalValue = portfolioValue + cash;
+  const portfolioGain = ((totalValue - 10000) / 10000) * 100;
+
   return (
     <>
       <ScrollToTop />
@@ -154,20 +154,20 @@ function AppShell() {
               <Dashboard stocks={stocks} onTrade={goToStock}
                 holdings={holdings} cash={cash} xp={xp} level={level}
                 streak={streak} username={username} livePrices={livePrices}
-                dbUser={dbUser} saveSnapshot={saveSnapshot} />
+                dbUser={dbUser} saveSnapshot={saveSnapshot}
+                totalTrades={totalTrades} totalValue={totalValue}
+                portfolioGain={portfolioGain} />
             } />
             <Route path="/markets" element={
               <Markets onTrade={goToStock} watchlist={watchlist} onWatch={toggleWatch} />
             } />
-            <Route path="/portfolio" element={
-              <Portfolio stocks={stocks} holdings={holdings} cash={cash} xp={xp} livePrices={livePrices} />
-            } />
+            <Route path="/portfolio" element={<Navigate to="/" replace />} />
             <Route path="/stock/:symbol" element={
               <StockDetail stocks={stocks} livePrices={livePrices}
                 onTrade={setTradeStock} holdings={holdings} cash={cash} />
             } />
             <Route path="/learn" element={<Learn />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/leaderboard" element={<Leaderboard userId={dbUser?.id} />} />
             <Route path="/coach" element={<Coach />} />
           </Routes>
         </main>
@@ -183,10 +183,12 @@ function AppShell() {
         />
       )}
 
-      {toast && (
-        <div style={{ position: "fixed", bottom: "36px", left: "50%", transform: "translateX(-50%)", background: "#1a1a1a", color: T.white, padding: "14px 28px", borderRadius: "16px", fontWeight: 500, fontSize: "15px", zIndex: 300, animation: "toastIn .28s cubic-bezier(.34,1.56,.64,1)", whiteSpace: "nowrap", boxShadow: "0 8px 32px rgba(0,0,0,.22)" }}>
-          {toast.text}
-        </div>
+      {tradeSuccess && (
+        <TradeSuccessModal
+          trade={tradeSuccess}
+          isFirstTrade={tradeSuccess.isFirstTrade}
+          onClose={() => setTradeSuccess(null)}
+        />
       )}
     </>
   );

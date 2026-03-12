@@ -2,12 +2,16 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { T } from "../tokens";
-import { LEADERBOARD, CHALLENGES } from "../data";
+import { CHALLENGES } from "../data";
 import supabase from "../lib/supabase";
 import Reveal from "../components/Reveal";
 import Card from "../components/Card";
 import Sparkline from "../components/Sparkline";
 import ProgressBar from "../components/ProgressBar";
+import InsightsTile from "../components/InsightsTile";
+import LeaguesTile from "../components/LeaguesTile";
+
+const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
 const PRANGE = [
   { label: "1W", days: 7 },
@@ -26,7 +30,7 @@ const PerfTooltip = ({ active, payload }) => {
   );
 };
 
-export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot }) {
+export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0 }) {
   const navigate = useNavigate();
 
   const portfolioValue = holdings.reduce((sum, h) => {
@@ -43,6 +47,9 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
   const [snapshots, setSnapshots] = useState([]);
   const [perfRange, setPerfRange] = useState("ALL");
   const [sessionDelta, setSessionDelta] = useState(null);
+
+  // Global leaderboard preview
+  const [leaderboard, setLeaderboard] = useState([]);
 
   useEffect(() => {
     if (!dbUser) return;
@@ -67,6 +74,17 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
   useEffect(() => {
     if (dbUser && total > 0) saveSnapshot?.(total);
   }, [dbUser, total, saveSnapshot]);
+
+  // Fetch global leaderboard
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${baseUrl}/api/leaderboard`);
+        const data = await res.json();
+        setLeaderboard((data.leaderboard || []).slice(0, 5));
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   const filteredSnapshots = (() => {
     const r = PRANGE.find(x => x.label === perfRange);
@@ -152,6 +170,17 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
         </Card>
       </Reveal>
 
+      {/* AI Insights */}
+      <Reveal delay={0.06}>
+        <div style={{ marginBottom: "20px" }}>
+          <InsightsTile
+            holdings={holdings} cash={cash} totalValue={totalValue}
+            totalTrades={totalTrades} portfolioGain={portfolioGain}
+            livePrices={livePrices} stocks={stocks}
+          />
+        </div>
+      </Reveal>
+
       {/* Challenges + Leaderboard */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
         <Reveal delay={0.08}>
@@ -188,26 +217,40 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
               <button onClick={() => navigate("/leaderboard")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>Full table</button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-              {LEADERBOARD.map(entry => (
-                <div key={entry.rank} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 12px", borderRadius: "10px", background: entry.isUser ? `${T.accent}08` : "transparent", border: entry.isUser ? `1px solid ${T.accent}20` : "1px solid transparent" }}>
-                  <div style={{ width: "22px", fontSize: "14px", textAlign: "center", color: [null, "#c9862a", "#8e8e93", "#7d4f2a"][entry.rank] || T.inkFaint, fontWeight: 700 }}>
-                    {entry.rank <= 3 ? ["🥇", "🥈", "🥉"][entry.rank - 1] : `#${entry.rank}`}
+              {leaderboard.length === 0 ? (
+                <div style={{ color: T.inkFaint, fontSize: "13px", textAlign: "center", padding: "20px 0" }}>No traders yet</div>
+              ) : leaderboard.map((entry, i) => {
+                const rank = i + 1;
+                const isUser = entry.user_id === dbUser?.id;
+                return (
+                  <div key={entry.user_id} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 12px", borderRadius: "10px", background: isUser ? `${T.accent}08` : "transparent", border: isUser ? `1px solid ${T.accent}20` : "1px solid transparent" }}>
+                    <div style={{ width: "22px", fontSize: "14px", textAlign: "center", color: [null, "#c9862a", "#8e8e93", "#7d4f2a"][rank] || T.inkFaint, fontWeight: 700 }}>
+                      {rank <= 3 ? ["🥇", "🥈", "🥉"][rank - 1] : `#${rank}`}
+                    </div>
+                    <div style={{ flex: 1 }}><span style={{ color: isUser ? T.accent : T.ink, fontSize: "13px", fontWeight: isUser ? 700 : 500 }}>@{entry.username}</span></div>
+                    <div style={{ color: entry.gain_pct >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 600 }}>
+                      {entry.gain_pct >= 0 ? "+" : ""}{entry.gain_pct.toFixed(1)}%
+                    </div>
                   </div>
-                  <div style={{ flex: 1 }}><span style={{ color: entry.isUser ? T.accent : T.ink, fontSize: "13px", fontWeight: entry.isUser ? 700 : 500 }}>@{entry.user}</span></div>
-                  <div style={{ color: T.green, fontSize: "13px", fontWeight: 600 }}>{entry.gain}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Card>
         </Reveal>
       </div>
+
+      {/* My Leagues */}
+      <Reveal delay={0.14}>
+        <div style={{ marginBottom: "20px" }}>
+          <LeaguesTile userId={dbUser?.id} />
+        </div>
+      </Reveal>
 
       {/* Holdings */}
       <Reveal delay={0.16}>
         <Card style={{ padding: "28px 30px", marginBottom: "20px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
             <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Your Holdings</div>
-            <button onClick={() => navigate("/portfolio")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>View portfolio</button>
           </div>
           {holdings.length === 0 ? (
             <div style={{ padding: "32px", textAlign: "center", color: T.inkSub, fontSize: "14px" }}>

@@ -3,10 +3,10 @@ import { useUser } from "@clerk/react";
 import supabase from "../lib/supabase";
 
 const LEVEL_THRESHOLDS = [
-  [10000, "Legend"],
-  [5000, "Diamond"],
-  [1500, "Gold"],
-  [500, "Silver"],
+  [2000, "Legend"],
+  [750, "Platinum"],
+  [300, "Gold"],
+  [100, "Silver"],
   [0, "Bronze"],
 ];
 
