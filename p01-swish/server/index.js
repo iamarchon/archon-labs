@@ -871,6 +871,44 @@ app.get("/api/lessons/progress", async (req, res) => {
   }
 });
 
+/* ── POST /api/scenarios/complete — Save scenario completion ── */
+app.post("/api/scenarios/complete", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const { userId, scenarioId, score, maxScore, xpEarned } = req.body;
+  if (!userId || !scenarioId) return res.status(400).json({ error: "userId and scenarioId required" });
+  try {
+    const { error: scErr } = await supabaseAdmin.from("scenario_completions").upsert(
+      { user_id: userId, scenario_id: scenarioId, score: score || 0, max_score: maxScore || 0, completed_at: new Date().toISOString() },
+      { onConflict: "user_id,scenario_id" }
+    );
+    if (scErr) console.error("scenario upsert error:", JSON.stringify(scErr));
+    const xp = xpEarned || 0;
+    if (xp > 0) {
+      const { data: user } = await supabaseAdmin.from("users").select("xp").eq("id", userId).single();
+      const newXp = (user?.xp ?? 0) + xp;
+      await supabaseAdmin.from("users").update({ xp: newXp }).eq("id", userId);
+    }
+    res.json({ success: true, xpAwarded: xp });
+  } catch (err) {
+    console.error("scenario complete error:", err);
+    res.status(500).json({ error: "Failed to complete scenario" });
+  }
+});
+
+/* ── GET /api/scenarios/progress — Get completed scenario IDs ── */
+app.get("/api/scenarios/progress", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const userId = req.query.userId;
+  if (!userId) return res.status(400).json({ error: "userId required" });
+  try {
+    const { data, error } = await supabaseAdmin.from("scenario_completions").select("scenario_id, score, max_score, completed_at").eq("user_id", userId);
+    if (error) console.error("scenario progress error:", JSON.stringify(error));
+    res.json({ completions: data || [] });
+  } catch {
+    res.json({ completions: [] });
+  }
+});
+
 /* ── POST /api/teacher-insights/class — AI coaching for entire class ── */
 app.post("/api/teacher-insights/class", async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;

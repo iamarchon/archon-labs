@@ -3,19 +3,16 @@ import { T } from "../tokens";
 import Card from "../components/Card";
 import Reveal from "../components/Reveal";
 import ProgressBar from "../components/ProgressBar";
+import ScenarioPlayer from "../components/ScenarioPlayer";
+import { SCENARIO_DATA } from "../data/scenarios";
 
 const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
-const SCENARIOS = [
-  { id: "first_paycheck", title: "First Paycheck", description: "You just got your first paycheck — $500. How do you invest it?", difficulty: "Beginner", xpReward: 50, icon: "\u{1F4B0}" },
-  { id: "hot_tip", title: "Hot Tip", description: "Your friend says a stock is about to 'moon.' Do you go all in?", difficulty: "Beginner", xpReward: 75, icon: "\u{1F525}" },
-  { id: "compound_interest", title: "The Power of Compounding", description: "See how $100/month grows over 30 years with compound interest.", difficulty: "Beginner", xpReward: 60, icon: "\u{1F4C8}" },
-  { id: "diversification", title: "Don't Put All Eggs in One Basket", description: "Compare a diversified portfolio vs putting everything in one stock.", difficulty: "Intermediate", xpReward: 100, icon: "\u{1F95A}" },
-  { id: "market_crash_2008", title: "Market Crash of 2008", description: "Experience the 2008 financial crisis. Would you sell, hold, or buy more?", difficulty: "Intermediate", xpReward: 125, icon: "\u{1F4C9}" },
-  { id: "inflation", title: "Inflation Buster", description: "Your savings lose 3% per year to inflation. How do you fight back?", difficulty: "Intermediate", xpReward: 100, icon: "\u{1F388}" },
-  { id: "ipo_frenzy", title: "IPO Frenzy", description: "A hot new company is going public. Buy on day one or wait?", difficulty: "Advanced", xpReward: 150, icon: "\u{1F680}" },
-  { id: "side_hustle", title: "Side Hustle Portfolio", description: "You have $10,000 from a side hustle. Build the perfect portfolio.", difficulty: "Advanced", xpReward: 200, icon: "\u{1F3AF}" },
-];
+const SCENARIOS = SCENARIO_DATA.map(s => ({
+  id: s.id, title: s.title, icon: s.emoji,
+  description: s.setup.slice(0, 90) + "...",
+  difficulty: s.difficulty, xpReward: s.xp,
+}));
 
 const SCENARIO_UNLOCKS = {
   first_paycheck: { type: "always" },
@@ -28,8 +25,8 @@ const SCENARIO_UNLOCKS = {
   side_hustle: { type: "and", conditions: [{ type: "allScenarios" }, { type: "lesson", lessonId: 20 }], hint: "Complete all other scenarios and 'Building Your First Portfolio' lesson" },
 };
 
-const DIFF_COLORS = { Beginner: T.green, Intermediate: T.accent, Advanced: "#8b5cf6" };
-const DIFF_BGS = { Beginner: T.greenBg, Intermediate: "#e8f4fd", Advanced: "#f3edff" };
+const DIFF_COLORS = { Beginner: T.green, Easy: T.green, Intermediate: T.accent, Medium: T.accent, Advanced: "#8b5cf6" };
+const DIFF_BGS = { Beginner: T.greenBg, Easy: T.greenBg, Intermediate: "#e8f4fd", Medium: "#e8f4fd", Advanced: "#f3edff" };
 
 function checkCondition(cond, completedScenarios, completedLessons) {
   if (cond.type === "always") return true;
@@ -45,15 +42,24 @@ export default function Scenarios({ dbUser, onClaimXp, fireConfetti }) {
   const [completedScenarios, setCompletedScenarios] = useState(new Set());
   const [completedLessons, setCompletedLessons] = useState(new Set());
   const [loading, setLoading] = useState(true);
+  const [activeScenario, setActiveScenario] = useState(null);
 
   const fetchProgress = useCallback(async () => {
     if (!dbUser?.id) { setLoading(false); return; }
     try {
-      const res = await fetch(`${baseUrl}/api/lessons/progress?userId=${dbUser.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        const ids = (data.completedLessons || []).map(l => typeof l === "object" ? l.lessonId : l);
+      const [lessonRes, scenarioRes] = await Promise.all([
+        fetch(`${baseUrl}/api/lessons/progress?userId=${dbUser.id}`),
+        fetch(`${baseUrl}/api/scenarios/progress?userId=${dbUser.id}`),
+      ]);
+      if (lessonRes.ok) {
+        const data = await lessonRes.json();
+        const ids = (data.completions || data.completedLessons || []).map(l => typeof l === "object" ? (l.lesson_id ?? l.lessonId) : l);
         setCompletedLessons(new Set(ids));
+      }
+      if (scenarioRes.ok) {
+        const data = await scenarioRes.json();
+        const ids = (data.completions || []).map(c => c.scenario_id);
+        setCompletedScenarios(new Set(ids));
       }
     } catch { /* graceful fallback */ }
     setLoading(false);
@@ -63,8 +69,16 @@ export default function Scenarios({ dbUser, onClaimXp, fireConfetti }) {
 
   const doneCount = completedScenarios.size;
 
-  const handleStart = (scenario) => {
-    alert(`Scenario "${scenario.title}" coming soon! This will be an interactive investment simulation.`);
+  const handleStart = (sc) => {
+    const full = SCENARIO_DATA.find(s => s.id === sc.id);
+    if (full) setActiveScenario(full);
+  };
+
+  const handleComplete = (scenarioId) => {
+    setCompletedScenarios(prev => new Set([...prev, scenarioId]));
+    setActiveScenario(null);
+    if (onClaimXp) onClaimXp();
+    if (fireConfetti) fireConfetti();
   };
 
   return (
@@ -94,15 +108,15 @@ export default function Scenarios({ dbUser, onClaimXp, fireConfetti }) {
             const unlock = SCENARIO_UNLOCKS[sc.id];
             const unlocked = checkCondition(unlock, completedScenarios, completedLessons);
             const done = completedScenarios.has(sc.id);
-            const diffColor = DIFF_COLORS[sc.difficulty];
-            const diffBg = DIFF_BGS[sc.difficulty];
+            const diffColor = DIFF_COLORS[sc.difficulty] || T.accent;
+            const diffBg = DIFF_BGS[sc.difficulty] || "#e8f4fd";
 
             return (
               <Reveal key={sc.id} delay={0.04 + i * 0.03}>
                 <Card
                   style={{ padding: "24px 28px", height: "100%", opacity: unlocked ? 1 : 0.55 }}
-                  hover={unlocked && !done}
-                  onClick={unlocked && !done ? () => handleStart(sc) : undefined}
+                  hover={unlocked}
+                  onClick={unlocked ? () => (done ? handleStart(sc) : handleStart(sc)) : undefined}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                     <span style={{ fontSize: 28 }}>{sc.icon}</span>
@@ -124,9 +138,10 @@ export default function Scenarios({ dbUser, onClaimXp, fireConfetti }) {
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <span style={{ color: T.green, fontSize: 14 }}>&#10003;</span>
                         <span style={{ color: T.green, fontSize: 12, fontWeight: 600 }}>Completed</span>
+                        <span style={{ color: T.inkFaint, fontSize: 11, marginLeft: 4 }}>· Replay</span>
                       </div>
                     ) : unlocked ? (
-                      <span style={{ fontSize: 12, fontWeight: 600, color: T.accent }}>Start</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: T.accent }}>Start &rarr;</span>
                     ) : (
                       <span style={{ fontSize: 12, fontWeight: 600, color: T.ghost }}>Locked</span>
                     )}
@@ -139,6 +154,15 @@ export default function Scenarios({ dbUser, onClaimXp, fireConfetti }) {
             );
           })}
         </div>
+      )}
+
+      {activeScenario && (
+        <ScenarioPlayer
+          scenario={activeScenario}
+          dbUser={dbUser}
+          onClose={() => setActiveScenario(null)}
+          onComplete={handleComplete}
+        />
       )}
     </div>
   );
