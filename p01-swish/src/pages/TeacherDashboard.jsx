@@ -3,6 +3,8 @@ import { Navigate } from "react-router-dom";
 import { T } from "../tokens";
 import Card from "../components/Card";
 import Reveal from "../components/Reveal";
+import { LESSONS } from "../data/lessons";
+import { SCENARIO_DATA } from "../data/scenarios";
 
 const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
@@ -16,6 +18,21 @@ function statusFromGainPct(gainPct) {
 
 const STATUS_DOT = { active: T.green, idle: T.amber, inactive: T.red };
 const STATUS_LABEL = { active: "Active", idle: "Idle", inactive: "Inactive" };
+
+function timeAgo(ts) {
+  if (!ts) return "";
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
+const LESSON_TITLES = Object.fromEntries((LESSONS || []).map(l => [l.id, l.title]));
+const SCENARIO_TITLES = Object.fromEntries((SCENARIO_DATA || []).map(s => [s.id, s.title]));
 
 const SORTABLE_COLS = [
   { key: "rank",        label: "Rank",            align: "center" },
@@ -71,6 +88,9 @@ export default function TeacherDashboard({ dbUser }) {
   // Class progress
   const [classProgress, setClassProgress] = useState({ avgLessons: 0, avgScenarios: 0, studentBreakdown: [] });
 
+  // Recent activity
+  const [recentActivity, setRecentActivity] = useState([]);
+
   // Student detail
   const [studentTips, setStudentTips]             = useState(null);
   const [studentTipsLoading, setStudentTipsLoading] = useState(false);
@@ -117,6 +137,12 @@ export default function TeacherDashboard({ dbUser }) {
         const cpData = await cpRes.json();
         setClassProgress(cpData);
       } catch { setClassProgress({ avgLessons: 0, avgScenarios: 0, studentBreakdown: [] }); }
+
+      try {
+        const actRes = await fetch(`${baseUrl}/api/teacher/recent-activity/${activeLeague.id}`);
+        const actData = await actRes.json();
+        setRecentActivity(Array.isArray(actData) ? actData : []);
+      } catch { setRecentActivity([]); }
     })();
     setSelectedStudent(null);
   }, [activeLeague?.id, dbUser?.id]);
@@ -399,7 +425,32 @@ export default function TeacherDashboard({ dbUser }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
           <Card hover={false} style={{ padding: "28px 32px" }}>
             <h2 style={S.sectionTitle}>Recent Activity</h2>
-            <p style={{ fontSize: 14, color: T.inkFaint, margin: 0 }}>Activity feed coming soon</p>
+            {recentActivity.length === 0 ? (
+              <p style={{ fontSize: 14, color: T.inkFaint, margin: 0 }}>No activity yet</p>
+            ) : (
+              <div style={{ maxHeight: 300, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+                {recentActivity.map((ev, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, lineHeight: 1.5 }}>
+                    <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>
+                      {ev.type === "trade" ? (ev.action === "buy" ? "\u{1F4C8}" : "\u{1F4C9}") : ev.type === "lesson" ? "\u{1F4DA}" : "\u{1F3AF}"}
+                    </span>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontWeight: 600, color: T.ink }}>{ev.username}</span>{" "}
+                      {ev.type === "trade" && (
+                        <span style={{ color: T.inkSub }}>{ev.action === "buy" ? "bought" : "sold"} {ev.shares} {ev.ticker} @ ${Number(ev.price).toFixed(2)}</span>
+                      )}
+                      {ev.type === "lesson" && (
+                        <span style={{ color: T.inkSub }}>completed lesson &ldquo;{LESSON_TITLES[ev.lessonId] || `#${ev.lessonId}`}&rdquo;</span>
+                      )}
+                      {ev.type === "scenario" && (
+                        <span style={{ color: T.inkSub }}>finished scenario &ldquo;{SCENARIO_TITLES[ev.scenarioId] || ev.scenarioId}&rdquo; ({ev.score}/{ev.maxScore})</span>
+                      )}
+                      <span style={{ color: T.inkFaint, fontSize: 11, marginLeft: 6 }}>{timeAgo(ev.timestamp)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
           <Card hover={false} style={{ padding: "28px 32px" }}>
             <h2 style={S.sectionTitle}>Class Stats</h2>
@@ -410,6 +461,8 @@ export default function TeacherDashboard({ dbUser }) {
               <StatTile label="Total Combined Value" value={fmt$(totalValue)} />
               <StatTile label="Avg Lessons Completed" value={`${classProgress.avgLessons} / 20`} color={T.accent} />
               <StatTile label="Avg Scenarios Completed" value={`${classProgress.avgScenarios} / 8`} color="#8b5cf6" />
+              <StatTile label="Most Traded Stock" value={classProgress.mostTradedStock ? `${classProgress.mostTradedStock}${classProgress.mostTradedTraderCount >= 3 ? " \u{1F525}" : ""}` : "\u2014"} />
+              <StatTile label="Top Category" value={classProgress.topCategory || "\u2014"} />
             </div>
           </Card>
         </div>

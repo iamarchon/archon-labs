@@ -973,51 +973,108 @@ app.get("/api/scenarios/progress", async (req, res) => {
   }
 });
 
-/* ── GET /api/teacher/class-progress/:userId — Lessons & scenarios stats scoped to class ── */
+/* ── Stock category mapping for trade analytics ── */
+const STOCK_CATEGORIES = {
+  AAPL:'Tech', MSFT:'Tech', GOOGL:'Tech', NVDA:'Tech', META:'Tech', AMZN:'Tech', AMD:'Tech',
+  TSLA:'EV/Auto', NFLX:'Entertainment', RBLX:'Gaming', SPOT:'Entertainment', DIS:'Entertainment',
+  JPM:'Finance', BAC:'Finance', GS:'Finance', PYPL:'Finance', COIN:'Crypto',
+  JNJ:'Healthcare', PFE:'Healthcare',
+  SPY:'ETF', VOO:'ETF', QQQ:'ETF', VTI:'ETF', IWM:'ETF', ARKK:'ETF',
+  NKE:'Consumer', SBUX:'Food', CMG:'Food', ABNB:'Travel', UBER:'Transport',
+  SNAP:'Social',
+};
+
+/* ── GET /api/teacher/recent-activity/:leagueId — Recent activity feed ── */
+app.get("/api/teacher/recent-activity/:leagueId", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  try {
+    const { data: members } = await supabaseAdmin.from("league_members").select("user_id, users(username)").eq("league_id", req.params.leagueId);
+    if (!members?.length) return res.json([]);
+    const studentIds = members.map(m => m.user_id);
+    const usernameMap = {};
+    members.forEach(m => { if (m.users) usernameMap[m.user_id] = m.users.username; });
+
+    const [txRes, lessonRes, scenarioRes] = await Promise.all([
+      supabaseAdmin.from("transactions").select("user_id, ticker, action, shares, price, created_at").in("user_id", studentIds).order("created_at", { ascending: false }).limit(20),
+      supabaseAdmin.from("lesson_completions").select("user_id, lesson_id, completed_at").in("user_id", studentIds).order("completed_at", { ascending: false }).limit(20),
+      supabaseAdmin.from("scenario_completions").select("user_id, scenario_id, score, max_score, completed_at").in("user_id", studentIds).order("completed_at", { ascending: false }).limit(20),
+    ]);
+
+    const events = [];
+    (txRes.data || []).forEach(t => events.push({ type: "trade", username: usernameMap[t.user_id] || "Unknown", ticker: t.ticker, action: t.action, shares: Number(t.shares), price: Number(t.price), timestamp: t.created_at }));
+    (lessonRes.data || []).forEach(l => events.push({ type: "lesson", username: usernameMap[l.user_id] || "Unknown", lessonId: l.lesson_id, timestamp: l.completed_at }));
+    (scenarioRes.data || []).forEach(s => events.push({ type: "scenario", username: usernameMap[s.user_id] || "Unknown", scenarioId: s.scenario_id, score: s.score, maxScore: s.max_score, timestamp: s.completed_at }));
+
+    events.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    res.json(events.slice(0, 20));
+  } catch (err) {
+    console.error("recent-activity error:", err);
+    res.status(500).json({ error: "Failed to load recent activity" });
+  }
+});
+
+/* ── GET /api/teacher/class-progress/:userId — Lessons, scenarios & trade analytics ── */
 app.get("/api/teacher/class-progress/:userId", async (req, res) => {
   if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
   const teacherId = req.params.userId;
   const leagueIdParam = req.query.leagueId;
   try {
-    // Use provided leagueId or fall back to first league
     let leagueId = leagueIdParam;
     if (!leagueId) {
       const { data: leagues } = await supabaseAdmin.from("leagues").select("id").eq("created_by", teacherId).limit(1);
       leagueId = leagues?.[0]?.id;
     }
-    if (!leagueId) return res.json({ avgLessons: 0, avgScenarios: 0, studentBreakdown: [] });
+    if (!leagueId) return res.json({ avgLessons: 0, avgScenarios: 0, studentBreakdown: [], mostTradedStock: null, topCategory: null, totalTrades: 0 });
 
-    // Get student user_ids (exclude teacher)
     const { data: members } = await supabaseAdmin.from("league_members").select("user_id, users(username)").eq("league_id", leagueId);
     const studentIds = (members || []).filter(m => m.user_id !== teacherId).map(m => m.user_id);
-    if (studentIds.length === 0) return res.json({ avgLessons: 0, avgScenarios: 0, studentBreakdown: [] });
+    if (studentIds.length === 0) return res.json({ avgLessons: 0, avgScenarios: 0, studentBreakdown: [], mostTradedStock: null, topCategory: null, totalTrades: 0 });
 
-    // Query completions scoped to class members
-    const [lessonRes, scenarioRes] = await Promise.all([
+    const [lessonRes, scenarioRes, txRes] = await Promise.all([
       supabaseAdmin.from("lesson_completions").select("user_id, lesson_id").in("user_id", studentIds),
       supabaseAdmin.from("scenario_completions").select("user_id, scenario_id").in("user_id", studentIds),
+      supabaseAdmin.from("transactions").select("ticker, user_id").in("user_id", studentIds),
     ]);
     const lessonRows = lessonRes.data || [];
     const scenarioRows = scenarioRes.data || [];
+    const txRows = txRes.data || [];
 
-    // Build per-student breakdown
     const usernameMap = {};
     (members || []).forEach(m => { if (m.users) usernameMap[m.user_id] = m.users.username; });
 
-    const breakdown = studentIds.map(sid => {
-      const lc = lessonRows.filter(r => r.user_id === sid).length;
-      const sc = scenarioRows.filter(r => r.user_id === sid).length;
-      return { userId: sid, username: usernameMap[sid] || "Unknown", lessonsCompleted: lc, scenariosCompleted: sc };
-    });
+    const breakdown = studentIds.map(sid => ({
+      userId: sid, username: usernameMap[sid] || "Unknown",
+      lessonsCompleted: lessonRows.filter(r => r.user_id === sid).length,
+      scenariosCompleted: scenarioRows.filter(r => r.user_id === sid).length,
+    }));
 
     const totalL = breakdown.reduce((s, b) => s + b.lessonsCompleted, 0);
     const totalS = breakdown.reduce((s, b) => s + b.scenariosCompleted, 0);
     const n = breakdown.length;
 
+    // Trade analytics
+    const tickerCount = {};
+    const catCount = {};
+    const tickerTraders = {};
+    txRows.forEach(t => {
+      tickerCount[t.ticker] = (tickerCount[t.ticker] || 0) + 1;
+      const cat = STOCK_CATEGORIES[t.ticker] || "Other";
+      catCount[cat] = (catCount[cat] || 0) + 1;
+      if (!tickerTraders[t.ticker]) tickerTraders[t.ticker] = new Set();
+      tickerTraders[t.ticker].add(t.user_id);
+    });
+    const mostTradedStock = Object.entries(tickerCount).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    const topCategory = Object.entries(catCount).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+    const mostTradedTraderCount = mostTradedStock ? (tickerTraders[mostTradedStock]?.size || 0) : 0;
+
     res.json({
       avgLessons: n > 0 ? +(totalL / n).toFixed(1) : 0,
       avgScenarios: n > 0 ? +(totalS / n).toFixed(1) : 0,
       studentBreakdown: breakdown,
+      mostTradedStock,
+      mostTradedTraderCount,
+      topCategory,
+      totalTrades: txRows.length,
     });
   } catch (err) {
     console.error("class-progress error:", err);
@@ -1091,7 +1148,7 @@ app.post("/api/teacher-insights/class", async (req, res) => {
         model: "claude-haiku-4-5-20251001",
         max_tokens: 400,
         system: `You are Swish, an AI assistant for teachers managing a virtual stock trading class for students aged 8-18. The class has 20 lessons and 8 investment scenarios available. Analyse the class data including lesson/scenario completion rates and provide 3-5 actionable coaching tips. Be specific about student names when relevant. Focus on engagement, learning gaps, lesson/scenario progress, and teaching opportunities. Return ONLY a JSON array of strings, no other text.`,
-        messages: [{ role: "user", content: JSON.stringify({ students, classAverages: { avgLessonsCompleted: avgLessons, avgScenariosCompleted: avgScenarios, totalLessons: 20, totalScenarios: 8 } }) }],
+        messages: [{ role: "user", content: JSON.stringify({ students, classAverages: { avgLessonsCompleted: avgLessons, avgScenariosCompleted: avgScenarios, totalLessons: 20, totalScenarios: 8 }, tradeAnalytics: await (async () => { try { const { data: txRows } = await supabaseAdmin.from("transactions").select("ticker, user_id").in("user_id", studentIds); const tc = {}; const cc = {}; (txRows || []).forEach(t => { tc[t.ticker] = (tc[t.ticker] || 0) + 1; cc[STOCK_CATEGORIES[t.ticker] || "Other"] = (cc[STOCK_CATEGORIES[t.ticker] || "Other"] || 0) + 1; }); return { mostTradedStock: Object.entries(tc).sort((a,b) => b[1]-a[1])[0]?.[0] || null, topCategory: Object.entries(cc).sort((a,b) => b[1]-a[1])[0]?.[0] || null, totalTrades: (txRows || []).length }; } catch { return {}; } })() }) }],
       }),
     });
     const data = await response.json();
