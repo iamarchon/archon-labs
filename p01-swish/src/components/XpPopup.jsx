@@ -30,17 +30,17 @@ export default function XpPopup({ xp = 0, level = "Bronze", onClose }) {
     <div ref={ref} style={{
       position: "absolute", top: "100%", right: 0, marginTop: "8px",
       width: "320px",
-      background: "rgba(255, 255, 255, 0.15)",
-      backdropFilter: "blur(20px) saturate(180%)",
-      WebkitBackdropFilter: "blur(20px) saturate(180%)",
-      border: "1px solid rgba(255, 255, 255, 0.3)",
+      background: "rgba(255, 255, 255, 0.75)",
+      backdropFilter: "blur(24px) saturate(200%)",
+      WebkitBackdropFilter: "blur(24px) saturate(200%)",
+      border: "1px solid rgba(255, 255, 255, 0.6)",
       borderRadius: "20px",
-      boxShadow: "0 8px 32px rgba(0, 0, 0, 0.12)",
+      boxShadow: "0 8px 40px rgba(0, 0, 0, 0.18)",
       padding: "24px",
       zIndex: 150, animation: "sheetUp .22s cubic-bezier(.34,1.56,.64,1)",
     }}>
       {/* Arrow */}
-      <div style={{ position: "absolute", top: "-6px", right: "24px", width: "12px", height: "12px", background: "rgba(255, 255, 255, 0.15)", backdropFilter: "blur(20px)", transform: "rotate(45deg)", borderRadius: "2px" }} />
+      <div style={{ position: "absolute", top: "-6px", right: "24px", width: "12px", height: "12px", background: "rgba(255, 255, 255, 0.75)", transform: "rotate(45deg)", borderRadius: "2px" }} />
 
       {/* Current level */}
       <div style={{ textAlign: "center", marginBottom: "20px" }}>

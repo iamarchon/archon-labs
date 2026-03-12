@@ -28,8 +28,8 @@ export default function useConfetti() {
       return;
     }
 
-    // 4.5s tunnel from both sides
-    const duration = 4500;
+    // 3s tunnel from both sides
+    const duration = 3000;
     const end = Date.now() + duration;
     const interval = setInterval(() => {
       if (Date.now() > end) { clearInterval(interval); return; }

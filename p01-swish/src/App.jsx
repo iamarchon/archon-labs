@@ -12,7 +12,6 @@ import AuthGate from "./components/AuthGate";
 import TopNav from "./components/TopNav";
 import TickerStrip from "./components/TickerStrip";
 import TradeModal from "./components/TradeModal";
-import TradeSuccessModal from "./components/TradeSuccessModal";
 import Dashboard from "./pages/Dashboard";
 import Markets from "./pages/Markets";
 import Learn from "./pages/Learn";
@@ -36,6 +35,7 @@ function AppShell() {
   } = useUserData();
   const [tradeStock, setTradeStock] = useState(null);
   const [tradeSuccess, setTradeSuccess] = useState(null);
+  const [tradeFirstTrade, setTradeFirstTrade] = useState(false);
   const { fireConfetti } = useConfetti();
   const prevLevelRef = useRef(null);
 
@@ -102,8 +102,9 @@ function AppShell() {
     // Fire confetti
     fireConfetti(wasFirstTrade ? "firstTrade" : "trade");
 
-    // Show success modal
-    setTradeSuccess({ stock, action, shares, isFirstTrade: wasFirstTrade });
+    // Swap to success state inside the same modal
+    setTradeSuccess({ action, shares });
+    setTradeFirstTrade(wasFirstTrade);
 
     // Save snapshot after trade
     const portfolioValue = holdings.reduce((sum, h) => {
@@ -176,18 +177,12 @@ function AppShell() {
       {tradeStock && (
         <TradeModal
           stock={tradeStock}
-          onClose={() => setTradeStock(null)}
+          onClose={() => { setTradeStock(null); setTradeSuccess(null); setTradeFirstTrade(false); }}
           onTrade={handleTrade}
           cash={cash}
           holdings={holdings}
-        />
-      )}
-
-      {tradeSuccess && (
-        <TradeSuccessModal
-          trade={tradeSuccess}
-          isFirstTrade={tradeSuccess.isFirstTrade}
-          onClose={() => setTradeSuccess(null)}
+          success={tradeSuccess}
+          isFirstTrade={tradeFirstTrade}
         />
       )}
     </>
