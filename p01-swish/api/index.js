@@ -114,6 +114,46 @@ app.get("/api/candles", async (req, res) => {
   }
 });
 
+/* ── GET /api/movers — Top market movers by % change ── */
+const MOVER_SYMBOLS = ["AAPL","NVDA","TSLA","AMZN","GOOGL","NFLX","MSFT","RBLX","SPOT","DIS"];
+const MOVER_RANGE_MAP = {
+  "1D": { interval: "5m",  range: "1d"  },
+  "1W": { interval: "60m", range: "5d"  },
+  "1M": { interval: "1d",  range: "1mo" },
+  "ALL": { interval: "1wk", range: "max" },
+};
+
+app.get("/api/movers", async (req, res) => {
+  try {
+    const range = (req.query.range || "1D").toUpperCase();
+    const config = MOVER_RANGE_MAP[range];
+    if (!config) return res.status(400).json({ error: "Invalid range. Use: 1D, 1W, 1M, ALL" });
+
+    const results = await Promise.all(MOVER_SYMBOLS.map(async (symbol) => {
+      try {
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${config.interval}&range=${config.range}`;
+        const resp = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+        const data = await resp.json();
+        const result = data?.chart?.result?.[0];
+        if (!result?.timestamp) return null;
+        const closes = result.indicators.quote[0].close.filter(c => c != null);
+        if (closes.length < 2) return null;
+        const first = closes[0], last = closes[closes.length - 1];
+        const changePercent = ((last - first) / first) * 100;
+        // Downsample sparkline to ~12 points
+        const step = Math.max(1, Math.floor(closes.length / 12));
+        const sparkline = closes.filter((_, i) => i % step === 0 || i === closes.length - 1);
+        return { symbol, price: last, changePercent, trending: changePercent >= 0 ? "up" : "down", sparkline };
+      } catch { return null; }
+    }));
+
+    const movers = results.filter(Boolean).sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent)).slice(0, 5);
+    res.json({ movers, range });
+  } catch (err) {
+    res.status(502).json({ error: "Failed to fetch movers" });
+  }
+});
+
 /* ── GET /api/news/:symbol — Yahoo Finance RSS + Claude AI summary ── */
 import RSSParser from "rss-parser";
 const rssParser = new RSSParser();

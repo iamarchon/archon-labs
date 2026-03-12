@@ -159,6 +159,24 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
     setClaimingId(null);
   };
 
+  // Market Movers — synced with hero perfRange
+  const [movers, setMovers] = useState([]);
+  const [moversLoading, setMoversLoading] = useState(true);
+
+  useEffect(() => {
+    setMoversLoading(true);
+    (async () => {
+      try {
+        const res = await fetch(`${baseUrl}/api/movers?range=${perfRange}`);
+        const data = await res.json();
+        setMovers(data.movers || []);
+      } catch { /* ignore */ }
+      setMoversLoading(false);
+    })();
+  }, [perfRange]);
+
+  const moversRangeLabel = perfRange === "1W" ? "Past week" : perfRange === "1M" ? "Past month" : "All time";
+
   // Holdings time range + price history
   const [holdingsRange, setHoldingsRange] = useState("1D");
   const [holdingsPriceHistory, setHoldingsPriceHistory] = useState({});
@@ -292,27 +310,45 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
         </Card>
       </Reveal>
 
-      {/* Row 2: Market Movers — full width */}
+      {/* Row 2: Market Movers — full width, synced with hero range */}
       <Reveal delay={0.04}>
         <Card style={{ padding: "28px 30px", marginBottom: "16px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
             <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Market Movers</div>
             <button onClick={() => navigate("/markets")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>All stocks</button>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "10px" }}>
-            {[...stocks].sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct)).slice(0, 5).map(s => (
-              <div key={s.ticker} onClick={() => onTrade(s)} style={{ padding: "16px", borderRadius: T.r, background: T.bg, border: `1px solid ${T.line}`, cursor: "pointer", transition: "all .18s ease", textAlign: "center" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = T.ghost; e.currentTarget.style.background = T.white; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = T.line; e.currentTarget.style.background = T.bg; }}>
-                <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", letterSpacing: "-0.2px", marginBottom: "8px" }}>{s.ticker}</div>
-                <Sparkline positive={s.changePct >= 0} width={64} height={24} />
-                <div style={{ marginTop: "8px" }}>
-                  <div style={{ color: T.ink, fontWeight: 600, fontSize: "13px", fontVariantNumeric: "tabular-nums" }}>${s.price.toFixed(2)}</div>
-                  <div style={{ color: s.changePct >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 500, marginTop: "2px" }}>{s.changePct >= 0 ? "+" : ""}{s.changePct.toFixed(2)}%</div>
+          <div style={{ color: T.inkFaint, fontSize: "11px", fontWeight: 500, letterSpacing: "0.03em", marginBottom: "18px" }}>{moversRangeLabel}</div>
+          {moversLoading ? (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "10px" }}>
+              {[0,1,2,3,4].map(i => (
+                <div key={i} style={{ padding: "16px", borderRadius: "14px", background: T.bg, border: `1px solid ${T.line}`, textAlign: "center", height: "110px" }}>
+                  <div style={{ width: "36px", height: "14px", background: T.line, borderRadius: "4px", margin: "0 auto 12px" }} />
+                  <div style={{ width: "64px", height: "24px", background: T.line, borderRadius: "4px", margin: "0 auto 10px" }} />
+                  <div style={{ width: "48px", height: "12px", background: T.line, borderRadius: "3px", margin: "0 auto" }} />
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : movers.length === 0 ? (
+            <div style={{ padding: "24px 0", textAlign: "center", color: T.inkFaint, fontSize: "13px" }}>Market data unavailable</div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "10px" }}>
+              {movers.map(m => {
+                const stock = stocks.find(x => x.ticker === m.symbol);
+                return (
+                  <div key={m.symbol} onClick={() => stock && onTrade(stock)} style={{ padding: "16px", borderRadius: "14px", background: T.bg, border: `1px solid ${T.line}`, cursor: "pointer", transition: "all .18s ease", textAlign: "center" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = T.ghost; e.currentTarget.style.background = T.white; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = T.line; e.currentTarget.style.background = T.bg; }}>
+                    <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", letterSpacing: "-0.2px", marginBottom: "8px" }}>{m.symbol}</div>
+                    <Sparkline data={m.sparkline} width={64} height={24} />
+                    <div style={{ marginTop: "8px" }}>
+                      <div style={{ color: T.ink, fontWeight: 600, fontSize: "13px", fontVariantNumeric: "tabular-nums" }}>${m.price.toFixed(2)}</div>
+                      <div style={{ color: m.changePercent >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 500, marginTop: "2px", fontVariantNumeric: "tabular-nums" }}>{m.changePercent >= 0 ? "+" : ""}{m.changePercent.toFixed(2)}%</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Card>
       </Reveal>
 
