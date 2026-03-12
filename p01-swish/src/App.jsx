@@ -226,7 +226,7 @@ function AppShell() {
     <>
       <ScrollToTop />
       <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: T.bg }}>
-        <TopNav notifications={notifications} unreadCount={unreadCount} onMarkAllRead={markAllRead} />
+        <TopNav notifications={notifications} unreadCount={unreadCount} onMarkAllRead={markAllRead} role={dbUser?.role} />
         <div style={{ height: "52px", flexShrink: 0 }} />
         <TickerStrip stocks={stocks} />
         <main style={{ flex: 1, background: T.bg }}>

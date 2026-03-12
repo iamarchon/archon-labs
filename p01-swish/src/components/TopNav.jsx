@@ -4,7 +4,7 @@ import { UserButton } from "@clerk/react";
 import { T } from "../tokens";
 import NotificationBell from "./NotificationBell";
 
-const NAV = [
+const STUDENT_NAV = [
   { to: "/",            label: "Dashboard"   },
   { to: "/markets",     label: "Markets"     },
   { to: "/learn",       label: "Learn"       },
@@ -13,7 +13,14 @@ const NAV = [
   { to: "/coach",       label: "Coach"       },
 ];
 
-export default function TopNav({ notifications = [], unreadCount = 0, onMarkAllRead }) {
+const TEACHER_NAV = [
+  { to: "/teacher",    label: "Dashboard"  },
+  { to: "/learn",      label: "Curriculum" },
+  { to: "/scenarios",  label: "Scenarios"  },
+  { to: "/coach",      label: "Coach"      },
+];
+
+export default function TopNav({ notifications = [], unreadCount = 0, onMarkAllRead, role }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -33,15 +40,15 @@ export default function TopNav({ notifications = [], unreadCount = 0, onMarkAllR
       transition: "border-color .3s ease, background .3s ease",
     }}>
       <div style={{ maxWidth: "1200px", margin: "0 auto", height: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 24px" }}>
-        <NavLink to="/" style={{ fontSize: "17px", fontWeight: 700, letterSpacing: "-0.4px", color: T.ink, textDecoration: "none", userSelect: "none" }}>
+        <NavLink to={role === "teacher" ? "/teacher" : "/"} style={{ fontSize: "17px", fontWeight: 700, letterSpacing: "-0.4px", color: T.ink, textDecoration: "none", userSelect: "none" }}>
           swish<span style={{ color: T.accent }}>.</span>
         </NavLink>
         <nav style={{ display: "flex", alignItems: "center" }}>
-          {NAV.map(item => (
+          {(role === "teacher" ? TEACHER_NAV : STUDENT_NAV).map(item => (
             <NavLink
               key={item.to}
               to={item.to}
-              end={item.to === "/"}
+              end={item.to === "/" || item.to === "/teacher"}
               style={({ isActive }) => ({
                 background: "none", border: "none", cursor: "pointer",
                 padding: "6px 13px", borderRadius: "8px", position: "relative",
