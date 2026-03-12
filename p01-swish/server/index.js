@@ -592,10 +592,10 @@ app.get("/api/leagues/members/:leagueId", async (req, res) => {
   try {
     const { data: members } = await supabaseAdmin
       .from("league_members")
-      .select("user_id, users(id, username, cash)")
+      .select("user_id, users(id, username, cash, xp, total_trades, streak, last_active)")
       .eq("league_id", req.params.leagueId);
 
-    if (!members?.length) return res.json({ members: [] });
+    if (!members?.length) return res.json([]);
 
     const result = await Promise.all(members.map(async (m) => {
       const { data: snap } = await supabaseAdmin
@@ -605,17 +605,22 @@ app.get("/api/leagues/members/:leagueId", async (req, res) => {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      const value = snap ? Number(snap.total_value) : Number(m.users.cash);
+      const u = m.users;
+      const value = snap ? Number(snap.total_value) : Number(u.cash);
       return {
         user_id: m.user_id,
-        username: m.users.username,
+        username: u.username,
         total_value: value,
         gain_pct: ((value - 10000) / 10000) * 100,
+        xp: u.xp ?? 0,
+        trades: u.total_trades ?? 0,
+        last_active: u.last_active ?? null,
+        streak: u.streak ?? 0,
       };
     }));
 
     result.sort((a, b) => b.gain_pct - a.gain_pct);
-    res.json({ members: result });
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch members" });
   }
