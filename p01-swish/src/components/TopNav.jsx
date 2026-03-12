@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { UserButton } from "@clerk/react";
 import { T } from "../tokens";
+import NotificationBell from "./NotificationBell";
 
 const NAV = [
   { to: "/",            label: "Dashboard"   },
@@ -11,7 +12,7 @@ const NAV = [
   { to: "/coach",       label: "Coach"       },
 ];
 
-export default function TopNav() {
+export default function TopNav({ notifications = [], unreadCount = 0, onMarkAllRead }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -60,7 +61,8 @@ export default function TopNav() {
             </NavLink>
           ))}
         </nav>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+          <NotificationBell notifications={notifications} unreadCount={unreadCount} onMarkAllRead={onMarkAllRead} />
           <UserButton afterSignOutUrl="/" />
         </div>
       </div>

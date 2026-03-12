@@ -19,6 +19,7 @@ import Leaderboard from "./pages/Leaderboard";
 import Coach from "./pages/Coach";
 import StockDetail from "./pages/StockDetail";
 import Challenges from "./pages/Challenges";
+import useNotifications from "./hooks/useNotifications";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -40,6 +41,11 @@ function AppShell() {
   const { fireConfetti } = useConfetti();
   const prevLevelRef = useRef(null);
   const initialLoadDone = useRef(false);
+
+  const {
+    notifications, unreadCount, markAllRead,
+    generateChallengeNotifications,
+  } = useNotifications(dbUser, dbUser?.xp ?? 0, dbUser?.streak ?? 0);
 
   const onTradeComplete = useCallback(async () => {
     await refreshUser();
@@ -132,13 +138,25 @@ function AppShell() {
       const base = import.meta.env.DEV ? "http://localhost:3001" : "";
       const res = await fetch(`${base}/api/challenges?userId=${dbUser.id}`);
       const data = await res.json();
-      const newlyComplete = (data.challenges || []).find(c => c.percent >= 100 && !c.completedAt);
+      const challenges = data.challenges || [];
+      generateChallengeNotifications(challenges);
+      const newlyComplete = challenges.find(c => c.percent >= 100 && !c.completedAt);
       if (newlyComplete) {
         setChallengeToast(newlyComplete);
         setTimeout(() => setChallengeToast(null), 5000);
       }
     } catch { /* ignore */ }
-  }, [dbUser?.id]);
+  }, [dbUser?.id, generateChallengeNotifications]);
+
+  // Generate challenge notifications on initial load
+  useEffect(() => {
+    if (!dbUser?.id) return;
+    const base = import.meta.env.DEV ? "http://localhost:3001" : "";
+    fetch(`${base}/api/challenges?userId=${dbUser.id}`)
+      .then(r => r.json())
+      .then(data => generateChallengeNotifications(data.challenges || []))
+      .catch(() => {});
+  }, [dbUser?.id, generateChallengeNotifications]);
 
   const handleTrade = async (stock, action, shares) => {
     const wasFirstTrade = totalTrades === 0;
@@ -194,7 +212,7 @@ function AppShell() {
     <>
       <ScrollToTop />
       <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: T.bg }}>
-        <TopNav />
+        <TopNav notifications={notifications} unreadCount={unreadCount} onMarkAllRead={markAllRead} />
         <div style={{ height: "52px", flexShrink: 0 }} />
         <TickerStrip stocks={stocks} />
         <main style={{ flex: 1, background: T.bg }}>
