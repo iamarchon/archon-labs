@@ -289,9 +289,14 @@ app.get("/api/watchlist", async (req, res) => {
   const userId = req.query.userId;
   if (!userId) return res.status(400).json({ error: "userId required" });
   try {
-    const { data } = await supabaseAdmin.from("watchlist").select("symbol, created_at").eq("user_id", userId).order("created_at", { ascending: false });
+    const { data, error } = await supabaseAdmin.from("watchlist").select("symbol, created_at").eq("user_id", userId).order("created_at", { ascending: false });
+    if (error) {
+      console.error("Watchlist fetch error:", error.message);
+      return res.status(500).json({ error: error.message });
+    }
     res.json({ items: data || [] });
   } catch (err) {
+    console.error("Watchlist fetch exception:", err);
     res.status(500).json({ error: "Failed to fetch watchlist" });
   }
 });
@@ -301,9 +306,14 @@ app.post("/api/watchlist/add", async (req, res) => {
   const { userId, symbol } = req.body;
   if (!userId || !symbol) return res.status(400).json({ error: "userId and symbol required" });
   try {
-    await supabaseAdmin.from("watchlist").upsert({ user_id: userId, symbol: symbol.toUpperCase() }, { onConflict: "user_id,symbol" });
+    const { error } = await supabaseAdmin.from("watchlist").upsert({ user_id: userId, symbol: symbol.toUpperCase() }, { onConflict: "user_id,symbol" });
+    if (error) {
+      console.error("Watchlist add error:", error.message);
+      return res.status(500).json({ error: error.message });
+    }
     res.json({ success: true });
   } catch (err) {
+    console.error("Watchlist add exception:", err);
     res.status(500).json({ error: "Failed to add to watchlist" });
   }
 });
@@ -313,9 +323,14 @@ app.post("/api/watchlist/remove", async (req, res) => {
   const { userId, symbol } = req.body;
   if (!userId || !symbol) return res.status(400).json({ error: "userId and symbol required" });
   try {
-    await supabaseAdmin.from("watchlist").delete().eq("user_id", userId).eq("symbol", symbol.toUpperCase());
+    const { error } = await supabaseAdmin.from("watchlist").delete().eq("user_id", userId).eq("symbol", symbol.toUpperCase());
+    if (error) {
+      console.error("Watchlist remove error:", error.message);
+      return res.status(500).json({ error: error.message });
+    }
     res.json({ success: true });
   } catch (err) {
+    console.error("Watchlist remove exception:", err);
     res.status(500).json({ error: "Failed to remove from watchlist" });
   }
 });

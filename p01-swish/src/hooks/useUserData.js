@@ -98,21 +98,31 @@ export default function useUserData() {
     const base = import.meta.env.DEV ? "http://localhost:3001" : "";
 
     if (isWatched) {
-      await fetch(`${base}/api/watchlist/remove`, {
+      const res = await fetch(`${base}/api/watchlist/remove`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: dbUser.id, symbol: ticker }),
       });
-      setWatchlist(prev => prev.filter(t => t !== ticker));
-      setWatchlistItems(prev => prev.filter(w => w.symbol !== ticker));
+      const result = await res.json();
+      if (result.success) {
+        setWatchlist(prev => prev.filter(t => t !== ticker));
+        setWatchlistItems(prev => prev.filter(w => w.symbol !== ticker));
+      } else {
+        console.error("Watchlist remove failed:", result.error);
+      }
     } else {
-      await fetch(`${base}/api/watchlist/add`, {
+      const res = await fetch(`${base}/api/watchlist/add`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: dbUser.id, symbol: ticker }),
       });
-      setWatchlist(prev => [...prev, ticker]);
-      setWatchlistItems(prev => [...prev, { symbol: ticker, created_at: new Date().toISOString() }]);
+      const result = await res.json();
+      if (result.success) {
+        setWatchlist(prev => [...prev, ticker]);
+        setWatchlistItems(prev => [...prev, { symbol: ticker, created_at: new Date().toISOString() }]);
+      } else {
+        console.error("Watchlist add failed:", result.error);
+      }
     }
   }, [dbUser, watchlist]);
 
