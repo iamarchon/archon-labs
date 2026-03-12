@@ -30,23 +30,23 @@ export default function XpPopup({ xp = 0, level = "Bronze", onClose }) {
     <div ref={ref} style={{
       position: "absolute", top: "100%", right: 0, marginTop: "8px",
       width: "320px",
-      background: "rgba(255, 255, 255, 0.75)",
-      backdropFilter: "blur(24px) saturate(200%)",
-      WebkitBackdropFilter: "blur(24px) saturate(200%)",
-      border: "1px solid rgba(255, 255, 255, 0.6)",
+      background: "rgba(235, 240, 255, 0.55)",
+      backdropFilter: "blur(28px) saturate(180%) brightness(1.1)",
+      WebkitBackdropFilter: "blur(28px) saturate(180%) brightness(1.1)",
+      border: "1px solid rgba(255, 255, 255, 0.5)",
       borderRadius: "20px",
-      boxShadow: "0 8px 40px rgba(0, 0, 0, 0.18)",
+      boxShadow: "0 8px 32px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.6)",
       padding: "24px",
       zIndex: 150, animation: "sheetUp .22s cubic-bezier(.34,1.56,.64,1)",
     }}>
       {/* Arrow */}
-      <div style={{ position: "absolute", top: "-6px", right: "24px", width: "12px", height: "12px", background: "rgba(255, 255, 255, 0.75)", transform: "rotate(45deg)", borderRadius: "2px" }} />
+      <div style={{ position: "absolute", top: "-6px", right: "24px", width: "12px", height: "12px", background: "rgba(235, 240, 255, 0.55)", transform: "rotate(45deg)", borderRadius: "2px" }} />
 
       {/* Current level */}
       <div style={{ textAlign: "center", marginBottom: "20px" }}>
         <div style={{ fontSize: "36px", marginBottom: "4px" }}>{LEVELS[currentIdx]?.emoji}</div>
-        <div style={{ color: T.ink, fontSize: "20px", fontWeight: 700, letterSpacing: "-0.4px" }}>{level}</div>
-        <div style={{ color: T.ink, fontSize: "28px", fontWeight: 700, letterSpacing: "-0.8px", marginTop: "4px", fontVariantNumeric: "tabular-nums" }}>
+        <div style={{ color: "#1a1a2e", fontSize: "20px", fontWeight: 700, letterSpacing: "-0.4px" }}>{level}</div>
+        <div style={{ color: "#1a1a2e", fontSize: "28px", fontWeight: 700, letterSpacing: "-0.8px", marginTop: "4px", fontVariantNumeric: "tabular-nums" }}>
           {xp.toLocaleString()} XP
         </div>
       </div>
@@ -78,7 +78,7 @@ export default function XpPopup({ xp = 0, level = "Bronze", onClose }) {
                 <span style={{ fontSize: "16px", width: "22px", textAlign: "center" }}>
                   {isCompleted ? "✅" : l.emoji}
                 </span>
-                <span style={{ color: isCurrent ? T.accent : T.ink, fontSize: "14px", fontWeight: isCurrent ? 600 : 400 }}>
+                <span style={{ color: isCurrent ? T.accent : "#1a1a2e", fontSize: "14px", fontWeight: isCurrent ? 600 : 400 }}>
                   {l.name}
                 </span>
               </div>
