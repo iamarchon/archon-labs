@@ -18,6 +18,7 @@ import Learn from "./pages/Learn";
 import Leaderboard from "./pages/Leaderboard";
 import Coach from "./pages/Coach";
 import StockDetail from "./pages/StockDetail";
+import Challenges from "./pages/Challenges";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -117,6 +118,28 @@ function AppShell() {
     }
   }, [dbUser]);
 
+  // Challenge toast state
+  const [challengeToast, setChallengeToast] = useState(null);
+
+  const onClaimXp = useCallback(async () => {
+    await refreshUser();
+  }, [refreshUser]);
+
+  // Background challenge check after trade
+  const checkChallengesAfterAction = useCallback(async () => {
+    if (!dbUser?.id) return;
+    try {
+      const base = import.meta.env.DEV ? "http://localhost:3001" : "";
+      const res = await fetch(`${base}/api/challenges?userId=${dbUser.id}`);
+      const data = await res.json();
+      const newlyComplete = (data.challenges || []).find(c => c.percent >= 100 && !c.completedAt);
+      if (newlyComplete) {
+        setChallengeToast(newlyComplete);
+        setTimeout(() => setChallengeToast(null), 5000);
+      }
+    } catch { /* ignore */ }
+  }, [dbUser?.id]);
+
   const handleTrade = async (stock, action, shares) => {
     const wasFirstTrade = totalTrades === 0;
     await executeTrade(stock, action, shares);
@@ -137,6 +160,9 @@ function AppShell() {
       ? cash - (stock.price * shares)
       : cash + (stock.price * shares);
     saveSnapshot(portfolioValue + newCash);
+
+    // Background challenge check
+    checkChallengesAfterAction();
   };
 
   // Navigate to stock detail
@@ -179,7 +205,8 @@ function AppShell() {
                 streak={streak} username={username} livePrices={livePrices}
                 dbUser={dbUser} saveSnapshot={saveSnapshot}
                 totalTrades={totalTrades} totalValue={totalValue}
-                portfolioGain={portfolioGain} />
+                portfolioGain={portfolioGain}
+                onClaimXp={onClaimXp} fireConfetti={fireConfetti} />
             } />
             <Route path="/markets" element={
               <Markets onTrade={goToStock} watchlist={watchlist} onWatch={toggleWatch} />
@@ -188,6 +215,9 @@ function AppShell() {
             <Route path="/stock/:symbol" element={
               <StockDetail stocks={stocks} livePrices={livePrices}
                 onTrade={setTradeStock} holdings={holdings} cash={cash} />
+            } />
+            <Route path="/challenges" element={
+              <Challenges dbUser={dbUser} onClaimXp={onClaimXp} fireConfetti={fireConfetti} />
             } />
             <Route path="/learn" element={<Learn />} />
             <Route path="/leaderboard" element={<Leaderboard userId={dbUser?.id} />} />
@@ -206,6 +236,27 @@ function AppShell() {
           success={tradeSuccess}
           isFirstTrade={tradeFirstTrade}
         />
+      )}
+
+      {challengeToast && (
+        <div onClick={() => { setChallengeToast(null); navigate("/challenges"); }}
+          style={{
+            position: "fixed", bottom: "24px", right: "24px", zIndex: 1001,
+            background: T.white, borderRadius: "14px", padding: "16px 22px",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05)",
+            cursor: "pointer", maxWidth: "320px",
+            animation: "fadeIn .3s ease, slideUp .3s ease",
+          }}>
+          <div style={{ fontSize: "14px", fontWeight: 700, color: T.ink, marginBottom: "4px" }}>
+            Challenge Complete!
+          </div>
+          <div style={{ fontSize: "12px", color: T.inkSub }}>
+            {challengeToast.title} — Claim your XP
+          </div>
+          <div style={{ fontSize: "11px", color: T.green, fontWeight: 600, marginTop: "6px" }}>
+            +{challengeToast.xpReward} XP available
+          </div>
+        </div>
       )}
     </>
   );

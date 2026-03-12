@@ -352,6 +352,150 @@ app.get("/api/leaderboard", async (req, res) => {
   }
 });
 
+/* ── Challenge definitions (server-side) ── */
+const CHALLENGE_DEFS = [
+  { id:"first_trade", title:"First Trade", description:"Make your first trade", xpReward:50, category:"trading", difficulty:"easy", type:"one-time", eval:(d)=>{const c=Math.min(d.totalTrades,1);return{current:c,target:1,percent:c>=1?100:0,completed:c>=1}} },
+  { id:"ten_trades", title:"Active Trader", description:"Complete 10 trades", xpReward:100, category:"trading", difficulty:"medium", type:"one-time", eval:(d)=>{const c=Math.min(d.totalTrades,10);return{current:c,target:10,percent:(c/10)*100,completed:c>=10}} },
+  { id:"fifty_trades", title:"Trading Machine", description:"Complete 50 trades", xpReward:300, category:"trading", difficulty:"hard", type:"one-time", eval:(d)=>{const c=Math.min(d.totalTrades,50);return{current:c,target:50,percent:(c/50)*100,completed:c>=50}} },
+  { id:"five_trades_week", title:"Weekly Grinder", description:"Make 5 trades this week", xpReward:75, category:"trading", difficulty:"medium", type:"weekly", eval:(d)=>{const c=Math.min(d.weeklyTrades,5);return{current:c,target:5,percent:(c/5)*100,completed:c>=5}} },
+  { id:"buy_and_sell", title:"Round Trip", description:"Buy and sell the same stock", xpReward:60, category:"trading", difficulty:"easy", type:"one-time", eval:(d)=>{const done=d.hasRoundTrip?1:0;return{current:done,target:1,percent:done*100,completed:done===1}} },
+  { id:"three_stocks", title:"Diversifier", description:"Hold 3 different stocks at once", xpReward:80, category:"portfolio", difficulty:"easy", type:"one-time", eval:(d)=>{const c=Math.min(d.holdingsCount,3);return{current:c,target:3,percent:(c/3)*100,completed:c>=3}} },
+  { id:"five_stocks", title:"Portfolio Builder", description:"Hold 5 different stocks at once", xpReward:150, category:"portfolio", difficulty:"medium", type:"one-time", eval:(d)=>{const c=Math.min(d.holdingsCount,5);return{current:c,target:5,percent:(c/5)*100,completed:c>=5}} },
+  { id:"portfolio_up", title:"In The Green", description:"Have your portfolio up 5% or more", xpReward:200, category:"portfolio", difficulty:"hard", type:"ongoing", eval:(d)=>{const g=d.portfolioGainPct;const p=Math.min((g/5)*100,100);return{current:Math.round(g*10)/10,target:5,percent:Math.max(p,0),completed:g>=5}} },
+  { id:"invest_half", title:"All In (Half Way)", description:"Invest at least 50% of your starting cash", xpReward:100, category:"portfolio", difficulty:"medium", type:"one-time", eval:(d)=>{const inv=Math.max(10000-d.cash,0);const p=Math.min((inv/5000)*100,100);return{current:Math.round(inv),target:5000,percent:p,completed:inv>=5000}} },
+  { id:"streak_3", title:"Consistent", description:"Log in 3 days in a row", xpReward:60, category:"streak", difficulty:"easy", type:"one-time", eval:(d)=>{const c=Math.min(d.streak,3);return{current:c,target:3,percent:(c/3)*100,completed:c>=3}} },
+  { id:"streak_7", title:"Week Warrior", description:"Log in 7 days in a row", xpReward:150, category:"streak", difficulty:"medium", type:"one-time", eval:(d)=>{const c=Math.min(d.streak,7);return{current:c,target:7,percent:(c/7)*100,completed:c>=7}} },
+  { id:"streak_30", title:"Legendary Streak", description:"Log in 30 days in a row", xpReward:500, category:"streak", difficulty:"hard", type:"one-time", eval:(d)=>{const c=Math.min(d.streak,30);return{current:c,target:30,percent:(c/30)*100,completed:c>=30}} },
+  { id:"first_lesson", title:"Student", description:"Complete your first lesson", xpReward:30, category:"learning", difficulty:"easy", type:"one-time", eval:(d)=>{const c=Math.min(d.lessonCount,1);return{current:c,target:1,percent:c>=1?100:0,completed:c>=1}} },
+  { id:"five_lessons", title:"Scholar", description:"Complete 5 lessons", xpReward:100, category:"learning", difficulty:"medium", type:"one-time", eval:(d)=>{const c=Math.min(d.lessonCount,5);return{current:c,target:5,percent:(c/5)*100,completed:c>=5}} },
+  { id:"all_lessons", title:"Master Investor", description:"Complete all 15 lessons", xpReward:500, category:"learning", difficulty:"hard", type:"one-time", eval:(d)=>{const c=Math.min(d.lessonCount,15);return{current:c,target:15,percent:(c/15)*100,completed:c>=15}} },
+];
+
+function getMonday() {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(d.getFullYear(), d.getMonth(), diff).toISOString().split("T")[0];
+}
+
+async function gatherUserData(supabase, userId) {
+  const { data: user } = await supabase.from("users").select("*").eq("id", userId).single();
+  if (!user) return null;
+
+  const { data: holdings } = await supabase.from("holdings").select("*").eq("user_id", userId);
+  const { data: transactions } = await supabase.from("transactions").select("*").eq("user_id", userId);
+
+  // Weekly trades (since Monday)
+  const monday = getMonday();
+  const weeklyTrades = (transactions || []).filter(t => t.created_at >= monday).length;
+
+  // Round trip check
+  const buys = new Set(), sells = new Set();
+  (transactions || []).forEach(t => { if (t.action === "BUY") buys.add(t.ticker); else sells.add(t.ticker); });
+  const hasRoundTrip = [...buys].some(s => sells.has(s));
+
+  // Portfolio gain
+  const { data: snap } = await supabase.from("portfolio_snapshots").select("total_value").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const portfolioValue = snap ? Number(snap.total_value) : Number(user.cash);
+  const portfolioGainPct = ((portfolioValue - 10000) / 10000) * 100;
+
+  // Lesson completions (graceful if table doesn't exist)
+  let lessonCount = 0;
+  try {
+    const { count } = await supabase.from("lesson_completions").select("*", { count: "exact", head: true }).eq("user_id", userId);
+    lessonCount = count || 0;
+  } catch { /* table may not exist */ }
+
+  return {
+    totalTrades: user.total_trades ?? 0,
+    weeklyTrades,
+    hasRoundTrip,
+    holdingsCount: (holdings || []).length,
+    cash: Number(user.cash),
+    streak: user.streak ?? 0,
+    portfolioGainPct,
+    lessonCount,
+  };
+}
+
+/* ── GET /api/challenges — Evaluate all challenges for user ── */
+app.get("/api/challenges", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const userId = req.query.userId;
+  if (!userId) return res.status(400).json({ error: "userId required" });
+
+  try {
+    const userData = await gatherUserData(supabaseAdmin, userId);
+    if (!userData) return res.status(404).json({ error: "User not found" });
+
+    // Get completions (graceful if table doesn't exist)
+    let completionMap = {};
+    try {
+      const { data: completions } = await supabaseAdmin.from("challenge_completions").select("*").eq("user_id", userId);
+      (completions || []).forEach(c => { completionMap[c.challenge_id] = c; });
+    } catch { /* table may not exist yet */ }
+
+    const challenges = CHALLENGE_DEFS.map(ch => {
+      const result = ch.eval(userData);
+      const completion = completionMap[ch.id];
+      return {
+        id: ch.id,
+        title: ch.title,
+        description: ch.description,
+        xpReward: ch.xpReward,
+        category: ch.category,
+        difficulty: ch.difficulty,
+        type: ch.type,
+        current: result.current,
+        target: result.target,
+        percent: Math.round(result.percent),
+        completed: result.completed,
+        claimed: !!completion,
+        completedAt: completion?.completed_at || null,
+      };
+    });
+
+    res.json({ challenges });
+  } catch (err) {
+    console.error("Challenge eval error:", err);
+    res.status(500).json({ error: "Failed to evaluate challenges" });
+  }
+});
+
+/* ── POST /api/challenges/complete — Claim XP for completed challenge ── */
+app.post("/api/challenges/complete", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const { userId, challengeId } = req.body;
+  if (!userId || !challengeId) return res.status(400).json({ error: "userId and challengeId required" });
+
+  try {
+    const ch = CHALLENGE_DEFS.find(c => c.id === challengeId);
+    if (!ch) return res.status(404).json({ error: "Challenge not found" });
+
+    // Re-evaluate to verify completion
+    const userData = await gatherUserData(supabaseAdmin, userId);
+    if (!userData) return res.status(404).json({ error: "User not found" });
+    const result = ch.eval(userData);
+    if (!result.completed) return res.status(400).json({ error: "Challenge not yet completed" });
+
+    // Check not already claimed
+    const { data: existing } = await supabaseAdmin.from("challenge_completions").select("id").eq("user_id", userId).eq("challenge_id", challengeId).maybeSingle();
+    if (existing) return res.json({ success: true, alreadyClaimed: true, xpAwarded: 0 });
+
+    // Insert completion
+    await supabaseAdmin.from("challenge_completions").insert({ user_id: userId, challenge_id: challengeId, xp_awarded: ch.xpReward });
+
+    // Award XP
+    const { data: user } = await supabaseAdmin.from("users").select("xp").eq("id", userId).single();
+    const newXp = (user?.xp ?? 0) + ch.xpReward;
+    await supabaseAdmin.from("users").update({ xp: newXp }).eq("id", userId);
+
+    res.json({ success: true, xpAwarded: ch.xpReward, newXp });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to complete challenge" });
+  }
+});
+
 // Local dev: start server. Vercel uses the export.
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {

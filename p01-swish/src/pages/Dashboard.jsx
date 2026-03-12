@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { T } from "../tokens";
-import { CHALLENGES } from "../data";
 import supabase from "../lib/supabase";
 import Reveal from "../components/Reveal";
 import Card from "../components/Card";
@@ -30,7 +29,7 @@ const PerfTooltip = ({ active, payload }) => {
   );
 };
 
-export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0 }) {
+export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, onClaimXp, fireConfetti }) {
   const navigate = useNavigate();
 
   const portfolioValue = holdings.reduce((sum, h) => {
@@ -101,6 +100,65 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
       } catch { /* ignore */ }
     })();
   }, [dbUser]);
+
+  // Challenges
+  const [challenges, setChallenges] = useState([]);
+  const [challengesLoading, setChallengesLoading] = useState(true);
+  const [claimingId, setClaimingId] = useState(null);
+
+  const fetchChallenges = useCallback(async () => {
+    if (!dbUser?.id) {
+      setChallengesLoading(false);
+      return;
+    }
+    try {
+      const res = await fetch(`${baseUrl}/api/challenges?userId=${dbUser.id}`);
+      if (!res.ok) throw new Error("API error");
+      const data = await res.json();
+      setChallenges(data.challenges || []);
+    } catch (err) {
+      console.error("Failed to load challenges:", err);
+    }
+    setChallengesLoading(false);
+  }, [dbUser?.id]);
+
+  useEffect(() => { fetchChallenges(); }, [fetchChallenges]);
+
+  const daysUntilMonday = () => {
+    const now = new Date();
+    const day = now.getDay();
+    return day === 0 ? 1 : day === 1 ? 7 : 8 - day;
+  };
+
+  // Top 3: claimable first, then closest to completion (exclude completed)
+  const topChallenges = [...challenges]
+    .sort((a, b) => {
+      const aClaimable = a.percent >= 100 && !a.completedAt ? 1 : 0;
+      const bClaimable = b.percent >= 100 && !b.completedAt ? 1 : 0;
+      if (aClaimable !== bClaimable) return bClaimable - aClaimable;
+      if (a.completedAt && !b.completedAt) return 1;
+      if (!a.completedAt && b.completedAt) return -1;
+      return b.percent - a.percent;
+    })
+    .slice(0, 3);
+
+  const claimChallenge = async (challengeId) => {
+    setClaimingId(challengeId);
+    try {
+      const res = await fetch(`${baseUrl}/api/challenges/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: dbUser.id, challengeId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (onClaimXp) onClaimXp(data.xpAwarded);
+        if (fireConfetti) fireConfetti("trade");
+        await fetchChallenges();
+      }
+    } catch { /* ignore */ }
+    setClaimingId(null);
+  };
 
   // Holdings time range + price history
   const [holdingsRange, setHoldingsRange] = useState("1D");
@@ -453,26 +511,50 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
         <Card style={{ padding: "28px 30px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "22px" }}>
             <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Challenges</div>
-            <button style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>See all</button>
+            <button onClick={() => navigate("/challenges")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>See all</button>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-            {CHALLENGES.map(ch => (
-              <div key={ch.id}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
-                  <div>
-                    <div style={{ color: T.ink, fontSize: "14px", fontWeight: 600, letterSpacing: "-0.2px" }}>{ch.title}</div>
-                    <div style={{ color: T.inkSub, fontSize: "12px", marginTop: "2px" }}>{ch.desc}</div>
+          {challengesLoading ? (
+            <div style={{ padding: "20px 0", textAlign: "center", color: T.inkFaint, fontSize: "13px" }}>Loading challenges...</div>
+          ) : topChallenges.length === 0 ? (
+            <div style={{ padding: "20px 0", textAlign: "center", color: T.inkFaint, fontSize: "13px" }}>No challenges available</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              {topChallenges.map(ch => {
+                const claimable = ch.percent >= 100 && !ch.completedAt;
+                const done = !!ch.completedAt;
+                const color = done ? T.green : claimable ? T.green : T.accent;
+                return (
+                  <div key={ch.id}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+                      <div>
+                        <div style={{ color: T.ink, fontSize: "14px", fontWeight: 600, letterSpacing: "-0.2px" }}>{ch.title}</div>
+                        <div style={{ color: T.inkSub, fontSize: "12px", marginTop: "2px" }}>{ch.description}</div>
+                      </div>
+                      <div style={{ textAlign: "right", flexShrink: 0, marginLeft: "12px" }}>
+                        {claimable ? (
+                          <button onClick={() => claimChallenge(ch.id)} disabled={claimingId === ch.id}
+                            style={{ background: T.green, color: T.white, border: "none", borderRadius: "6px", padding: "5px 12px", fontSize: "11px", fontWeight: 700, cursor: "pointer", letterSpacing: "0.02em", opacity: claimingId === ch.id ? 0.6 : 1, transition: "opacity .15s" }}>
+                            {claimingId === ch.id ? "Claiming..." : `Claim +${ch.xpReward} XP`}
+                          </button>
+                        ) : (
+                          <div style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.04em", color, background: `${color}12`, padding: "3px 8px", borderRadius: "5px" }}>
+                            {done ? "Completed" : `+${ch.xpReward} XP`}
+                          </div>
+                        )}
+                        {ch.type === "weekly" && !done && (
+                          <div style={{ color: T.inkFaint, fontSize: "11px", marginTop: "3px" }}>{daysUntilMonday()} days left</div>
+                        )}
+                      </div>
+                    </div>
+                    <ProgressBar value={Math.min(ch.percent, 100)} color={color} />
+                    <div style={{ color: T.inkFaint, fontSize: "11px", marginTop: "4px", textAlign: "right" }}>
+                      {ch.current} / {ch.target} · {Math.round(ch.percent)}%
+                    </div>
                   </div>
-                  <div style={{ textAlign: "right", flexShrink: 0, marginLeft: "12px" }}>
-                    <div style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.04em", color: ch.color, background: `${ch.color}12`, padding: "3px 8px", borderRadius: "5px" }}>+{ch.xp} XP</div>
-                    <div style={{ color: T.inkFaint, fontSize: "11px", marginTop: "3px" }}>{ch.due}</div>
-                  </div>
-                </div>
-                <ProgressBar value={ch.progress} color={ch.color} />
-                <div style={{ color: T.inkFaint, fontSize: "11px", marginTop: "4px", textAlign: "right" }}>{ch.progress}%</div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </Card>
       </Reveal>
     </div>
