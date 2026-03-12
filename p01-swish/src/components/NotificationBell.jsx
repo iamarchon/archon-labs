@@ -19,7 +19,14 @@ export default function NotificationBell({ notifications, unreadCount, onMarkAll
   }, [open]);
 
   const toggle = () => {
-    setOpen(prev => !prev);
+    setOpen(prev => {
+      const willOpen = !prev;
+      if (willOpen && unreadCount > 0) {
+        // Optimistic: mark all read immediately on open
+        onMarkAllRead();
+      }
+      return willOpen;
+    });
   };
 
   const handleClick = (notif) => {
@@ -77,20 +84,7 @@ export default function NotificationBell({ notifications, unreadCount, onMarkAll
             padding: "16px 18px 12px", borderBottom: `1px solid ${T.line}`,
           }}>
             <span style={{ fontSize: "15px", fontWeight: 700, color: T.ink, letterSpacing: "-0.3px" }}>Notifications</span>
-            {unreadCount > 0 && (
-              <button onClick={(e) => { e.stopPropagation(); onMarkAllRead(); }}
-                style={{
-                  background: "none", border: "none", cursor: "pointer",
-                  color: T.accent, fontSize: "12px", fontWeight: 500,
-                  padding: "2px 6px", borderRadius: "4px",
-                  transition: "background .15s",
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = T.bg}
-                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-              >
-                Mark all read
-              </button>
-            )}
+            {/* Badge clears automatically when dropdown opens */}
           </div>
 
           {/* List */}

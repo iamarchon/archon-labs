@@ -28,7 +28,7 @@ export default function Quiz({ questions, onComplete }) {
       setRevealed(false);
     } else {
       setFinished(true);
-      onComplete(scoreRef.current);
+      onComplete(Math.min(scoreRef.current, questions.length));
     }
   };
 
