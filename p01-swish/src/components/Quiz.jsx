@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { T } from "../tokens";
 
 export default function Quiz({ questions, onComplete }) {
@@ -7,6 +7,7 @@ export default function Quiz({ questions, onComplete }) {
   const [revealed, setRevealed] = useState(false);
   const [score, setScore] = useState(0);
   const [finished, setFinished] = useState(false);
+  const scoreRef = useRef(0);
 
   const q = questions[current];
 
@@ -14,7 +15,10 @@ export default function Quiz({ questions, onComplete }) {
     if (revealed) return;
     setSelected(idx);
     setRevealed(true);
-    if (idx === q.correct) setScore(s => s + 1);
+    if (idx === q.correct) {
+      scoreRef.current += 1;
+      setScore(scoreRef.current);
+    }
   };
 
   const handleNext = () => {
@@ -24,7 +28,7 @@ export default function Quiz({ questions, onComplete }) {
       setRevealed(false);
     } else {
       setFinished(true);
-      onComplete(score + (selected === q.correct ? 1 : 0));
+      onComplete(scoreRef.current);
     }
   };
 

@@ -210,7 +210,7 @@ function AppShell() {
   }
 
   // Show role selection if user has no role set yet
-  if (dbUser && !dbUser.role) {
+  if (dbUser && (!dbUser.role || dbUser.role === "null")) {
     return <RoleSelect userId={dbUser.id} onSelect={handleRoleSelect} />;
   }
 

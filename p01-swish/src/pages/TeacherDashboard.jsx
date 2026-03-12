@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Navigate } from "react-router-dom";
 import { T } from "../tokens";
 import Card from "../components/Card";
 import Reveal from "../components/Reveal";
@@ -58,6 +59,9 @@ function levelBadge(xp) {
 /* ── main component ─────────────────────────────────── */
 
 export default function TeacherDashboard({ dbUser }) {
+  // Auth guard — only teachers can access this page
+  if (!dbUser || dbUser.role !== "teacher") return <Navigate to="/" replace />;
+
   const [league, setLeague]               = useState(null);
   const [members, setMembers]             = useState([]);
   const [sortKey, setSortKey]             = useState("rank");
