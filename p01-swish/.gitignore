@@ -4,3 +4,9 @@ dist
 .env.local
 .env.*.local
 *.log
+
+.vercel
+
+# Session prompt files
+session*.txt
+prompt.txt
