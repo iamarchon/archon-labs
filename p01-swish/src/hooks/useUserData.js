@@ -68,13 +68,12 @@ export default function useUserData() {
           .eq("user_id", user.id);
         setHoldings(h || []);
 
-        // Fetch watchlist
+        // Fetch watchlist via API (uses supabaseAdmin on server)
         try {
-          const { data: w } = await supabase
-            .from("watchlist")
-            .select("symbol, created_at")
-            .eq("user_id", user.id);
-          const items = w || [];
+          const base = import.meta.env.DEV ? "http://localhost:3001" : "";
+          const wRes = await fetch(`${base}/api/watchlist?userId=${user.id}`);
+          const wData = await wRes.json();
+          const items = wData.items || [];
           setWatchlistItems(items);
           setWatchlist(items.map(row => row.symbol));
         } catch {
@@ -96,19 +95,22 @@ export default function useUserData() {
   const toggleWatch = useCallback(async (ticker) => {
     if (!dbUser) return;
     const isWatched = watchlist.includes(ticker);
+    const base = import.meta.env.DEV ? "http://localhost:3001" : "";
 
     if (isWatched) {
-      await supabase
-        .from("watchlist")
-        .delete()
-        .eq("user_id", dbUser.id)
-        .eq("symbol", ticker);
+      await fetch(`${base}/api/watchlist/remove`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: dbUser.id, symbol: ticker }),
+      });
       setWatchlist(prev => prev.filter(t => t !== ticker));
       setWatchlistItems(prev => prev.filter(w => w.symbol !== ticker));
     } else {
-      await supabase
-        .from("watchlist")
-        .insert({ user_id: dbUser.id, symbol: ticker });
+      await fetch(`${base}/api/watchlist/add`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: dbUser.id, symbol: ticker }),
+      });
       setWatchlist(prev => [...prev, ticker]);
       setWatchlistItems(prev => [...prev, { symbol: ticker, created_at: new Date().toISOString() }]);
     }
