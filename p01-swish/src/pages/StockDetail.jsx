@@ -262,8 +262,11 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
       {/* Latest News */}
       <Reveal delay={0.18}>
         <Card hover={false} style={{ padding: "28px 30px", marginTop: "20px" }}>
-          <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px", marginBottom: "20px" }}>
-            Latest News &middot; {stockName}
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
+            <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>
+              Latest News &middot; {stockName}
+            </div>
+            <span style={{ fontSize: "10px", fontWeight: 500, color: T.inkFaint, background: T.bg, padding: "2px 8px", borderRadius: "4px", border: `1px solid ${T.line}` }}>Powered by AI</span>
           </div>
 
           {newsLoading ? (

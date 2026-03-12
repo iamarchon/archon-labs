@@ -116,6 +116,26 @@ app.get("/api/candles", async (req, res) => {
 /* ── GET /api/news/:symbol — AI-powered stock news via Claude + web_search ── */
 const newsCache = {};
 const NEWS_CACHE_TTL = 30 * 60 * 1000;
+const COMPANY_NAMES = {
+  AAPL:"Apple Inc.",NVDA:"NVIDIA Corp.",TSLA:"Tesla Inc.",AMZN:"Amazon.com",
+  GOOGL:"Alphabet Inc.",NFLX:"Netflix Inc.",MSFT:"Microsoft Corp.",
+  RBLX:"Roblox Corp.",SPOT:"Spotify Technology",DIS:"Walt Disney Co.",
+  META:"Meta Platforms",AMD:"Advanced Micro Devices",INTC:"Intel Corp.",
+  PYPL:"PayPal Holdings",SQ:"Block Inc.",COIN:"Coinbase Global",
+  UBER:"Uber Technologies",ABNB:"Airbnb Inc.",SHOP:"Shopify Inc.",
+  SNAP:"Snap Inc.",
+};
+
+function extractText(content) {
+  return (content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
+}
+
+function parseJsonArray(text) {
+  const clean = text.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+  const match = clean.match(/\[[\s\S]*\]/);
+  if (!match) return [];
+  try { return JSON.parse(match[0]); } catch { return []; }
+}
 
 app.get("/api/news/:symbol", async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -127,7 +147,7 @@ app.get("/api/news/:symbol", async (req, res) => {
     return res.json(cached.data);
   }
 
-  const companyName = req.query.name || symbol;
+  const companyName = req.query.name || COMPANY_NAMES[symbol] || symbol;
 
   try {
     const searchRes = await fetch("https://api.anthropic.com/v1/messages", {
@@ -139,70 +159,76 @@ app.get("/api/news/:symbol", async (req, res) => {
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 1500,
+        max_tokens: 4096,
         tools: [{ type: "web_search_20250305" }],
         messages: [{
           role: "user",
-          content: `Find the 5 most recent news headlines about ${companyName} (${symbol}) stock from the past 2 weeks. For each story return: headline, source, date, 1-sentence summary, and URL if available. Focus on product launches, earnings, partnerships, innovation — things a young investor aged 13-18 would find exciting or educational. Avoid: political controversy, layoffs framed negatively, adult content, anything inappropriate for under-18s. Return ONLY a JSON array, no other text: [{\"headline\": \"\", \"source\": \"\", \"date\": \"\", \"summary\": \"\", \"url\": \"\"}]`
+          content: `Search for the 5 most recent news articles about ${companyName} (${symbol}) stock. For each article provide: headline, source name, date, a 1-sentence summary, and the URL. Focus on product launches, earnings, partnerships, innovation — things a young investor aged 13-18 would find exciting or educational. Avoid political controversy, layoffs, adult content, or anything inappropriate for under-18s. Return your answer as ONLY a JSON array with no markdown fences and no extra text: [{"headline":"...","source":"...","date":"...","summary":"...","url":"..."}]`
         }],
       }),
     });
     const searchData = await searchRes.json();
-    let articlesText = "";
-    for (const block of (searchData.content || [])) {
-      if (block.type === "text") articlesText += block.text;
+
+    if (searchData.error) {
+      console.error("Claude web_search error:", JSON.stringify(searchData.error));
+      return res.status(502).json({ error: "AI search failed" });
     }
-    let articles = [];
-    try {
-      const jsonMatch = articlesText.match(/\[[\s\S]*\]/);
-      if (jsonMatch) articles = JSON.parse(jsonMatch[0]);
-    } catch { /* parse failed */ }
+
+    const articlesText = extractText(searchData.content);
+    console.log("News raw text length:", articlesText.length, "for", symbol);
+    let articles = parseJsonArray(articlesText);
+    console.log("Parsed articles count:", articles.length, "for", symbol);
 
     if (articles.length > 0) {
-      const filterRes = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 1200,
-          messages: [{
-            role: "user",
-            content: `Review these news headlines for an under-18 audience. Remove any that involve violence, adult content, political controversy, or anything inappropriate for teenagers. Return ONLY the safe ones as a JSON array with the same format. Input: ${JSON.stringify(articles)}`
-          }],
-        }),
-      });
-      const filterData = await filterRes.json();
-      const filterText = (filterData.content || []).map(b => b.type === "text" ? b.text : "").join("");
       try {
-        const m = filterText.match(/\[[\s\S]*\]/);
-        if (m) articles = JSON.parse(m[0]);
-      } catch { /* keep original */ }
+        const filterRes = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 1500,
+            messages: [{
+              role: "user",
+              content: `Review these news headlines for an under-18 audience. Remove any that involve violence, adult content, political controversy, or anything inappropriate for teenagers. Return ONLY the safe ones as a JSON array with the same fields (headline, source, date, summary, url). No markdown fences. Input: ${JSON.stringify(articles)}`
+            }],
+          }),
+        });
+        const filterData = await filterRes.json();
+        const filtered = parseJsonArray(extractText(filterData.content));
+        if (filtered.length > 0) articles = filtered;
+      } catch (err) {
+        console.error("Safety filter error:", err);
+      }
     }
 
     let summary = "";
     if (articles.length > 0) {
-      const sumRes = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 150,
-          messages: [{
-            role: "user",
-            content: `Based on these recent headlines about ${companyName} (${symbol}), write a 2-sentence "What's happening with ${companyName}" summary for a teenager. Be excited, clear, no jargon. Headlines: ${articles.map(a => a.headline).join("; ")}. Return ONLY the 2 sentences, no other text.`
-          }],
-        }),
-      });
-      const sumData = await sumRes.json();
-      summary = (sumData.content || []).map(b => b.type === "text" ? b.text : "").join("").trim();
+      try {
+        const sumRes = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model: "claude-haiku-4-5-20251001",
+            max_tokens: 200,
+            messages: [{
+              role: "user",
+              content: `Based on these recent headlines about ${companyName} (${symbol}), write a 2-sentence plain-English summary of what's happening with ${companyName} right now. Write for a teenager — excited tone, clear, no jargon. Headlines: ${articles.map(a => a.headline).join("; ")}. Return ONLY the 2 sentences.`
+            }],
+          }),
+        });
+        const sumData = await sumRes.json();
+        summary = extractText(sumData.content).trim();
+      } catch (err) {
+        console.error("Summary generation error:", err);
+      }
     }
 
     const result = { summary, articles: articles.slice(0, 5) };
