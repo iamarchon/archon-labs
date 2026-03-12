@@ -10,6 +10,8 @@ export const STOCK_CATEGORIES = {
   AMZN: "Retail",
   CMG: "Food", SBUX: "Food",
   ABNB: "Travel", UBER: "Transport",
+  SPY: "ETF", QQQ: "ETF", VTI: "ETF", IWM: "ETF",
+  GLD: "ETF", TLT: "ETF", ARKK: "ETF", VNQ: "ETF",
 };
 
 export const CATEGORY_ICONS = {
@@ -25,5 +27,6 @@ export const CATEGORY_ICONS = {
   Travel: "\u2708\uFE0F",
   Crypto: "\u20BF",
   Transport: "\u{1F698}",
+  ETF: "\u{1F4CA}",
   Other: "\u{1F4C8}",
 };

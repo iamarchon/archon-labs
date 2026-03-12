@@ -31,9 +31,20 @@ const CRYPTO_ASSETS = [
   { ticker:"DOGE", name:"Dogecoin",   price:null, changePct:null, sector:"Crypto", isCrypto:true },
 ];
 
-const ALL_FEATURED = [...FEATURED, ...CRYPTO_ASSETS];
+const ETF_LIST = [
+  { ticker:"SPY",  name:"S&P 500 ETF",          price:null, changePct:null, sector:"ETFs", isETF:true },
+  { ticker:"QQQ",  name:"Nasdaq 100 ETF",        price:null, changePct:null, sector:"ETFs", isETF:true },
+  { ticker:"VTI",  name:"Total Market ETF",       price:null, changePct:null, sector:"ETFs", isETF:true },
+  { ticker:"IWM",  name:"Russell 2000 ETF",       price:null, changePct:null, sector:"ETFs", isETF:true },
+  { ticker:"GLD",  name:"Gold ETF",               price:null, changePct:null, sector:"ETFs", isETF:true },
+  { ticker:"TLT",  name:"20+ Year Treasury ETF",  price:null, changePct:null, sector:"ETFs", isETF:true },
+  { ticker:"ARKK", name:"ARK Innovation ETF",     price:null, changePct:null, sector:"ETFs", isETF:true },
+  { ticker:"VNQ",  name:"Real Estate ETF",        price:null, changePct:null, sector:"ETFs", isETF:true },
+];
 
-const SECTORS = ["All", "Tech", "Media", "Gaming", "Social", "Fintech", "Consumer", "Auto", "Retail", "Food", "Travel", "Crypto", "Transport"];
+const ALL_FEATURED = [...FEATURED, ...CRYPTO_ASSETS, ...ETF_LIST];
+
+const SECTORS = ["All", "Tech", "Media", "Gaming", "Social", "Fintech", "Consumer", "Auto", "Retail", "Food", "Travel", "Crypto", "ETFs", "Transport"];
 
 const Sparkline = ({ positive, width = 56, height = 20 }) => {
   const pts = positive
@@ -158,32 +169,41 @@ export default function StockSearch({ onTrade, onWatch, watchlist = [] }) {
   const debounceRef                 = useRef(null);
   const inputRef                    = useRef(null);
 
-  const [cryptoPrices, setCryptoPrices] = useState({});
+  const [livePricesMap, setLivePricesMap] = useState({});
   const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
-  // Fetch crypto prices on mount
+  // Fetch crypto + ETF prices on mount
   useEffect(() => {
     CRYPTO_ASSETS.forEach(async (coin) => {
       try {
         const res = await fetch(`${baseUrl}/api/crypto/quote/${coin.ticker}`);
         const data = await res.json();
         if (data.c && data.c > 0) {
-          setCryptoPrices(prev => ({ ...prev, [coin.ticker]: { price: data.c, changePct: data.dp ?? 0 } }));
+          setLivePricesMap(prev => ({ ...prev, [coin.ticker]: { price: data.c, changePct: data.dp ?? 0 } }));
+        }
+      } catch { /* ignore */ }
+    });
+    ETF_LIST.forEach(async (etf) => {
+      try {
+        const res = await fetch(`${baseUrl}/api/quote/${etf.ticker}`);
+        const data = await res.json();
+        if (data.c && data.c > 0) {
+          setLivePricesMap(prev => ({ ...prev, [etf.ticker]: { price: data.c, changePct: data.dp ?? 0 } }));
         }
       } catch { /* ignore */ }
     });
   }, [baseUrl]);
 
-  const featuredWithCrypto = ALL_FEATURED.map(s => {
-    if (s.isCrypto && cryptoPrices[s.ticker]) {
-      return { ...s, price: cryptoPrices[s.ticker].price, changePct: cryptoPrices[s.ticker].changePct };
+  const featuredWithPrices = ALL_FEATURED.map(s => {
+    if ((s.isCrypto || s.isETF) && livePricesMap[s.ticker]) {
+      return { ...s, price: livePricesMap[s.ticker].price, changePct: livePricesMap[s.ticker].changePct };
     }
     return s;
   });
 
   const featured = sector === "All"
-    ? featuredWithCrypto
-    : featuredWithCrypto.filter(s => s.sector === sector);
+    ? featuredWithPrices
+    : featuredWithPrices.filter(s => s.sector === sector);
 
   const fetchQuote = useCallback(async (symbol) => {
     // Check if it's crypto
@@ -218,6 +238,12 @@ export default function StockSearch({ onTrade, onWatch, watchlist = [] }) {
         ? `https://finnhub.io/api/v1/search?q=${encodeURIComponent(q)}&exchange=US&token=${apiKey}`
         : null;
 
+      // Match ETFs locally first (Finnhub doesn't surface them well)
+      const q2 = q.toLowerCase();
+      const etfMatches = ETF_LIST
+        .filter(e => e.ticker.toLowerCase().includes(q2) || e.name.toLowerCase().includes(q2))
+        .map(e => livePricesMap[e.ticker] ? { ...e, price: livePricesMap[e.ticker].price, changePct: livePricesMap[e.ticker].changePct } : e);
+
       let found = [];
 
       if (url) {
@@ -238,12 +264,16 @@ export default function StockSearch({ onTrade, onWatch, watchlist = [] }) {
             };
           });
       } else {
-        const q2 = q.toLowerCase();
         found = ALL_FEATURED.filter(s =>
           s.ticker.toLowerCase().includes(q2) ||
           s.name.toLowerCase().includes(q2)
         );
       }
+
+      // Prepend ETF matches, deduplicating
+      const foundTickers = new Set(found.map(f => f.ticker));
+      const uniqueEtfs = etfMatches.filter(e => !foundTickers.has(e.ticker));
+      found = [...uniqueEtfs, ...found];
 
       setResults(found);
       setSearching(false);
@@ -290,7 +320,7 @@ export default function StockSearch({ onTrade, onWatch, watchlist = [] }) {
           ref={inputRef}
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Search any stock — Apple, TSLA, Nike…"
+          placeholder="Search stocks, ETFs & crypto — AAPL, SPY, BTC…"
           style={{
             width: "100%", padding: "13px 40px 13px 42px",
             background: T.white, border: `1px solid ${T.line}`,
@@ -346,7 +376,7 @@ export default function StockSearch({ onTrade, onWatch, watchlist = [] }) {
           ? searching
             ? "Searching…"
             : `${results.length} result${results.length !== 1 ? "s" : ""} for "${query}"`
-          : sector === "All" ? "Featured Stocks" : sector
+          : sector === "All" ? "Featured Stocks & ETFs" : sector
         }
       </div>
 
