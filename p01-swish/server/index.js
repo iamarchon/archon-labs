@@ -285,53 +285,79 @@ app.get("/api/news/:symbol", async (req, res) => {
 
 /* ── Watchlist API routes ── */
 app.get("/api/watchlist", async (req, res) => {
-  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
   const userId = req.query.userId;
   if (!userId) return res.status(400).json({ error: "userId required" });
+  if (!supabaseAdmin) {
+    console.error("watchlist GET: supabaseAdmin is null — check VITE_SUPABASE_URL and SUPABASE_SERVICE_KEY env vars");
+    return res.status(500).json({ error: "Supabase not configured" });
+  }
   try {
-    const { data, error } = await supabaseAdmin.from("watchlist").select("symbol, created_at").eq("user_id", userId).order("created_at", { ascending: false });
+    const { data, error } = await supabaseAdmin
+      .from("watchlist")
+      .select("*")
+      .eq("user_id", userId);
     if (error) {
-      console.error("Watchlist fetch error:", error.message);
+      console.error("watchlist GET error:", JSON.stringify(error));
       return res.status(500).json({ error: error.message });
     }
     res.json({ items: data || [] });
   } catch (err) {
-    console.error("Watchlist fetch exception:", err);
-    res.status(500).json({ error: "Failed to fetch watchlist" });
+    console.error("watchlist GET exception:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
 app.post("/api/watchlist/add", async (req, res) => {
-  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
   const { userId, symbol } = req.body;
   if (!userId || !symbol) return res.status(400).json({ error: "userId and symbol required" });
+  if (!supabaseAdmin) {
+    console.error("watchlist ADD: supabaseAdmin is null — check VITE_SUPABASE_URL and SUPABASE_SERVICE_KEY env vars");
+    return res.status(500).json({ error: "Supabase not configured" });
+  }
   try {
-    const { error } = await supabaseAdmin.from("watchlist").upsert({ user_id: userId, symbol: symbol.toUpperCase() }, { onConflict: "user_id,symbol" });
+    // Delete first then insert to avoid unique constraint issues
+    await supabaseAdmin
+      .from("watchlist")
+      .delete()
+      .eq("user_id", userId)
+      .eq("symbol", symbol.toUpperCase());
+
+    const { data, error } = await supabaseAdmin
+      .from("watchlist")
+      .insert({ user_id: userId, symbol: symbol.toUpperCase() })
+      .select();
     if (error) {
-      console.error("Watchlist add error:", error.message);
+      console.error("watchlist ADD error:", JSON.stringify(error));
       return res.status(500).json({ error: error.message });
     }
-    res.json({ success: true });
+    res.json({ success: true, item: data?.[0] ?? null });
   } catch (err) {
-    console.error("Watchlist add exception:", err);
-    res.status(500).json({ error: "Failed to add to watchlist" });
+    console.error("watchlist ADD exception:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
 app.post("/api/watchlist/remove", async (req, res) => {
-  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
   const { userId, symbol } = req.body;
   if (!userId || !symbol) return res.status(400).json({ error: "userId and symbol required" });
+  if (!supabaseAdmin) {
+    console.error("watchlist REMOVE: supabaseAdmin is null — check VITE_SUPABASE_URL and SUPABASE_SERVICE_KEY env vars");
+    return res.status(500).json({ error: "Supabase not configured" });
+  }
   try {
-    const { error } = await supabaseAdmin.from("watchlist").delete().eq("user_id", userId).eq("symbol", symbol.toUpperCase());
+    const { error } = await supabaseAdmin
+      .from("watchlist")
+      .delete()
+      .eq("user_id", userId)
+      .eq("symbol", symbol.toUpperCase());
     if (error) {
-      console.error("Watchlist remove error:", error.message);
+      console.error("watchlist REMOVE error:", JSON.stringify(error));
       return res.status(500).json({ error: error.message });
     }
     res.json({ success: true });
   } catch (err) {
-    console.error("Watchlist remove exception:", err);
-    res.status(500).json({ error: "Failed to remove from watchlist" });
+    console.error("watchlist REMOVE exception:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
