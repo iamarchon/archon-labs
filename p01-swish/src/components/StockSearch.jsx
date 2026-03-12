@@ -99,7 +99,7 @@ const StockRow = ({ stock, onTrade, onWatch, watched }) => {
         flexShrink: 0,
       }}>
         <button
-          onClick={() => onWatch(stock)}
+          onClick={() => onWatch(stock.ticker)}
           style={{
             background: watched ? `${T.accent}10` : "none",
             border: `1px solid ${watched ? T.accent+"40" : T.line}`,

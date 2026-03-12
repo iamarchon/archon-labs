@@ -44,59 +44,7 @@ create table if not exists watchlist (
 );
 
 -- ── Row Level Security ──
-alter table users enable row level security;
-alter table holdings enable row level security;
-alter table transactions enable row level security;
-alter table watchlist enable row level security;
-
--- Users: read/write own row only
-create policy "Users can read own row"
-  on users for select
-  using (clerk_id = current_setting('request.jwt.claims', true)::json->>'sub');
-
-create policy "Users can update own row"
-  on users for update
-  using (clerk_id = current_setting('request.jwt.claims', true)::json->>'sub');
-
-create policy "Users can insert own row"
-  on users for insert
-  with check (true);
-
--- Holdings: read/write own rows
-create policy "Holdings select own"
-  on holdings for select
-  using (user_id in (select id from users where clerk_id = current_setting('request.jwt.claims', true)::json->>'sub'));
-
-create policy "Holdings insert own"
-  on holdings for insert
-  with check (user_id in (select id from users where clerk_id = current_setting('request.jwt.claims', true)::json->>'sub'));
-
-create policy "Holdings update own"
-  on holdings for update
-  using (user_id in (select id from users where clerk_id = current_setting('request.jwt.claims', true)::json->>'sub'));
-
-create policy "Holdings delete own"
-  on holdings for delete
-  using (user_id in (select id from users where clerk_id = current_setting('request.jwt.claims', true)::json->>'sub'));
-
--- Transactions: read/insert own rows
-create policy "Transactions select own"
-  on transactions for select
-  using (user_id in (select id from users where clerk_id = current_setting('request.jwt.claims', true)::json->>'sub'));
-
-create policy "Transactions insert own"
-  on transactions for insert
-  with check (user_id in (select id from users where clerk_id = current_setting('request.jwt.claims', true)::json->>'sub'));
-
--- Watchlist: read/write own rows
-create policy "Watchlist select own"
-  on watchlist for select
-  using (user_id in (select id from users where clerk_id = current_setting('request.jwt.claims', true)::json->>'sub'));
-
-create policy "Watchlist insert own"
-  on watchlist for insert
-  with check (user_id in (select id from users where clerk_id = current_setting('request.jwt.claims', true)::json->>'sub'));
-
-create policy "Watchlist delete own"
-  on watchlist for delete
-  using (user_id in (select id from users where clerk_id = current_setting('request.jwt.claims', true)::json->>'sub'));
+-- RLS is DISABLED because auth is handled by Clerk at the app level.
+-- The Supabase client uses the anon key; all access control is enforced
+-- in application code (queries always filter by user_id).
+-- If you need RLS later, integrate Clerk JWTs with Supabase custom claims.

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useUser } from "@clerk/react";
 import supabase from "../lib/supabase";
 
@@ -32,11 +32,13 @@ export default function useUserData() {
 
     try {
       // Fetch or create user
-      let { data: user } = await supabase
+      let { data: user, error: fetchErr } = await supabase
         .from("users")
         .select("*")
         .eq("clerk_id", clerkId)
-        .single();
+        .maybeSingle();
+
+      if (fetchErr) console.error("Fetch user failed:", fetchErr.message);
 
       if (!user) {
         // First sign in — create user row
@@ -44,11 +46,13 @@ export default function useUserData() {
           || clerkUser.firstName?.toLowerCase()
           || `trader_${clerkId.slice(-6)}`;
 
-        const { data: newUser } = await supabase
+        const { data: newUser, error: insertErr } = await supabase
           .from("users")
           .insert({ clerk_id: clerkId, username })
           .select()
           .single();
+
+        if (insertErr) console.error("Insert user failed:", insertErr.message);
 
         user = newUser;
       }
@@ -100,24 +104,30 @@ export default function useUserData() {
     }
   }, [dbUser, watchlist]);
 
+  // Use refs to avoid stale closures in callbacks passed to useTrade
+  const dbUserRef = useRef(null);
+  dbUserRef.current = dbUser;
+
   const refreshUser = useCallback(async () => {
-    if (!dbUser) return;
+    const u = dbUserRef.current;
+    if (!u) return;
     const { data } = await supabase
       .from("users")
       .select("*")
-      .eq("id", dbUser.id)
+      .eq("id", u.id)
       .single();
     if (data) setDbUser(data);
-  }, [dbUser]);
+  }, []);
 
   const refreshHoldings = useCallback(async () => {
-    if (!dbUser) return;
+    const u = dbUserRef.current;
+    if (!u) return;
     const { data } = await supabase
       .from("holdings")
       .select("*")
-      .eq("user_id", dbUser.id);
+      .eq("user_id", u.id);
     setHoldings(data || []);
-  }, [dbUser]);
+  }, []);
 
   return {
     user: dbUser,

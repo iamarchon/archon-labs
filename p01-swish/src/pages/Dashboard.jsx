@@ -6,12 +6,15 @@ import Card from "../components/Card";
 import Sparkline from "../components/Sparkline";
 import ProgressBar from "../components/ProgressBar";
 
-export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader" }) {
+export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {} }) {
   const navigate = useNavigate();
 
   const portfolioValue = holdings.reduce((sum, h) => {
-    const s = stocks.find(x => x.ticker === h.ticker);
-    return sum + (s ? s.price * Number(h.shares) : 0);
+    const shares = Number(h.shares);
+    const livePrice = livePrices[h.ticker];
+    const seedStock = stocks.find(x => x.ticker === h.ticker);
+    const price = livePrice ?? seedStock?.price ?? Number(h.avg_cost);
+    return sum + shares * price;
   }, 0);
   const total = portfolioValue + cash;
   const gain = total - 10000, gainPct = (gain / 10000) * 100;
@@ -41,7 +44,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
             </div>
           </div>
           <div style={{ display: "flex", marginTop: "36px", paddingTop: "28px", borderTop: `1px solid ${T.line}` }}>
-            {[["Invested", `$${portfolioValue.toFixed(2)}`], ["Cash", `$${cash.toFixed(2)}`], ["XP", xp.toLocaleString()], ["Level", level], ["Streak", `${streak} days 🔥`]].map((stat, i, arr) => (
+            {[["Invested", `$${portfolioValue.toFixed(2)}`], ["Available Cash", `$${cash.toFixed(2)}`], ["XP", xp.toLocaleString()], ["Level", level], ["Streak", `${streak} days 🔥`]].map((stat, i, arr) => (
               <div key={stat[0]} style={{ flex: 1, textAlign: "center", borderRight: i < arr.length - 1 ? `1px solid ${T.line}` : "none" }}>
                 <div style={{ color: T.inkFaint, fontSize: "10.5px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "5px" }}>{stat[0]}</div>
                 <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>{stat[1]}</div>

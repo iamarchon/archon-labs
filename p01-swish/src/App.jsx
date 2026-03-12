@@ -38,7 +38,7 @@ function AppShell() {
     await refreshHoldings();
   }, [refreshUser, refreshHoldings]);
 
-  const { executeTrade, error: tradeError } = useTrade(dbUser?.id, onTradeComplete);
+  const { executeTrade } = useTrade(dbUser?.id, onTradeComplete);
 
   // Merge live WebSocket prices into seed data
   const stocks = useMemo(() =>
@@ -59,10 +59,8 @@ function AppShell() {
 
   const handleTrade = async (stock, action, shares) => {
     await executeTrade(stock, action, shares);
-    if (!tradeError) {
-      setToast({ text: `${action} ${shares}× ${stock.ticker} confirmed`, type: action });
-      setTimeout(() => setToast(null), 3000);
-    }
+    setToast({ text: `${action} ${shares}× ${stock.ticker} confirmed`, type: action });
+    setTimeout(() => setToast(null), 3000);
   };
 
   if (userLoading) {
@@ -90,13 +88,13 @@ function AppShell() {
             <Route path="/" element={
               <Dashboard stocks={stocks} onTrade={setTradeStock}
                 holdings={holdings} cash={cash} xp={xp} level={level}
-                streak={streak} username={username} />
+                streak={streak} username={username} livePrices={livePrices} />
             } />
             <Route path="/markets" element={
               <Markets onTrade={setTradeStock} watchlist={watchlist} onWatch={toggleWatch} />
             } />
             <Route path="/portfolio" element={
-              <Portfolio stocks={stocks} holdings={holdings} cash={cash} xp={xp} />
+              <Portfolio stocks={stocks} holdings={holdings} cash={cash} xp={xp} livePrices={livePrices} />
             } />
             <Route path="/learn" element={<Learn />} />
             <Route path="/leaderboard" element={<Leaderboard />} />

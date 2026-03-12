@@ -3,10 +3,13 @@ import Reveal from "../components/Reveal";
 import Card from "../components/Card";
 import Sparkline from "../components/Sparkline";
 
-export default function Portfolio({ stocks, holdings = [], cash = 10000, xp = 0 }) {
+export default function Portfolio({ stocks, holdings = [], cash = 10000, xp = 0, livePrices = {} }) {
   const portfolioValue = holdings.reduce((sum, h) => {
-    const s = stocks.find(x => x.ticker === h.ticker);
-    return sum + (s ? s.price * Number(h.shares) : 0);
+    const shares = Number(h.shares);
+    const livePrice = livePrices[h.ticker];
+    const seedStock = stocks.find(x => x.ticker === h.ticker);
+    const price = livePrice ?? seedStock?.price ?? Number(h.avg_cost);
+    return sum + shares * price;
   }, 0);
   const total = portfolioValue + cash;
   const gain = total - 10000, gainPct = (gain / 10000) * 100;

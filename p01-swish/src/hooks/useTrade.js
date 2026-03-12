@@ -21,12 +21,13 @@ export default function useTrade(userId, onComplete) {
 
     try {
       // Get current user data
-      const { data: user } = await supabase
+      const { data: user, error: userErr } = await supabase
         .from("users")
         .select("cash, xp")
         .eq("id", userId)
         .single();
 
+      if (userErr) throw new Error(`Fetch user failed: ${userErr.message}`);
       if (!user) throw new Error("User not found");
 
       if (action === "BUY") {
@@ -37,40 +38,47 @@ export default function useTrade(userId, onComplete) {
         }
 
         // Deduct cash + add XP
-        await supabase
+        const { error: cashErr } = await supabase
           .from("users")
           .update({ cash: user.cash - total, xp: user.xp + 10 })
           .eq("id", userId);
+        if (cashErr) throw new Error(`Update cash failed: ${cashErr.message}`);
 
         // Upsert holding
-        const { data: existing } = await supabase
+        const { data: existing, error: holdErr } = await supabase
           .from("holdings")
           .select("*")
           .eq("user_id", userId)
           .eq("ticker", stock.ticker)
-          .single();
+          .maybeSingle();
+
+        if (holdErr) throw new Error(`Fetch holding failed: ${holdErr.message}`);
 
         if (existing) {
           const newShares = Number(existing.shares) + shares;
           const newAvgCost =
             (Number(existing.avg_cost) * Number(existing.shares) + price * shares) / newShares;
-          await supabase
+          const { error: upErr } = await supabase
             .from("holdings")
             .update({ shares: newShares, avg_cost: newAvgCost })
             .eq("id", existing.id);
+          if (upErr) throw new Error(`Update holding failed: ${upErr.message}`);
         } else {
-          await supabase
+          const { error: insErr } = await supabase
             .from("holdings")
             .insert({ user_id: userId, ticker: stock.ticker, shares, avg_cost: price });
+          if (insErr) throw new Error(`Insert holding failed: ${insErr.message}`);
         }
       } else {
         // SELL
-        const { data: existing } = await supabase
+        const { data: existing, error: sellHoldErr } = await supabase
           .from("holdings")
           .select("*")
           .eq("user_id", userId)
           .eq("ticker", stock.ticker)
-          .single();
+          .maybeSingle();
+
+        if (sellHoldErr) throw new Error(`Fetch holding failed: ${sellHoldErr.message}`);
 
         if (!existing || Number(existing.shares) < shares) {
           setError("Not enough shares");
@@ -79,24 +87,27 @@ export default function useTrade(userId, onComplete) {
         }
 
         // Add cash + add XP
-        await supabase
+        const { error: sellCashErr } = await supabase
           .from("users")
           .update({ cash: user.cash + total, xp: user.xp + 10 })
           .eq("id", userId);
+        if (sellCashErr) throw new Error(`Update cash failed: ${sellCashErr.message}`);
 
         const remainingShares = Number(existing.shares) - shares;
         if (remainingShares <= 0) {
-          await supabase.from("holdings").delete().eq("id", existing.id);
+          const { error: delErr } = await supabase.from("holdings").delete().eq("id", existing.id);
+          if (delErr) throw new Error(`Delete holding failed: ${delErr.message}`);
         } else {
-          await supabase
+          const { error: sellUpErr } = await supabase
             .from("holdings")
             .update({ shares: remainingShares })
             .eq("id", existing.id);
+          if (sellUpErr) throw new Error(`Update holding failed: ${sellUpErr.message}`);
         }
       }
 
       // Record transaction
-      await supabase.from("transactions").insert({
+      const { error: txErr } = await supabase.from("transactions").insert({
         user_id: userId,
         ticker: stock.ticker,
         action,
@@ -104,6 +115,7 @@ export default function useTrade(userId, onComplete) {
         price,
         total,
       });
+      if (txErr) console.error("Transaction log failed:", txErr.message);
 
       if (onComplete) await onComplete();
     } catch (err) {
