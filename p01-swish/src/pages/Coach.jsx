@@ -15,10 +15,15 @@ export default function Coach() {
   const send = async () => {
     if (!input.trim() || loading) return;
     const text = input.trim();
+    const newMessages = [...messages, { role: "user", text }];
     setInput("");
-    setMessages(m => [...m, { role: "user", text }]);
+    setMessages(newMessages);
     setLoading(true);
     try {
+      const history = newMessages
+        .filter(m => m.role !== "coach" || m !== newMessages[0])
+        .map(m => ({ role: m.role === "coach" ? "assistant" : "user", content: m.text }));
+
       const res = await fetch("http://localhost:3001/api/coach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -26,13 +31,18 @@ export default function Coach() {
           model: "claude-sonnet-4-20250514",
           max_tokens: 300,
           system: "You are a sharp, no-nonsense investing coach for teenagers. Be concise and clear. No emojis.",
-          messages: [{ role: "user", content: text }],
+          messages: history,
         }),
       });
       const data = await res.json();
-      setMessages(m => [...m, { role: "coach", text: data.content?.[0]?.text || "Connection issue." }]);
-    } catch {
-      setMessages(m => [...m, { role: "coach", text: "Add your API key to .env to enable the coach." }]);
+      if (data.error) {
+        setMessages(m => [...m, { role: "coach", text: data.error?.message || data.error }]);
+      } else {
+        setMessages(m => [...m, { role: "coach", text: data.content?.[0]?.text || "No response received." }]);
+      }
+    } catch (err) {
+      console.error("Coach fetch failed:", err);
+      setMessages(m => [...m, { role: "coach", text: "Could not reach the coach server. Make sure the Express server is running (npm run dev:full)." }]);
     }
     setLoading(false);
   };
