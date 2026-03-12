@@ -10,7 +10,7 @@ const LEVELS = [
 ];
 
 const GLASS = {
-  background: "rgba(255, 255, 255, 0.08)",
+  background: "linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(200,220,255,0.18) 100%)",
   backdropFilter: "blur(40px) saturate(150%) brightness(1.05)",
   WebkitBackdropFilter: "blur(40px) saturate(150%) brightness(1.05)",
   borderRadius: "24px",
@@ -46,7 +46,7 @@ export default function XpPopup({ xp = 0, level = "Bronze", onClose }) {
 
   return (
     <div ref={ref} style={{
-      position: "absolute", top: "calc(100% + 8px)", right: "-40px",
+      position: "absolute", top: "calc(100% + 12px)", right: "-20px",
       width: "320px", padding: "24px",
       zIndex: 150, animation: "sheetUp .22s cubic-bezier(.34,1.56,.64,1)",
       ...GLASS,

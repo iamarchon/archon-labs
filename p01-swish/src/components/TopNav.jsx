@@ -84,7 +84,14 @@ export default function TopNav({ xp = 0, level = "Bronze" }) {
             >
               {xp.toLocaleString()} XP · {level}
             </button>
-            {showXp && <XpPopup xp={xp} level={level} onClose={() => setShowXp(false)} />}
+            {showXp && (
+              <div
+                onMouseEnter={handleEnter}
+                onMouseLeave={handleLeave}
+              >
+                <XpPopup xp={xp} level={level} onClose={() => setShowXp(false)} />
+              </div>
+            )}
           </div>
           <UserButton afterSignOutUrl="/" />
         </div>
