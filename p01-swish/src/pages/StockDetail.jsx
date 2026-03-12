@@ -5,13 +5,7 @@ import { T } from "../tokens";
 import Reveal from "../components/Reveal";
 import Card from "../components/Card";
 
-const RANGES = [
-  { label: "1D", resolution: "5", days: 1 },
-  { label: "1W", resolution: "60", days: 7 },
-  { label: "1M", resolution: "D", days: 30 },
-  { label: "3M", resolution: "D", days: 90 },
-  { label: "1Y", resolution: "W", days: 365 },
-];
+const RANGES = ["1D", "1W", "1M", "3M", "1Y"];
 
 const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
@@ -61,15 +55,12 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
     })();
   }, [symbol]);
 
-  // Fetch candle data
+  // Fetch candle data from Yahoo Finance via proxy
   const fetchCandles = useCallback(async (r) => {
     setLoading(true);
     try {
-      const rangeConfig = RANGES.find(x => x.label === r);
-      const to = Math.floor(Date.now() / 1000);
-      const from = to - rangeConfig.days * 86400;
       const res = await fetch(
-        `${baseUrl}/api/candles?symbol=${encodeURIComponent(symbol)}&resolution=${rangeConfig.resolution}&from=${from}&to=${to}`
+        `${baseUrl}/api/candles?symbol=${encodeURIComponent(symbol)}&range=${r}`
       );
       const data = await res.json();
       if (data.s === "ok" && data.c?.length) {
@@ -163,16 +154,16 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
           <div style={{ display: "flex", gap: "6px", marginTop: "16px", justifyContent: "center" }}>
             {RANGES.map(r => (
               <button
-                key={r.label}
-                onClick={() => setRange(r.label)}
+                key={r}
+                onClick={() => setRange(r)}
                 style={{
-                  background: range === r.label ? T.accent : T.bg,
-                  color: range === r.label ? T.white : T.inkSub,
+                  background: range === r ? T.accent : T.bg,
+                  color: range === r ? T.white : T.inkSub,
                   border: "none", borderRadius: "8px", padding: "7px 16px",
-                  fontSize: "13px", fontWeight: range === r.label ? 600 : 400,
+                  fontSize: "13px", fontWeight: range === r ? 600 : 400,
                   cursor: "pointer", transition: "all .18s ease",
                 }}
-              >{r.label}</button>
+              >{r}</button>
             ))}
           </div>
         </Card>

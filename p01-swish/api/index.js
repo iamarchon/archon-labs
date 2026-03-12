@@ -66,25 +66,47 @@ app.get("/api/quote/:symbol", async (req, res) => {
   }
 });
 
-/* ── GET /api/candles — Finnhub stock candles (historic chart) ── */
-app.get("/api/candles", async (req, res) => {
-  const apiKey = process.env.FINNHUB_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: "FINNHUB_API_KEY not set in .env" });
-  }
+/* ── GET /api/candles — Yahoo Finance chart data (free, no key) ── */
+const YAHOO_RANGE_MAP = {
+  "1D": { interval: "5m",  range: "1d"  },
+  "1W": { interval: "60m", range: "5d"  },
+  "1M": { interval: "1d",  range: "1mo" },
+  "3M": { interval: "1d",  range: "3mo" },
+  "1Y": { interval: "1wk", range: "1y"  },
+};
 
+app.get("/api/candles", async (req, res) => {
   try {
-    const { symbol, resolution, from, to } = req.query;
-    if (!symbol || !resolution || !from || !to) {
-      return res.status(400).json({ error: "Missing required params: symbol, resolution, from, to" });
+    const { symbol, range } = req.query;
+    if (!symbol || !range) {
+      return res.status(400).json({ error: "Missing required params: symbol, range" });
     }
-    const response = await fetch(
-      `https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(symbol.toUpperCase())}&resolution=${resolution}&from=${from}&to=${to}&token=${apiKey}`
-    );
+    const config = YAHOO_RANGE_MAP[range.toUpperCase()];
+    if (!config) {
+      return res.status(400).json({ error: "Invalid range. Use: 1D, 1W, 1M, 3M, 1Y" });
+    }
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol.toUpperCase())}?interval=${config.interval}&range=${config.range}`;
+    const response = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+    });
     const data = await response.json();
-    res.json(data);
+    const result = data?.chart?.result?.[0];
+    if (!result?.timestamp) {
+      return res.json({ s: "no_data", t: [], c: [] });
+    }
+    const timestamps = result.timestamp;
+    const closes = result.indicators.quote[0].close;
+    // Filter out null values
+    const t = [], c = [];
+    for (let i = 0; i < timestamps.length; i++) {
+      if (closes[i] != null) {
+        t.push(timestamps[i]);
+        c.push(closes[i]);
+      }
+    }
+    res.json({ s: "ok", t, c });
   } catch (err) {
-    res.status(502).json({ error: "Failed to reach Finnhub API" });
+    res.status(502).json({ error: "Failed to fetch chart data" });
   }
 });
 
