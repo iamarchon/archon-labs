@@ -297,14 +297,17 @@ export default function TeacherDashboard({ dbUser }) {
               Welcome back, {dbUser?.username ?? "Teacher"}
             </p>
           </div>
-          <button
-            style={S.btn}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.88")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-            onClick={fetchClassInsights}
-          >
-            Class Insights
-          </button>
+          <div style={{ textAlign: "center" }}>
+            <button
+              style={S.btn}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.88")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+              onClick={fetchClassInsights}
+            >
+              Class Insights
+            </button>
+            <p style={{ fontSize: 11, color: T.inkFaint, margin: "4px 0 0" }}>✨ AI Powered</p>
+          </div>
         </div>
       </Reveal>
 
