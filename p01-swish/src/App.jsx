@@ -308,7 +308,8 @@ function AppShell() {
     if (allHeldPricesLoaded) {
       const portfolioValue = activeHoldings.reduce((sum, h) => {
         const s = stocks.find(x => x.ticker === h.ticker);
-        return sum + Number(h.shares) * (s?.price ?? 0);
+        const price = s?.price ?? livePrices[h.ticker] ?? Number(h.avg_cost) ?? 0;
+        return sum + Number(h.shares) * price;
       }, 0);
       const newCash = action === "BUY"
         ? cash - (stock.price * shares)
@@ -365,8 +366,8 @@ function AppShell() {
   // Only compute portfolio value when ALL held tickers have sim-feed prices
   const portfolioValue = allHeldPricesLoaded ? activeHoldings.reduce((sum, h) => {
     const s = stocks.find(x => x.ticker === h.ticker);
-    // s.priceLoaded is guaranteed true for all held tickers here
-    return sum + Number(h.shares) * (s?.price ?? 0);
+    const price = s?.price ?? livePrices[h.ticker] ?? Number(h.avg_cost) ?? 0;
+    return sum + Number(h.shares) * price;
   }, 0) : 0;
   const totalValue = allHeldPricesLoaded ? portfolioValue + cash : null;
   const portfolioGain = totalValue != null ? ((totalValue - 10000) / 10000) * 100 : null;
