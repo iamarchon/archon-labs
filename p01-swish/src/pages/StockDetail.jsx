@@ -200,9 +200,29 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, onOpenDe
             <div style={{ fontSize: "36px", fontWeight: 700, letterSpacing: "-1.2px", color: T.ink, fontVariantNumeric: "tabular-nums" }}>
               {currentPrice != null ? `$${currentPrice.toFixed(2)}` : "$..."}
             </div>
-            <div style={{ color: (changePct ?? 0) >= 0 ? T.green : T.red, fontSize: "15px", fontWeight: 600, marginTop: "2px" }}>
-              {(changeAmt ?? 0) >= 0 ? "+" : ""}{(changeAmt ?? 0).toFixed(2)} ({(changePct ?? 0) >= 0 ? "+" : ""}{(changePct ?? 0).toFixed(2)}%)
-              <span style={{ color: T.inkFaint, fontWeight: 400, fontSize: "12px", marginLeft: "6px" }}>{rangeLabel}</span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "10px", marginTop: "2px" }}>
+              {(() => {
+                const now = new Date();
+                const et = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+                const day = et.getDay();
+                const mins = et.getHours() * 60 + et.getMinutes();
+                const isOpen = day >= 1 && day <= 5 && mins >= 570 && mins < 960;
+                return (
+                  <span style={{
+                    display: "inline-flex", alignItems: "center", gap: "5px",
+                    fontSize: "11px", fontWeight: 500, padding: "3px 10px", borderRadius: "20px",
+                    background: isOpen ? T.greenBg : T.redBg,
+                    color: isOpen ? T.green : T.inkFaint,
+                  }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: isOpen ? T.green : T.red }} />
+                    {isOpen ? "Market Open" : "Market Closed"}
+                  </span>
+                );
+              })()}
+              <span style={{ color: (changePct ?? 0) >= 0 ? T.green : T.red, fontSize: "15px", fontWeight: 600 }}>
+                {(changeAmt ?? 0) >= 0 ? "+" : ""}{(changeAmt ?? 0).toFixed(2)} ({(changePct ?? 0) >= 0 ? "+" : ""}{(changePct ?? 0).toFixed(2)}%)
+              </span>
+              <span style={{ color: T.inkFaint, fontWeight: 400, fontSize: "12px" }}>{rangeLabel}</span>
             </div>
           </div>
         </div>
