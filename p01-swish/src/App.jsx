@@ -350,28 +350,17 @@ function AppShell() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Check that EVERY held ticker has a real quote from /api/quote — not seed or avg_cost fallback
-  const allHeldPricesLoadedReal = quotesLoaded && (activeHoldings.length > 0
-    ? activeHoldings.every(h => {
-        const s = stocks.find(x => x.ticker === h.ticker);
-        return s?.priceLoaded === true;
-      })
-    : true // no holdings → just need quotes to have loaded
-  );
-  const allHeldPricesLoaded = allHeldPricesLoadedReal || priceTimedOut;
+  // quotesLoaded = true means all held ticker /api/quote calls have resolved.
+  // That's sufficient — no need to cross-check per-stock priceLoaded flag (causes desync).
+  const allHeldPricesLoaded = quotesLoaded || priceTimedOut;
 
-  // Debug: log skeleton blocking reason
+  // Debug: log skeleton state
   useEffect(() => {
-    if (allHeldPricesLoaded) {
-      console.log("[skeleton] cleared — allHeldPricesLoaded:", allHeldPricesLoadedReal, "timedOut:", priceTimedOut);
-    } else {
-      const missing = activeHoldings.filter(h => {
-        const s = stocks.find(x => x.ticker === h.ticker);
-        return !s?.priceLoaded;
-      }).map(h => h.ticker);
-      console.log("[skeleton] BLOCKING — quotesLoaded:", quotesLoaded, "missing tickers:", missing, "activeHoldings:", activeHoldings.map(h => h.ticker));
-    }
-  }, [allHeldPricesLoaded, allHeldPricesLoadedReal, priceTimedOut, quotesLoaded, activeHoldings, stocks]);
+    console.log("[skeleton]", allHeldPricesLoaded ? "CLEARED" : "BLOCKING",
+      "quotesLoaded:", quotesLoaded, "timedOut:", priceTimedOut,
+      "activeHoldings:", activeHoldings.map(h => h.ticker),
+      "dailyQuotes keys:", Object.keys(dailyQuotes));
+  }, [allHeldPricesLoaded, quotesLoaded, priceTimedOut, activeHoldings, dailyQuotes]);
 
   // Only compute portfolio value when ALL held tickers have sim-feed prices
   const portfolioValue = allHeldPricesLoaded ? activeHoldings.reduce((sum, h) => {
