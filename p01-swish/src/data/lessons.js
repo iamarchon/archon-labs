@@ -933,4 +933,53 @@ Dollar cost averaging, or DCA, is the strategy of investing a fixed amount of mo
       },
     ],
   },
+  // ─── DCA (Dollar Cost Averaging) ────────────────────────────
+  {
+    id: 21,
+    title: "What is Dollar Cost Averaging?",
+    category: "Beginner",
+    duration: "3 min read",
+    xpReward: 50,
+    content: `Dollar Cost Averaging (DCA) is one of the simplest and most powerful investing strategies ever invented. The idea is beautifully simple: instead of trying to find the perfect moment to invest, you invest the same amount of money on a regular schedule — every week, every two weeks, or every month. Rain or shine, bull market or bear market, you keep investing.
+
+Here's why it works: when prices are high, your fixed amount buys fewer shares. When prices are low, the same amount buys MORE shares. Over time, this means your average cost per share ends up lower than the average price of the stock. It's like a built-in discount that rewards consistency.
+
+Let's say you invest $10 every week into a stock. Week 1, the stock is $100 — you get 0.10 shares. Week 2, it drops to $50 — you get 0.20 shares. Week 3, it's back to $100 — you get 0.10 shares. Your total: $30 spent, 0.40 shares owned. Your average cost? $75 per share. But the average PRICE of the stock was $83.33. You beat the average just by being consistent.
+
+The biggest advantage of DCA isn't even mathematical — it's psychological. When the market crashes, most people panic and sell at the worst possible time. But if you have an auto-invest plan, you're BUYING during the crash, not selling. You're getting shares on sale while everyone else is running scared. This is exactly what Warren Buffett means when he says "be greedy when others are fearful."
+
+DCA is especially powerful for young investors. You might not have thousands of dollars to invest at once, but $5 or $10 a week? That's totally doable. And because you're starting early, compound interest turns those small regular investments into serious wealth over decades. A teenager investing $10/week from age 15 to 65 at 10% average returns would have over $400,000 — from just $10 a week!`,
+    quiz: [
+      {
+        question: "What is Dollar Cost Averaging?",
+        options: [
+          "Investing the same amount on a regular schedule",
+          "Buying stocks only when they're cheap",
+          "Putting all your money in at once",
+          "Selling stocks every day"
+        ],
+        correct: 0,
+      },
+      {
+        question: "When stock prices drop during DCA, what happens?",
+        options: [
+          "Your fixed amount buys MORE shares",
+          "Your fixed amount buys fewer shares",
+          "You should stop investing immediately",
+          "Nothing changes"
+        ],
+        correct: 0,
+      },
+      {
+        question: "Why is DCA good for young investors?",
+        options: [
+          "You can start with small amounts and build over time",
+          "It guarantees you'll never lose money",
+          "Stocks only go up for young people",
+          "It works only with large amounts of money"
+        ],
+        correct: 0,
+      },
+    ],
+  },
 ];

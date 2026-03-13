@@ -22,6 +22,7 @@ import StockDetail from "./pages/StockDetail";
 import Challenges from "./pages/Challenges";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import Scenarios from "./pages/Scenarios";
+import AutoInvest from "./pages/AutoInvest";
 import RoleSelect from "./components/RoleSelect";
 import useNotifications from "./hooks/useNotifications";
 import MobileNav from "./components/MobileNav";
@@ -275,6 +276,9 @@ function AppShell() {
             } />
             <Route path="/challenges" element={
               <Challenges dbUser={dbUser} onClaimXp={onClaimXp} fireConfetti={fireConfetti} />
+            } />
+            <Route path="/auto-invest" element={
+              <AutoInvest dbUser={dbUser} stocks={stocks} livePrices={livePrices} refreshUser={refreshUser} />
             } />
             <Route path="/learn" element={<Learn dbUser={dbUser} refreshUser={refreshUser} fireConfetti={fireConfetti} />} />
             <Route path="/scenarios" element={

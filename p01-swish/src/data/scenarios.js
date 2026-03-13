@@ -289,4 +289,40 @@ export const SCENARIO_DATA = [
     resultFact: "If you invest just $300/month from age 17 to 65 at the stock market's historical average return, you'll retire with over $2.1 million. No inheritance needed. No lottery. Just consistency.",
     isFinalBoss: true,
   },
+  {
+    id: "steady_saver",
+    title: "The Steady Saver",
+    emoji: "\u{1F4B0}",
+    difficulty: "Easy",
+    xp: 75,
+    setup: "You have $520 to invest in Apple (AAPL). You could invest it all right now, or spread it out over a year — $10 every week. Let's see which strategy wins.",
+    decisions: [
+      {
+        situation: "AAPL is at $180 today. Your friend says \"Just buy now — the market always goes up!\" But you've heard about Dollar Cost Averaging. What's your move?",
+        choices: [
+          { label: "A", text: "Invest all $520 right now at $180", consequence: "Lump sum can work, but if the stock drops next month, you bought everything at the peak.", points: 5 },
+          { label: "B", text: "Invest $10 every week for 52 weeks", consequence: "Smart! DCA means you buy more shares when prices dip and fewer when prices spike. Your average cost will likely be lower than today's price.", points: 25, best: true },
+          { label: "C", text: "Wait for a dip, then invest everything", consequence: "Timing the market almost never works. While you wait, the stock might keep climbing and you miss out entirely.", points: -10 },
+        ],
+      },
+      {
+        situation: "It's week 12. AAPL dropped from $180 to $150. You've been investing $10/week through the dip. Your total is $120 invested across different prices. You:",
+        choices: [
+          { label: "A", text: "Panic — stop the auto-invest plan", consequence: "Stopping during a dip is the worst thing you can do. DCA works BECAUSE you keep buying through dips.", points: -20 },
+          { label: "B", text: "Keep going — $10/week, no matter what", consequence: "This is the whole point of DCA. At $150, your $10 buys MORE shares than it did at $180. You're getting a discount!", points: 25, best: true },
+          { label: "C", text: "Double down — invest $20/week during the dip", consequence: "Aggressive, but smart if you can afford it. Buying more during dips amplifies the DCA advantage.", points: 15 },
+        ],
+      },
+      {
+        situation: "52 weeks later. AAPL is back at $190. The lump-sum investor bought 2.89 shares at $180. You bought shares every week at prices ranging from $150–$195. Your average cost: $168 per share, giving you 3.10 shares. Who came out ahead?",
+        choices: [
+          { label: "A", text: "The DCA investor (me!)", consequence: "Correct! Your 3.10 shares at $190 = $589. The lump-sum investor's 2.89 shares = $549. DCA won by $40!", points: 25, best: true },
+          { label: "B", text: "The lump-sum investor", consequence: "Actually, DCA won here. By buying through the dip, you got a lower average price and more shares.", points: -5 },
+          { label: "C", text: "It's about the same", consequence: "Close but not quite. DCA's lower average cost ($168 vs $180) gave you more shares and more profit.", points: 5 },
+        ],
+      },
+    ],
+    resultLesson: "Dollar Cost Averaging removes the guesswork from investing. Instead of trying to pick the perfect moment, you invest consistently and let math work in your favor.",
+    resultFact: "A study of S&P 500 returns over 20 years showed that DCA investors who invested monthly outperformed 65% of investors who tried to time the market. Consistency beats cleverness.",
+  },
 ];

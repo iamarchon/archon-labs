@@ -5,12 +5,13 @@ import { T } from "../tokens";
 import NotificationBell from "./NotificationBell";
 
 const STUDENT_NAV = [
-  { to: "/",            label: "Dashboard"   },
-  { to: "/markets",     label: "Markets"     },
-  { to: "/learn",       label: "Learn"       },
-  { to: "/scenarios",   label: "Scenarios"   },
-  { to: "/leaderboard", label: "Leaderboard" },
-  { to: "/coach",       label: "Coach"       },
+  { to: "/",              label: "Dashboard"    },
+  { to: "/markets",       label: "Markets"      },
+  { to: "/auto-invest",   label: "Auto-Invest"  },
+  { to: "/learn",         label: "Learn"        },
+  { to: "/scenarios",     label: "Scenarios"    },
+  { to: "/leaderboard",   label: "Leaderboard"  },
+  { to: "/coach",         label: "Coach"        },
 ];
 
 const TEACHER_NAV = [

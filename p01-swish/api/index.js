@@ -1242,6 +1242,107 @@ app.post("/api/teacher-insights/student", async (req, res) => {
   }
 });
 
+/* ── DCA (Dollar Cost Averaging) Auto-Invest Plans ── */
+
+// POST /api/dca/create — Create a new DCA plan
+app.post("/api/dca/create", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const { userId, stockSymbol, amount, frequency, startDate } = req.body;
+  if (!userId || !stockSymbol || !amount || !frequency) {
+    return res.status(400).json({ error: "userId, stockSymbol, amount, and frequency required" });
+  }
+  if (amount < 5) return res.status(400).json({ error: "Minimum amount is $5" });
+
+  const freqDays = { weekly: 7, biweekly: 14, monthly: 30 };
+  const intervalDays = freqDays[frequency];
+  if (!intervalDays) return res.status(400).json({ error: "frequency must be weekly, biweekly, or monthly" });
+
+  const start = startDate || new Date().toISOString().split("T")[0];
+  const nextRun = start;
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("dca_plans")
+      .insert({
+        user_id: userId,
+        stock_symbol: stockSymbol.toUpperCase(),
+        amount: Number(amount),
+        frequency,
+        start_date: start,
+        next_run_date: nextRun,
+        status: "active",
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    res.json({ success: true, plan: data });
+  } catch (err) {
+    console.error("DCA create error:", err);
+    res.status(500).json({ error: "Failed to create DCA plan" });
+  }
+});
+
+// GET /api/dca/plans — List user's DCA plans
+app.get("/api/dca/plans", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const userId = req.query.userId;
+  if (!userId) return res.status(400).json({ error: "userId required" });
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("dca_plans")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    res.json({ plans: data || [] });
+  } catch (err) {
+    console.error("DCA plans fetch error:", err);
+    res.status(500).json({ error: "Failed to fetch DCA plans" });
+  }
+});
+
+// PATCH /api/dca/pause/:id — Pause or resume a DCA plan
+app.patch("/api/dca/pause/:id", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const planId = req.params.id;
+  try {
+    const { data: plan } = await supabaseAdmin
+      .from("dca_plans")
+      .select("status")
+      .eq("id", planId)
+      .single();
+    if (!plan) return res.status(404).json({ error: "Plan not found" });
+
+    const newStatus = plan.status === "paused" ? "active" : "paused";
+    const { error } = await supabaseAdmin
+      .from("dca_plans")
+      .update({ status: newStatus })
+      .eq("id", planId);
+    if (error) throw error;
+    res.json({ success: true, status: newStatus });
+  } catch (err) {
+    console.error("DCA pause error:", err);
+    res.status(500).json({ error: "Failed to update DCA plan" });
+  }
+});
+
+// DELETE /api/dca/cancel/:id — Cancel (delete) a DCA plan
+app.delete("/api/dca/cancel/:id", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const planId = req.params.id;
+  try {
+    const { error } = await supabaseAdmin
+      .from("dca_plans")
+      .delete()
+      .eq("id", planId);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    console.error("DCA cancel error:", err);
+    res.status(500).json({ error: "Failed to cancel DCA plan" });
+  }
+});
+
 // Local dev: start server. Vercel uses the export.
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {

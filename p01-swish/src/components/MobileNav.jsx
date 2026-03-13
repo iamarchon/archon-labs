@@ -4,8 +4,8 @@ import { T } from "../tokens";
 const NAV_ITEMS = [
   { to: "/", label: "Home", icon: "🏠" },
   { to: "/markets", label: "Markets", icon: "📊" },
+  { to: "/auto-invest", label: "Auto", icon: "🔄" },
   { to: "/learn", label: "Learn", icon: "📚" },
-  { to: "/scenarios", label: "Play", icon: "🎮" },
   { to: "/leaderboard", label: "Rank", icon: "🏆" },
 ];
 

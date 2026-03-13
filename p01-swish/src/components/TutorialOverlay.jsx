@@ -9,7 +9,7 @@ const STEPS = [
   },
   {
     title: "Your AI Coach Has Your Back",
-    body: "Swish is powered by AI. Get plain-English news summaries, a personal coach to answer any money question, and smart insights — all built for you.",
+    body: "Swish is powered by AI. Get plain-English news summaries, a personal coach to answer any money question, smart insights, and Auto-Invest plans that invest for you on a schedule.",
     icon: "🤖",
   },
   {

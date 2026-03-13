@@ -1,7 +1,8 @@
-const CACHE_NAME = "swish-v1";
+const CACHE_NAME = "swish-v2";
 const SHELL_URLS = [
   "/",
   "/markets",
+  "/auto-invest",
   "/learn",
   "/scenarios",
   "/leaderboard",
