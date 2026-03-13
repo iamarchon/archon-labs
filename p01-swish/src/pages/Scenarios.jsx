@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Wallet, Zap, TrendingUp, PieChart, TrendingDown, DollarSign, Rocket, Briefcase, RefreshCw } from "lucide-react";
 import { T } from "../tokens";
 import Card from "../components/Card";
 import Reveal from "../components/Reveal";
@@ -6,10 +7,28 @@ import ProgressBar from "../components/ProgressBar";
 import ScenarioPlayer from "../components/ScenarioPlayer";
 import { SCENARIO_DATA } from "../data/scenarios";
 
+const SCENARIO_ICONS = {
+  first_paycheck: Wallet,
+  hot_tip: Zap,
+  compound_interest: TrendingUp,
+  diversification: PieChart,
+  market_crash_2008: TrendingDown,
+  inflation: DollarSign,
+  ipo_frenzy: Rocket,
+  side_hustle: Briefcase,
+  steady_saver: RefreshCw,
+};
+
+const DIFF_ICON_COLORS = {
+  Beginner: "#0071e3", Easy: "#0071e3",
+  Medium: "#f59e0b", Intermediate: "#f59e0b",
+  Advanced: "#8b5cf6",
+};
+
 const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
 const SCENARIOS = SCENARIO_DATA.map(s => ({
-  id: s.id, title: s.title, icon: s.emoji,
+  id: s.id, title: s.title,
   description: s.setup.slice(0, 90) + "...",
   difficulty: s.difficulty, xpReward: s.xp,
 }));
@@ -120,7 +139,15 @@ export default function Scenarios({ dbUser, onClaimXp, fireConfetti }) {
                   onClick={unlocked ? () => (done ? handleStart(sc) : handleStart(sc)) : undefined}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                    <span style={{ fontSize: 28 }}>{sc.icon}</span>
+                    {(() => {
+                      const IconComp = SCENARIO_ICONS[sc.id];
+                      const iconColor = DIFF_ICON_COLORS[sc.difficulty] || "#0071e3";
+                      return (
+                        <div style={{ width: 48, height: 48, borderRadius: 12, background: "#f5f5f7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          {IconComp && <IconComp size={28} strokeWidth={1.5} color={iconColor} />}
+                        </div>
+                      );
+                    })()}
                     <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 4, background: diffBg, color: diffColor, textTransform: "uppercase", letterSpacing: "0.04em" }}>{sc.difficulty}</span>
                   </div>
 

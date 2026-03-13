@@ -1,12 +1,13 @@
 import { NavLink } from "react-router-dom";
+import { Home, TrendingUp, RefreshCw, Gamepad2, BookOpen } from "lucide-react";
 import { T } from "../tokens";
 
 const NAV_ITEMS = [
-  { to: "/", label: "Home", icon: "🏠" },
-  { to: "/markets", label: "Markets", icon: "📊" },
-  { to: "/auto-invest", label: "Auto", icon: "🔄" },
-  { to: "/learn", label: "Learn", icon: "📚" },
-  { to: "/leaderboard", label: "Rank", icon: "🏆" },
+  { to: "/", label: "Home", Icon: Home },
+  { to: "/markets", label: "Markets", Icon: TrendingUp },
+  { to: "/auto-invest", label: "Auto", Icon: RefreshCw },
+  { to: "/scenarios", label: "Play", Icon: Gamepad2 },
+  { to: "/learn", label: "Learn", Icon: BookOpen },
 ];
 
 export default function MobileNav({ role }) {
@@ -35,8 +36,12 @@ export default function MobileNav({ role }) {
             transition: "color .15s ease",
           })}
         >
-          <span style={{ fontSize: "20px", lineHeight: 1 }}>{item.icon}</span>
-          <span style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.02em" }}>{item.label}</span>
+          {({ isActive }) => (
+            <>
+              <item.Icon size={22} strokeWidth={1.5} color={isActive ? T.accent : T.inkFaint} />
+              <span style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "0.02em" }}>{item.label}</span>
+            </>
+          )}
         </NavLink>
       ))}
     </nav>

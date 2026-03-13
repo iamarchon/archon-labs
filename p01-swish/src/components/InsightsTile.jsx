@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from "react";
+import { Lightbulb } from "lucide-react";
 import { T } from "../tokens";
 import Card from "./Card";
 
@@ -70,8 +71,8 @@ export default function InsightsTile({ holdings = [], cash = 10000, totalValue =
     <Card hover={false} style={{ padding: "28px 30px", ...cardStyle }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>
-            ✨ Your Insights
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>
+            <Lightbulb size={16} strokeWidth={1.5} color={T.inkFaint} />Your Insights
           </div>
           <span style={{ fontSize: "10px", fontWeight: 500, color: T.inkFaint, background: T.bg, padding: "2px 8px", borderRadius: "4px", border: `1px solid ${T.line}` }}>
             Powered by AI

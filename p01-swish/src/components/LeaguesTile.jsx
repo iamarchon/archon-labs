@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Users } from "lucide-react";
 import { T } from "../tokens";
 import Card from "./Card";
 
@@ -108,7 +109,7 @@ export default function LeaguesTile({ userId, cardStyle = {} }) {
   return (
     <Card hover={false} style={{ padding: "28px 30px", ...cardStyle }}>
       <div className="leagues-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-        <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>My Leagues 🏆</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}><Users size={16} strokeWidth={1.5} color={T.inkFaint} />My Leagues</div>
         <div style={{ display: "flex", gap: "8px" }}>
           <button onClick={() => { setShowCreate(v => !v); setShowJoin(false); setCreatedCode(null); setFormError(null); setFormSuccess(null); }}
             style={{ background: T.accent, color: T.white, border: "none", borderRadius: "8px", padding: "6px 14px", fontSize: "12px", fontWeight: 600, cursor: "pointer", transition: "opacity .15s" }}

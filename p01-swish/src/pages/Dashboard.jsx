@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { TrendingUp, Lightbulb, Star, Users, Briefcase, Activity, Flame, Award } from "lucide-react";
 import { T } from "../tokens";
 import supabase from "../lib/supabase";
 import Reveal from "../components/Reveal";
@@ -397,7 +398,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
         <Card style={{ padding: "28px 30px", marginBottom: "16px" }}>
           <div className="movers-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
             <div>
-              <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Market Movers</div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}><Activity size={16} strokeWidth={1.5} color={T.inkFaint} />Market Movers</div>
               <div style={{ color: T.inkFaint, fontSize: "11px", fontWeight: 500, letterSpacing: "0.03em", marginTop: "2px" }}>{moversRangeLabel}</div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -445,7 +446,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
           <Card style={{ padding: "28px 30px", marginBottom: "16px" }}>
             <div style={{ marginBottom: "20px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Watchlist 👀</div>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}><Star size={16} strokeWidth={1.5} color={T.inkFaint} />Watchlist</div>
                 <button onClick={() => navigate("/markets")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>Browse Markets</button>
               </div>
               <div style={{ marginTop: "10px" }}>
@@ -555,14 +556,14 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
             const activeHoldings = holdings.filter(h => Number(h.shares) > 0);
             return (<>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-            <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Your Holdings</div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}><Briefcase size={16} strokeWidth={1.5} color={T.inkFaint} />Your Holdings</div>
             {activeHoldings.length > 0 && (
               <RangeTabs selected={holdingsRange} onChange={setHoldingsRange} />
             )}
           </div>
           {activeHoldings.length === 0 ? (
             <div style={{ padding: "40px 20px", textAlign: "center" }}>
-              <div style={{ fontSize: "36px", marginBottom: "12px" }}>📈</div>
+              <div style={{ marginBottom: "12px" }}><TrendingUp size={36} strokeWidth={1.5} color={T.inkFaint} /></div>
               <div style={{ color: T.ink, fontSize: "16px", fontWeight: 600, marginBottom: "6px" }}>Your portfolio is empty</div>
               <div style={{ color: T.inkSub, fontSize: "14px", marginBottom: "20px" }}>Make your first trade to start building!</div>
               <button onClick={() => navigate("/markets")} style={{
@@ -623,14 +624,14 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       <div className="dash-two-col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", alignItems: "stretch", marginBottom: "16px" }}>
         <Reveal delay={0.1}>
           <Card style={{ padding: "28px 30px", height: "100%" }}>
-            <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px", marginBottom: "22px" }}>Your Progress 🏆</div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px", marginBottom: "22px" }}><TrendingUp size={16} strokeWidth={1.5} color={T.inkFaint} />Your Progress</div>
             {(() => {
               const LEVELS = [
-                { name: "Bronze", emoji: "🥉", threshold: 0 },
-                { name: "Silver", emoji: "🥈", threshold: 100 },
-                { name: "Gold", emoji: "🥇", threshold: 300 },
-                { name: "Platinum", emoji: "💎", threshold: 750 },
-                { name: "Legend", emoji: "👑", threshold: 2000 },
+                { name: "Bronze", color: "#92400e", threshold: 0 },
+                { name: "Silver", color: "#6b7280", threshold: 100 },
+                { name: "Gold", color: "#f59e0b", threshold: 300 },
+                { name: "Platinum", color: "#8b5cf6", threshold: 750 },
+                { name: "Legend", color: "#f59e0b", threshold: 2000 },
               ];
               const currentIdx = LEVELS.findIndex(l => l.name === level);
               const nextLevel = currentIdx < LEVELS.length - 1 ? LEVELS[currentIdx + 1] : null;
@@ -650,12 +651,12 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
                     </div>
                   </div>
                   <div style={{ background: T.bg, borderRadius: "14px", padding: "16px" }}>
-                    <div style={{ fontSize: "24px", lineHeight: 1 }}>{LEVELS[currentIdx]?.emoji}</div>
+                    <Award size={24} strokeWidth={1.5} color={LEVELS[currentIdx]?.color || T.inkFaint} />
                     <div style={{ color: T.ink, fontSize: "18px", fontWeight: 700, letterSpacing: "-0.5px", marginTop: "4px" }}>{level}</div>
                     <div style={{ color: T.inkFaint, fontSize: "10px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginTop: "2px" }}>Current level</div>
                   </div>
                   <div style={{ background: T.bg, borderRadius: "14px", padding: "16px" }}>
-                    <div style={{ color: T.ink, fontSize: "24px", fontWeight: 700, letterSpacing: "-0.8px", fontVariantNumeric: "tabular-nums" }}>🔥 {streak}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: T.ink, fontSize: "24px", fontWeight: 700, letterSpacing: "-0.8px", fontVariantNumeric: "tabular-nums" }}><Flame size={22} strokeWidth={1.5} color="#f97316" />{streak}</div>
                     <div style={{ color: T.inkFaint, fontSize: "10px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginTop: "2px" }}>Day streak</div>
                   </div>
                   <div style={{ background: T.bg, borderRadius: "14px", padding: "16px" }}>
