@@ -56,14 +56,17 @@ const formatYAxis = (value) => {
 export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, quotesLoaded = false, allHeldPricesLoaded: allHeldPricesLoadedProp = false, onClaimXp, fireConfetti, watchlist = [], watchlistItems = [], toggleWatch }) {
   const navigate = useNavigate();
 
-  // 4s timeout fallback: never leave user stuck on skeleton permanently
+  // Real signal: prices are confirmed loaded from /api/quote
+  const allHeldPricesLoaded = allHeldPricesLoadedProp;
+
+  // 4s timeout: unblocks chart/watchlist fetches, but NOT portfolio value display
   const [timedOut, setTimedOut] = useState(false);
   useEffect(() => {
-    if (allHeldPricesLoadedProp) return; // already resolved, no timer needed
+    if (allHeldPricesLoadedProp) return;
     const timer = setTimeout(() => setTimedOut(true), 4000);
     return () => clearTimeout(timer);
   }, [allHeldPricesLoadedProp]);
-  const allHeldPricesLoaded = allHeldPricesLoadedProp || timedOut;
+  const pricesOrTimedOut = allHeldPricesLoadedProp || timedOut;
 
   // Market hours check: Mon–Fri 9:30am–4:00pm US Eastern
   const isMarketOpen = useCallback(() => {
@@ -78,7 +81,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   // Live polling during market hours — 5s interval for held tickers
   const [liveQuotes, setLiveQuotes] = useState({});
   useEffect(() => {
-    if (!allHeldPricesLoaded || holdings.length === 0) return;
+    if (!pricesOrTimedOut || holdings.length === 0) return;
     if (!isMarketOpen()) return;
     let cancelled = false;
     const heldTickers = holdings.filter(h => Number(h.shares) > 0).map(h => h.ticker);
@@ -101,7 +104,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
     };
     const id = setInterval(poll, 5000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [allHeldPricesLoaded, holdings, isMarketOpen]);
+  }, [pricesOrTimedOut, holdings, isMarketOpen]);
 
   // Portfolio value: use live polled prices when available, else props
   const portfolioValue = allHeldPricesLoaded ? holdings.reduce((sum, h) => {
@@ -167,7 +170,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   // Build chart from current holdings × historical candle prices
   // Wait until sim prices are confirmed to avoid chart using seed/avg_cost fallback
   useEffect(() => {
-    if (!allHeldPricesLoaded) return;
+    if (!pricesOrTimedOut) return;
     const activeHoldings = holdings.filter(h => Number(h.shares) > 0);
     if (activeHoldings.length === 0) {
       // No holdings — show flat line at cash
@@ -194,11 +197,13 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
         // Find common timestamps across all tickers (use the ticker with most data points as base)
         const tickers = Object.keys(candleData);
         if (tickers.length === 0) {
-          // No candle data available — show flat line
-          setChartPoints([
-            { value: total, label: "Start" },
-            { value: total, label: "Now" },
-          ]);
+          // No candle data available — show flat line (only if total confirmed)
+          if (total != null) {
+            setChartPoints([
+              { value: total, label: "Start" },
+              { value: total, label: "Now" },
+            ]);
+          }
           return;
         }
 
@@ -260,19 +265,21 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
           points.push({ value: portfolioVal, label: formatLabel(ts) });
         }
 
-        // Append current live value as final point
-        const lastPt = points[points.length - 1];
-        if (!lastPt || Math.abs(total - lastPt.value) > 0.01) {
-          points.push({ value: total, label: "Now" });
+        // Append current live value as final point (only if total is confirmed)
+        if (total != null) {
+          const lastPt = points[points.length - 1];
+          if (!lastPt || Math.abs(total - lastPt.value) > 0.01) {
+            points.push({ value: total, label: "Now" });
+          }
         }
 
         setChartPoints(points);
       } catch {
-        setChartPoints([{ value: total, label: "Now" }]);
+        if (total != null) setChartPoints([{ value: total, label: "Now" }]);
       }
     })();
     return () => { cancelled = true; };
-  }, [holdings, perfRange, cash, total, stocks, livePrices, allHeldPricesLoaded]);
+  }, [holdings, perfRange, cash, total, stocks, livePrices, pricesOrTimedOut]);
 
   // Global leaderboard preview
   const [leaderboard, setLeaderboard] = useState([]);
@@ -412,7 +419,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
 
   // Fetch live quote for every watched symbol — DELAYED until sim prices loaded to avoid rate-limit contention
   useEffect(() => {
-    if (watchlist.length === 0 || !allHeldPricesLoaded) return;
+    if (watchlist.length === 0 || !pricesOrTimedOut) return;
     (async () => {
       const results = {};
       await Promise.all(watchlist.map(async (symbol) => {
@@ -426,7 +433,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       }));
       setWlQuotes(results);
     })();
-  }, [watchlist, allHeldPricesLoaded]);
+  }, [watchlist, pricesOrTimedOut]);
 
   // Fetch candle-based % change for selected range
   useEffect(() => {
@@ -453,7 +460,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   const [holdingsPerfChange, setHoldingsPerfChange] = useState({});
 
   useEffect(() => {
-    if (holdings.length === 0 || !allHeldPricesLoaded) return;
+    if (holdings.length === 0 || !pricesOrTimedOut) return;
     const tickers = holdings.filter(h => Number(h.shares) > 0).map(h => h.ticker);
     if (tickers.length === 0) return;
     setHoldingsPerfChange({});
@@ -483,7 +490,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       }
       setHoldingsPerfChange(results);
     })();
-  }, [holdings, perfRange, allHeldPricesLoaded, stocks]);
+  }, [holdings, perfRange, pricesOrTimedOut, stocks]);
 
   // Holdings time range + price history
   const [holdingsRange, setHoldingsRange] = useState("1D");

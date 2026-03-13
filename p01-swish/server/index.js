@@ -67,8 +67,8 @@ app.get("/api/quote/:symbol", async (req, res) => {
     );
     const data = await response.json();
 
-    // If Finnhub returns zeros and ticker is a known crypto, fall back to CoinGecko
-    if ((!data.c || data.c === 0) && CRYPTO_ID_MAP[ticker]) {
+    // If Finnhub returns zeros or null dp (no real data) and ticker is a known crypto, fall back to CoinGecko
+    if ((!data.c || data.c === 0 || data.dp == null) && CRYPTO_ID_MAP[ticker]) {
       const cached = cryptoQuoteCache.get(ticker);
       if (cached && Date.now() - cached.ts < CRYPTO_QUOTE_TTL) {
         return res.json(cached.data);
@@ -98,6 +98,7 @@ const CRYPTO_ID_MAP = {
   DOGE:"dogecoin",ADA:"cardano",AVAX:"avalanche-2",SHIB:"shiba-inu",DOT:"polkadot",
   MATIC:"matic-network",LTC:"litecoin",UNI:"uniswap",LINK:"chainlink",ATOM:"cosmos",
   XLM:"stellar",ALGO:"algorand",ICP:"internet-computer",FIL:"filecoin",NEAR:"near",
+  HYPE:"hyperliquid",
 };
 
 app.get("/api/crypto/quote/:id", async (req, res) => {
