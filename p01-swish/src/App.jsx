@@ -89,20 +89,82 @@ function AppShell() {
     return set;
   }, []);
 
-  // Single price source: fetch price + dp from our API (source:"swish"), staggered to avoid rate limits
+  // Price state: only fetch HELD tickers on app init (Dashboard needs ~5, not all 47)
+  // Full universe is fetched by Markets/StockSearch when that page mounts
   const [dailyQuotes, setDailyQuotes] = useState({});
   const [quotesLoaded, setQuotesLoaded] = useState(false);
+  const [quotesTimedOut, setQuotesTimedOut] = useState(false);
+
+  // Derive the tickers we actually need for portfolio value (held tickers only)
+  const heldTickers = useMemo(() => {
+    return holdings.filter(h => Number(h.shares) > 0).map(h => h.ticker);
+  }, [holdings]);
+
+  // Fetch ONLY held tickers — fast (1 batch, <1s) instead of 47 tickers (10 batches, ~3s)
   useEffect(() => {
+    if (heldTickers.length === 0) {
+      // No holdings — nothing to fetch, mark as loaded immediately
+      setQuotesLoaded(true);
+      return;
+    }
+    const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
+    let cancelled = false;
+
+    const fetchHeldQuotes = async () => {
+      const results = {};
+      await Promise.all(heldTickers.map(async (ticker) => {
+        try {
+          const isCrypto = CRYPTO_SYMBOLS.has(ticker);
+          const url = isCrypto
+            ? `${baseUrl}/api/crypto/quote/${encodeURIComponent(ticker)}`
+            : `${baseUrl}/api/quote/${encodeURIComponent(ticker)}`;
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data.source === "swish" && data.c && data.c > 0) {
+            results[ticker] = { dp: data.dp ?? 0, price: data.c };
+          }
+        } catch { /* ignore */ }
+      }));
+      if (!cancelled && Object.keys(results).length > 0) {
+        setDailyQuotes(prev => ({ ...prev, ...results }));
+        setQuotesLoaded(true);
+      }
+    };
+    fetchHeldQuotes();
+    // Re-poll held tickers every 30s to keep portfolio value fresh
+    const id = setInterval(fetchHeldQuotes, 30000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [heldTickers, CRYPTO_SYMBOLS]);
+
+  // 4s timeout fallback: if quotesLoaded is still false after 4s, force it true
+  useEffect(() => {
+    if (quotesLoaded) return;
+    const timer = setTimeout(() => {
+      if (!quotesLoaded) {
+        console.warn("[quotes] 4s timeout — forcing quotesLoaded=true with available data");
+        setQuotesTimedOut(true);
+        setQuotesLoaded(true);
+      }
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [quotesLoaded]);
+
+  // Fetch remaining universe tickers in background (for TickerStrip, Movers, etc.)
+  // This does NOT block quotesLoaded or allHeldPricesLoaded
+  useEffect(() => {
+    if (!quotesLoaded) return; // wait until held tickers are done first
     const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
     let cancelled = false;
     const delay = (ms) => new Promise(r => setTimeout(r, ms));
+    const heldSet = new Set(heldTickers);
+    const remainingTickers = allUniverseTickers.filter(t => !heldSet.has(t));
+    if (remainingTickers.length === 0) return;
 
-    const fetchQuotes = async () => {
+    const fetchRemaining = async () => {
       const results = {};
-      // Stagger requests: batch 5 at a time with 250ms gap to avoid rate limits
-      for (let i = 0; i < allUniverseTickers.length; i += 5) {
+      for (let i = 0; i < remainingTickers.length; i += 5) {
         if (cancelled) return;
-        const batch = allUniverseTickers.slice(i, i + 5);
+        const batch = remainingTickers.slice(i, i + 5);
         await Promise.all(batch.map(async (ticker) => {
           try {
             const isCrypto = CRYPTO_SYMBOLS.has(ticker);
@@ -111,23 +173,20 @@ function AppShell() {
               : `${baseUrl}/api/quote/${encodeURIComponent(ticker)}`;
             const res = await fetch(url);
             const data = await res.json();
-            // Only accept prices from our own API (source: "swish")
             if (data.source === "swish" && data.c && data.c > 0) {
               results[ticker] = { dp: data.dp ?? 0, price: data.c };
             }
           } catch { /* ignore */ }
         }));
-        if (i + 5 < allUniverseTickers.length) await delay(250);
+        if (i + 5 < remainingTickers.length) await delay(250);
       }
       if (!cancelled && Object.keys(results).length > 0) {
         setDailyQuotes(prev => ({ ...prev, ...results }));
-        setQuotesLoaded(true);
       }
     };
-    fetchQuotes();
-    const id = setInterval(fetchQuotes, 30000);
-    return () => { cancelled = true; clearInterval(id); };
-  }, [allUniverseTickers, CRYPTO_SYMBOLS]);
+    fetchRemaining();
+    return () => { cancelled = true; };
+  }, [quotesLoaded, heldTickers, allUniverseTickers, CRYPTO_SYMBOLS]);
 
   // Derive livePrices from dailyQuotes for backward compatibility
   const livePrices = useMemo(() => {
@@ -340,12 +399,15 @@ function AppShell() {
   const shouldShowTutorial = showTutorial && dbUser && totalTrades === 0 && dbUser.role !== "teacher";
 
   // Check that EVERY held ticker has a real quote from /api/quote — not seed or avg_cost fallback
-  const allHeldPricesLoaded = quotesLoaded && holdings.length > 0
-    ? holdings.every(h => {
-        const s = stocks.find(x => x.ticker === h.ticker);
-        return s?.priceLoaded === true;
-      })
-    : quotesLoaded; // no holdings → just need quotes to have loaded
+  // If 4s timeout fired, force true so user isn't stuck on skeleton forever
+  const allHeldPricesLoaded = quotesTimedOut ? true : (
+    quotesLoaded && holdings.length > 0
+      ? holdings.every(h => {
+          const s = stocks.find(x => x.ticker === h.ticker);
+          return s?.priceLoaded === true;
+        })
+      : quotesLoaded // no holdings → just need quotes to have loaded
+  );
 
   // Only compute portfolio value when ALL held tickers have sim-feed prices
   const portfolioValue = allHeldPricesLoaded ? holdings.reduce((sum, h) => {
