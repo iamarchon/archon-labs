@@ -283,11 +283,33 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
   const filteredSnapshots = (() => {
     const r = PRANGE.find(x => x.label === perfRange);
     const cutoff = Date.now() - r.days * 86400000;
-    const filtered = snapshots.filter(s => new Date(s.created_at).getTime() > cutoff);
-    return filtered.map(s => ({
+    let filtered = snapshots.filter(s => new Date(s.created_at).getTime() > cutoff);
+
+    // If no snapshots in selected range, fall back to all available snapshots
+    if (filtered.length === 0 && snapshots.length > 0) {
+      filtered = snapshots;
+    }
+
+    // Format label based on selected range
+    const formatLabel = (dateStr) => {
+      const d = new Date(dateStr);
+      if (perfRange === "1D") return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      if (perfRange === "1W") return d.toLocaleDateString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" });
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    };
+
+    const points = filtered.map(s => ({
       value: Number(s.total_value),
-      label: new Date(s.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      label: formatLabel(s.created_at),
     }));
+
+    // Always append current live value so chart reflects real-time portfolio
+    const lastSnapshotVal = points.length > 0 ? points[points.length - 1].value : null;
+    if (lastSnapshotVal === null || Math.abs(total - lastSnapshotVal) > 0.01) {
+      points.push({ value: total, label: formatLabel(new Date().toISOString()) });
+    }
+
+    return points;
   })();
 
   // Range-based P&L for hero subtitle
