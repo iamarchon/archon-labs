@@ -128,23 +128,25 @@ function AppShell() {
     prevLevelRef.current = level;
   }, [level, fireConfetti, dbUser]);
 
-  // Save portfolio snapshot helper — once per day max
+  // Save portfolio snapshot helper — once per day max (upsert on snapshot_date)
   const saveSnapshot = useCallback(async (value) => {
     if (!dbUser) return;
     try {
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-      const { count } = await supabase
-        .from("portfolio_snapshots")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", dbUser.id)
-        .gte("created_at", todayStart.toISOString());
+      const now = new Date();
+      const snapshotDate = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+      console.log("[snapshot] upserting for", snapshotDate, "value:", value);
 
-      if (count === 0) {
-        await supabase.from("portfolio_snapshots").insert({
-          user_id: dbUser.id,
-          total_value: value,
-        });
+      const { error } = await supabase
+        .from("portfolio_snapshots")
+        .upsert(
+          { user_id: dbUser.id, total_value: value, snapshot_date: snapshotDate },
+          { onConflict: "user_id,snapshot_date" }
+        );
+
+      if (error) {
+        console.error("[snapshot] upsert error:", error);
+      } else {
+        console.log("[snapshot] upsert success for", snapshotDate);
       }
     } catch (err) {
       console.error("Snapshot save failed:", err);

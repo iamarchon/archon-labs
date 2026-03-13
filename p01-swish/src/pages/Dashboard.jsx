@@ -64,18 +64,19 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
         await saveSnapshot?.(total);
       }
 
-      // Fetch yesterday's most recent snapshot (before today, within 48h)
+      // Fetch yesterday's snapshot using snapshot_date column
       try {
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+        const now = new Date();
+        const todayStr = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+        const twoDaysAgoDate = new Date(Date.now() - 48 * 60 * 60 * 1000);
+        const twoDaysAgoStr = `${twoDaysAgoDate.getUTCFullYear()}-${String(twoDaysAgoDate.getUTCMonth() + 1).padStart(2, "0")}-${String(twoDaysAgoDate.getUTCDate()).padStart(2, "0")}`;
         const { data: prev } = await supabase
           .from("portfolio_snapshots")
           .select("total_value")
           .eq("user_id", dbUser.id)
-          .lt("created_at", todayStart.toISOString())
-          .gte("created_at", twoDaysAgo)
-          .order("created_at", { ascending: false })
+          .lt("snapshot_date", todayStr)
+          .gte("snapshot_date", twoDaysAgoStr)
+          .order("snapshot_date", { ascending: false })
           .limit(1)
           .maybeSingle();
         if (cancelled) return;
@@ -117,9 +118,9 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
         // For 1D range, only show today's snapshots with yesterday's close as baseline
         let filtered = data || [];
         if (perfRange === "1D") {
-          const todayStart = new Date();
-          todayStart.setHours(0, 0, 0, 0);
-          filtered = filtered.filter(s => new Date(s.created_at) >= todayStart);
+          const n = new Date();
+          const utcTodayStart = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
+          filtered = filtered.filter(s => new Date(s.created_at) >= utcTodayStart);
         }
 
         const points = filtered.map(s => ({
