@@ -75,7 +75,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
     if (!allHeldPricesLoaded || holdings.length === 0) return;
     if (!isMarketOpen()) return;
     let cancelled = false;
-    const heldTickers = holdings.filter(h => Number(h.shares) > 0).map(h => h.ticker);
+    const heldTickers = holdings.filter(h => Number(h.shares) >= 0.001).map(h => h.ticker);
     if (heldTickers.length === 0) return;
 
     const poll = async () => {
@@ -162,7 +162,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   // Wait until sim prices are confirmed to avoid chart using seed/avg_cost fallback
   useEffect(() => {
     if (!allHeldPricesLoaded) return;
-    const activeHoldings = holdings.filter(h => Number(h.shares) > 0);
+    const activeHoldings = holdings.filter(h => Number(h.shares) >= 0.001);
     if (activeHoldings.length === 0) {
       // No holdings — show flat line at cash
       setChartPoints([{ value: cash, label: "Now" }]);
@@ -452,7 +452,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
 
   useEffect(() => {
     if (holdings.length === 0 || !allHeldPricesLoaded) return;
-    const tickers = holdings.filter(h => Number(h.shares) > 0).map(h => h.ticker);
+    const tickers = holdings.filter(h => Number(h.shares) >= 0.001).map(h => h.ticker);
     if (tickers.length === 0) return;
     setHoldingsPerfChange({});
     (async () => {
@@ -563,7 +563,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
                 <div style={{ height: "20px", width: "180px", borderRadius: "8px", marginTop: "12px", background: `linear-gradient(90deg, ${T.line} 25%, #f0f0f5 50%, ${T.line} 75%)`, backgroundSize: "200% 100%", animation: "shimmer 1.5s ease infinite" }} />
               )}
               {(() => {
-                const activeH = holdings.filter(h => Number(h.shares) > 0);
+                const activeH = holdings.filter(h => Number(h.shares) >= 0.001);
                 if (activeH.length === 0) return null;
                 const BEST_LABELS = { "1D": "today", "1W": "this week", "1M": "this month", "3M": "last 3 months", "1Y": "this year" };
                 const periodLabel = BEST_LABELS[perfRange] || "today";
@@ -791,7 +791,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       <Reveal delay={0.08}>
         <Card style={{ padding: "28px 30px", marginBottom: "16px" }}>
           {(() => {
-            const activeHoldings = holdings.filter(h => Number(h.shares) > 0);
+            const activeHoldings = holdings.filter(h => Number(h.shares) >= 0.001);
             return (<>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}><Briefcase size={16} strokeWidth={1.5} color={T.inkFaint} />Your Holdings</div>

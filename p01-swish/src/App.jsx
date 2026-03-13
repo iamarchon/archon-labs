@@ -96,7 +96,7 @@ function AppShell() {
 
   // Derive held tickers from holdings (only when holdings are loaded from Supabase)
   const heldTickers = useMemo(() => {
-    return holdings.filter(h => Number(h.shares) > 0).map(h => h.ticker);
+    return holdings.filter(h => Number(h.shares) >= 0.001).map(h => h.ticker);
   }, [holdings]);
 
   // Fetch ONLY held tickers — nothing else runs at app level
@@ -338,7 +338,7 @@ function AppShell() {
 
   // Only check held tickers (shares > 0) — ignore 0-share rows from past sells
   // MUST be declared before any conditional returns (React rules of hooks)
-  const activeHoldings = useMemo(() => holdings.filter(h => Number(h.shares) > 0), [holdings]);
+  const activeHoldings = useMemo(() => holdings.filter(h => Number(h.shares) >= 0.001), [holdings]);
 
   // 8s hard timeout — if prices haven't loaded by then, force loaded to prevent infinite skeleton
   const [priceTimedOut, setPriceTimedOut] = useState(false);
