@@ -310,48 +310,35 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       .slice(0, 5);
   }, [stocks]);
 
-  // Crypto movers: fetch BTC/ETH/COIN directly (they aren't in the held-tickers-only stocks array)
-  const CRYPTO_MOVERS_LIST = useMemo(() => [
-    { ticker: "BTC", name: "Bitcoin", isCrypto: true },
-    { ticker: "ETH", name: "Ethereum", isCrypto: true },
-    { ticker: "COIN", name: "Coinbase", isCrypto: false },
-  ], []);
-  const [cryptoQuotes, setCryptoQuotes] = useState({});
+  // Crypto movers: fetch from /api/crypto/top on mount (covers BTC, ETH, and all top coins)
+  const [cryptoMoversData, setCryptoMoversData] = useState([]);
 
   useEffect(() => {
-    if (moversTab !== "Crypto") return;
     let cancelled = false;
     (async () => {
-      const results = {};
-      await Promise.all(CRYPTO_MOVERS_LIST.map(async (c) => {
-        try {
-          const endpoint = c.isCrypto
-            ? `${baseUrl}/api/crypto/quote/${encodeURIComponent(c.ticker)}`
-            : `${baseUrl}/api/quote/${encodeURIComponent(c.ticker)}`;
-          const res = await fetch(endpoint);
-          const data = await res.json();
-          if (data.c && data.c > 0) {
-            results[c.ticker] = { price: data.c, changePct: data.dp ?? 0 };
-          }
-        } catch { /* ignore */ }
-      }));
-      if (!cancelled) setCryptoQuotes(results);
+      try {
+        const res = await fetch(`${baseUrl}/api/crypto/top`);
+        const data = await res.json();
+        if (!cancelled && data.coins) {
+          setCryptoMoversData(data.coins.map(c => ({
+            ticker: c.symbol,
+            name: c.name,
+            price: c.price,
+            changePct: c.changePct ?? 0,
+            isCrypto: true,
+          })));
+        }
+      } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, [moversTab, CRYPTO_MOVERS_LIST]);
+  }, []);
 
   const cryptoMovers = useMemo(() => {
-    return CRYPTO_MOVERS_LIST
-      .filter(c => cryptoQuotes[c.ticker])
-      .map(c => ({
-        ticker: c.ticker,
-        name: c.name,
-        price: cryptoQuotes[c.ticker].price,
-        changePct: cryptoQuotes[c.ticker].changePct,
-        isCrypto: c.isCrypto,
-      }))
-      .sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct));
-  }, [cryptoQuotes, CRYPTO_MOVERS_LIST]);
+    return [...cryptoMoversData]
+      .filter(s => s.price > 0 && s.changePct !== undefined)
+      .sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct))
+      .slice(0, 5);
+  }, [cryptoMoversData]);
 
   const activeMovers = moversTab === "Stocks" ? stockMovers : cryptoMovers;
 
