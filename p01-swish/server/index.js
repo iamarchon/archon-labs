@@ -191,6 +191,19 @@ const MOVER_CANDLE_MAP = {
   "1Y": { interval: "1wk", range: "1y"  },
 };
 
+const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function fetchWithRetry(url, opts = {}, retries = 2) {
+  for (let i = 0; i <= retries; i++) {
+    const resp = await fetch(url, opts);
+    if (resp.status === 429 && i < retries) {
+      await delay(500 * (i + 1));
+      continue;
+    }
+    return resp;
+  }
+}
+
 app.get("/api/movers", async (req, res) => {
   try {
     const range = (req.query.range || "1D").toUpperCase();
@@ -200,16 +213,18 @@ app.get("/api/movers", async (req, res) => {
 
     const finnhubKey = process.env.FINNHUB_API_KEY;
 
-    const results = await Promise.all(MOVER_SYMBOLS.map(async (symbol) => {
+    // Stagger fetches 200ms apart to avoid Finnhub rate limits
+    const results = [];
+    for (let i = 0; i < MOVER_SYMBOLS.length; i++) {
+      const symbol = MOVER_SYMBOLS[i];
+      if (i > 0 && range === "1D") await delay(200);
       try {
         if (range === "1D") {
-          // Use Finnhub quote for today's % change
-          if (!finnhubKey) return null;
-          const qRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${finnhubKey}`);
+          if (!finnhubKey) { results.push(null); continue; }
+          const qRes = await fetchWithRetry(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${finnhubKey}`);
           const q = await qRes.json();
-          if (!q || q.c <= 0) return null;
+          if (!q || q.c <= 0) { results.push(null); continue; }
           const changePercent = q.dp ?? ((q.c - q.pc) / q.pc) * 100;
-          // Fetch 1D candles for sparkline
           let sparkline = [];
           try {
             const cRes = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=5m&range=1d`, { headers: { "User-Agent": "Mozilla/5.0" } });
@@ -220,28 +235,27 @@ app.get("/api/movers", async (req, res) => {
               sparkline = closes.filter((_, i) => i % step === 0 || i === closes.length - 1);
             }
           } catch { /* sparkline optional */ }
-          return { symbol, price: q.c, changePercent, trending: changePercent >= 0 ? "up" : "down", sparkline };
+          results.push({ symbol, price: q.c, changePercent, trending: changePercent >= 0 ? "up" : "down", sparkline });
         } else {
-          // 1W/1M/3M/1Y: use candle data
           const config = MOVER_CANDLE_MAP[range];
           const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${config.interval}&range=${config.range}`;
           const resp = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
           const data = await resp.json();
           const result = data?.chart?.result?.[0];
-          if (!result?.timestamp) return null;
+          if (!result?.timestamp) { results.push(null); continue; }
           const q = result.indicators.quote[0];
           const closes = q.close.filter(c => c != null);
           const opens = q.open.filter(o => o != null);
-          if (closes.length < 2 || opens.length < 1) return null;
+          if (closes.length < 2 || opens.length < 1) { results.push(null); continue; }
           const firstOpen = opens[0];
           const last = closes[closes.length - 1];
           const changePercent = ((last - firstOpen) / firstOpen) * 100;
           const step = Math.max(1, Math.floor(closes.length / 12));
           const sparkline = closes.filter((_, i) => i % step === 0 || i === closes.length - 1);
-          return { symbol, price: last, changePercent, trending: changePercent >= 0 ? "up" : "down", sparkline };
+          results.push({ symbol, price: last, changePercent, trending: changePercent >= 0 ? "up" : "down", sparkline });
         }
-      } catch { return null; }
-    }));
+      } catch { results.push(null); }
+    }
 
     const movers = results.filter(Boolean).sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent)).slice(0, 5);
     res.json({ movers, range });
