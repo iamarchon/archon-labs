@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { T } from "../tokens";
@@ -44,48 +44,51 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
 
   // Poll quote every 30s for live price
   useEffect(() => {
+    let cancelled = false;
     const fetchQuote = async () => {
       try {
         const res = await fetch(`${baseUrl}/api/quote/${encodeURIComponent(symbol)}`);
         const data = await res.json();
-        if (data.c > 0) setQuote(data);
+        if (!cancelled && data.c > 0) setQuote(data);
       } catch { /* ignore */ }
     };
     fetchQuote();
     const id = setInterval(fetchQuote, 30000);
-    return () => clearInterval(id);
+    return () => { cancelled = true; clearInterval(id); };
   }, [symbol]);
 
   // Raw OHLC data for stats
   const [rawOhlc, setRawOhlc] = useState(null);
 
   // Fetch candle data from Yahoo Finance via proxy
-  const fetchCandles = useCallback(async (r) => {
+  useEffect(() => {
+    let cancelled = false;
     setLoading(true);
-    try {
-      const res = await fetch(
-        `${baseUrl}/api/candles?symbol=${encodeURIComponent(symbol)}&range=${r}`
-      );
-      const data = await res.json();
-      if (data.s === "ok" && data.c?.length) {
-        setCandles(data.t.map((t, i) => ({
-          timestamp: t,
-          price: data.c[i],
-          time: formatTime(t, r),
-        })));
-        setRawOhlc({ o: data.o, h: data.h, l: data.l, c: data.c });
-      } else {
-        setCandles([]);
-        setRawOhlc(null);
+    (async () => {
+      try {
+        const res = await fetch(
+          `${baseUrl}/api/candles?symbol=${encodeURIComponent(symbol)}&range=${range}`
+        );
+        const data = await res.json();
+        if (cancelled) return;
+        if (data.s === "ok" && data.c?.length) {
+          setCandles(data.t.map((t, i) => ({
+            timestamp: t,
+            price: data.c[i],
+            time: formatTime(t, range),
+          })));
+          setRawOhlc({ o: data.o, h: data.h, l: data.l, c: data.c });
+        } else {
+          setCandles([]);
+          setRawOhlc(null);
+        }
+      } catch {
+        if (!cancelled) { setCandles([]); setRawOhlc(null); }
       }
-    } catch {
-      setCandles([]);
-      setRawOhlc(null);
-    }
-    setLoading(false);
-  }, [symbol]);
-
-  useEffect(() => { fetchCandles(range); }, [range, fetchCandles]);
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [range, symbol]);
 
   // Derive stats from candle OHLC data for the selected range
   const rangeStats = (() => {
@@ -123,6 +126,7 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
   const [newsError, setNewsError] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     setNewsLoading(true);
     setNewsError(false);
     setNews(null);
@@ -131,12 +135,13 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
         const res = await fetch(`${baseUrl}/api/news/${encodeURIComponent(symbol)}?name=${encodeURIComponent(stockName)}`);
         if (!res.ok) throw new Error();
         const data = await res.json();
-        setNews(data);
+        if (!cancelled) setNews(data);
       } catch {
-        setNewsError(true);
+        if (!cancelled) setNewsError(true);
       }
-      setNewsLoading(false);
+      if (!cancelled) setNewsLoading(false);
     })();
+    return () => { cancelled = true; };
   }, [symbol, stockName]);
 
   const tickInterval = candles.length > 5 ? Math.floor(candles.length / 5) : 1;
@@ -144,7 +149,7 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
   return (
     <div style={{ maxWidth: "860px", margin: "0 auto", padding: "40px 28px 100px" }}>
       <Reveal>
-        <button onClick={() => navigate(-1)} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "14px", fontWeight: 500, marginBottom: "24px", padding: 0 }}>
+        <button onClick={() => navigate("/markets")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "14px", fontWeight: 500, marginBottom: "24px", padding: 0 }}>
           ← Back
         </button>
 

@@ -83,7 +83,7 @@ const BADGE_STYLES = {
 };
 
 /* ── StockRow ── */
-const StockRow = ({ stock, onTrade, onWatch, watched }) => {
+const StockRow = ({ stock, onTrade, onOpenTrade, onWatch, watched }) => {
   const [hov, setHov] = useState(false);
   const pos = stock.changePct >= 0;
   const badge = stock.isETF ? "ETF" : stock.isCrypto ? "Crypto" : null;
@@ -162,7 +162,7 @@ const StockRow = ({ stock, onTrade, onWatch, watched }) => {
           {watched ? "★ Watching" : "☆ Watch"}
         </button>
         <button
-          onClick={e => { e.stopPropagation(); onTrade(stock); }}
+          onClick={e => { e.stopPropagation(); (onOpenTrade || onTrade)(stock); }}
           style={{
             background: T.accent, border: "none", borderRadius: "8px",
             cursor: "pointer", padding: "6px 14px",
@@ -180,7 +180,7 @@ const StockRow = ({ stock, onTrade, onWatch, watched }) => {
 };
 
 /* ── Main component ── */
-export default function StockSearch({ onTrade, onWatch, watchlist = [] }) {
+export default function StockSearch({ onTrade, onOpenTrade, onWatch, watchlist = [] }) {
   const [query, setQuery]           = useState("");
   const [sector, setSector]         = useState("All");
   const [results, setResults]       = useState([]);
@@ -485,6 +485,7 @@ export default function StockSearch({ onTrade, onWatch, watchlist = [] }) {
             key={stock.ticker + i}
             stock={stock}
             onTrade={onTrade}
+            onOpenTrade={onOpenTrade}
             onWatch={onWatch}
             watched={watchlist.includes(stock.ticker)}
           />

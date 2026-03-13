@@ -244,7 +244,7 @@ function AppShell() {
                 toggleWatch={toggleWatch} />
             } />
             <Route path="/markets" element={
-              <Markets onTrade={goToStock} watchlist={watchlist} onWatch={toggleWatch} />
+              <Markets onTrade={goToStock} onOpenTrade={setTradeStock} watchlist={watchlist} onWatch={toggleWatch} />
             } />
             <Route path="/portfolio" element={<Navigate to="/" replace />} />
             <Route path="/stock/:symbol" element={
