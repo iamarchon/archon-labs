@@ -94,7 +94,9 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   }, [dbUser?.id, total, saveSnapshot, allHeldPricesLoaded]);
 
   // Build chart from current holdings × historical candle prices
+  // Wait until sim prices are confirmed to avoid chart using seed/avg_cost fallback
   useEffect(() => {
+    if (!allHeldPricesLoaded) return;
     const activeHoldings = holdings.filter(h => Number(h.shares) > 0);
     if (activeHoldings.length === 0) {
       // No holdings — show flat line at cash
@@ -199,7 +201,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       }
     })();
     return () => { cancelled = true; };
-  }, [holdings, perfRange, cash, total, stocks, livePrices]);
+  }, [holdings, perfRange, cash, total, stocks, livePrices, allHeldPricesLoaded]);
 
   // Global leaderboard preview
   const [leaderboard, setLeaderboard] = useState([]);
@@ -313,9 +315,9 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   const [wlQuotes, setWlQuotes] = useState({});
   const [wlCollapsed, setWlCollapsed] = useState({});
 
-  // Fetch live quote for every watched symbol (price + daily % from Finnhub)
+  // Fetch live quote for every watched symbol — DELAYED until sim prices loaded to avoid rate-limit contention
   useEffect(() => {
-    if (watchlist.length === 0) return;
+    if (watchlist.length === 0 || !allHeldPricesLoaded) return;
     (async () => {
       const results = {};
       await Promise.all(watchlist.map(async (symbol) => {
@@ -329,7 +331,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       }));
       setWlQuotes(results);
     })();
-  }, [watchlist]);
+  }, [watchlist, allHeldPricesLoaded]);
 
   // Fetch candle-based % change for selected range
   useEffect(() => {
@@ -352,26 +354,24 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   }, [watchlist, wlRange]);
 
   // Holdings % change for the selected hero chart range (perfRange)
+  // DELAYED until sim prices loaded to avoid rate-limit contention with App.jsx
   const [holdingsPerfChange, setHoldingsPerfChange] = useState({});
 
   useEffect(() => {
-    if (holdings.length === 0) return;
+    if (holdings.length === 0 || !allHeldPricesLoaded) return;
     const tickers = holdings.filter(h => Number(h.shares) > 0).map(h => h.ticker);
     if (tickers.length === 0) return;
     setHoldingsPerfChange({});
     (async () => {
       const results = {};
       if (perfRange === "1D") {
-        // Use Finnhub quote API for 1D daily percent change
-        await Promise.all(tickers.map(async (ticker) => {
-          try {
-            const res = await fetch(`${baseUrl}/api/quote/${encodeURIComponent(ticker)}`);
-            const data = await res.json();
-            if (data.c && data.c > 0) {
-              results[ticker] = data.dp ?? 0;
-            }
-          } catch { /* ignore */ }
-        }));
+        // Use already-loaded dp from stocks array instead of a separate fetch
+        for (const ticker of tickers) {
+          const s = stocks.find(x => x.ticker === ticker);
+          if (s?.dailyPct !== undefined) {
+            results[ticker] = s.dailyPct;
+          }
+        }
       } else {
         // Use candle API for longer ranges
         await Promise.all(tickers.map(async (ticker) => {
@@ -388,7 +388,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       }
       setHoldingsPerfChange(results);
     })();
-  }, [holdings, perfRange]);
+  }, [holdings, perfRange, allHeldPricesLoaded, stocks]);
 
   // Holdings time range + price history
   const [holdingsRange, setHoldingsRange] = useState("1D");
@@ -453,14 +453,21 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: "32px" }}>
             <div>
               <div style={{ color: T.inkFaint, fontSize: "12px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "10px" }}>Portfolio Value</div>
-              <div className="portfolio-value" style={{ fontSize: "56px", fontWeight: 700, letterSpacing: "-2.5px", color: T.ink, fontVariantNumeric: "tabular-nums", lineHeight: 1, opacity: allHeldPricesLoaded ? 1 : 0.4, animation: allHeldPricesLoaded ? "none" : "pulse 1.5s ease infinite", transition: "opacity .3s ease" }}>
-                ${(total ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              {hasRangeData && (
+              {allHeldPricesLoaded ? (
+                <div className="portfolio-value" style={{ fontSize: "56px", fontWeight: 700, letterSpacing: "-2.5px", color: T.ink, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+                  ${(total ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              ) : (
+                <div style={{ height: "56px", width: "280px", borderRadius: "12px", background: `linear-gradient(90deg, ${T.line} 25%, #f0f0f5 50%, ${T.line} 75%)`, backgroundSize: "200% 100%", animation: "shimmer 1.5s ease infinite" }} />
+              )}
+              {allHeldPricesLoaded && hasRangeData && (
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "12px" }}>
                   <span style={{ color: rangeGain >= 0 ? T.green : T.red, fontSize: "17px", fontWeight: 600 }}>{rangeGain >= 0 ? "▲" : "▼"} {rangeGain >= 0 ? "+" : ""}{(rangeGainPct ?? 0).toFixed(2)}%</span>
                   <span style={{ color: T.inkFaint, fontSize: "15px" }}>{rangeGain >= 0 ? "+" : "−"}${Math.abs(rangeGain ?? 0).toFixed(2)} {rangeLabel}</span>
                 </div>
+              )}
+              {!allHeldPricesLoaded && (
+                <div style={{ height: "20px", width: "180px", borderRadius: "8px", marginTop: "12px", background: `linear-gradient(90deg, ${T.line} 25%, #f0f0f5 50%, ${T.line} 75%)`, backgroundSize: "200% 100%", animation: "shimmer 1.5s ease infinite" }} />
               )}
               {(() => {
                 const activeH = holdings.filter(h => Number(h.shares) > 0);
@@ -520,10 +527,14 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
           </div>
 
           <div style={{ display: "flex", marginTop: "24px", paddingTop: "28px", borderTop: `1px solid ${T.line}` }}>
-            {[["Invested", portfolioValue != null ? `$${portfolioValue.toFixed(2)}` : "—"], ["Available Cash", `$${(cash ?? 0).toFixed(2)}`]].map((stat, i, arr) => (
+            {[["Invested", allHeldPricesLoaded && portfolioValue != null ? `$${portfolioValue.toFixed(2)}` : null], ["Available Cash", `$${(cash ?? 0).toFixed(2)}`]].map((stat, i, arr) => (
               <div key={stat[0]} style={{ flex: 1, textAlign: "center", borderRight: i < arr.length - 1 ? `1px solid ${T.line}` : "none" }}>
                 <div style={{ color: T.inkFaint, fontSize: "10.5px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "5px" }}>{stat[0]}</div>
-                <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>{stat[1]}</div>
+                {stat[1] != null ? (
+                  <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>{stat[1]}</div>
+                ) : (
+                  <div style={{ height: "20px", width: "100px", borderRadius: "8px", margin: "0 auto", background: `linear-gradient(90deg, ${T.line} 25%, #f0f0f5 50%, ${T.line} 75%)`, backgroundSize: "200% 100%", animation: "shimmer 1.5s ease infinite" }} />
+                )}
               </div>
             ))}
           </div>

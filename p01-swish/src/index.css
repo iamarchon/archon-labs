@@ -36,6 +36,7 @@ input::placeholder { color: #86868b; }
 @keyframes slideInRight { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes pullSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes sheetSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
 /* Floating coach bubble + sheet: visible only below 768px */
 .floating-coach-bubble { display: none; }
