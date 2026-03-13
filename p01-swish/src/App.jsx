@@ -27,6 +27,8 @@ import RoleSelect from "./components/RoleSelect";
 import useNotifications from "./hooks/useNotifications";
 import MobileNav from "./components/MobileNav";
 import TutorialOverlay from "./components/TutorialOverlay";
+import usePullToRefresh from "./hooks/usePullToRefresh";
+import PullToRefreshIndicator from "./components/PullToRefreshIndicator";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -48,6 +50,12 @@ function AppShell() {
   const [detailStock, setDetailStock] = useState(null);
   const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem("swish_tutorial_done"));
   const { pathname } = useLocation();
+
+  // Pull-to-refresh on mobile
+  const handlePullRefresh = useCallback(async () => {
+    await Promise.all([refreshUser(), refreshHoldings()]);
+  }, [refreshUser, refreshHoldings]);
+  const { state: pullState, pullDistance } = usePullToRefresh(handlePullRefresh);
 
   // Close trade modal on route change
   useEffect(() => {
@@ -335,6 +343,7 @@ function AppShell() {
         </div>
       )}
 
+      <PullToRefreshIndicator state={pullState} pullDistance={pullDistance} />
       <MobileNav role={dbUser?.role} />
 
       {shouldShowTutorial && (
