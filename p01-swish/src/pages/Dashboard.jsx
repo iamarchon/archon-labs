@@ -48,7 +48,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
 
   // Portfolio snapshots
   const [snapshots, setSnapshots] = useState([]);
-  const [perfRange, setPerfRange] = useState("1Y");
+  const [perfRange, setPerfRange] = useState("1D");
   const [sessionDelta, setSessionDelta] = useState(null);
   const [lastSessionValue, setLastSessionValue] = useState(null);
 
@@ -304,7 +304,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
   const rangeGainPct = rangeBaseline > 0 ? (rangeGain / rangeBaseline) * 100 : 0;
   const rangeLabelFinal = filteredSnapshots.length >= 2 ? rangeLabel : "all time";
 
-  const perfColor = gainPct >= 0 ? "#22c55e" : "#ef4444";
+  const perfColor = rangeGain >= 0 ? "#22c55e" : "#ef4444";
 
   return (
     <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px 24px 100px" }}>
