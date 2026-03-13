@@ -23,6 +23,7 @@ const SCENARIO_UNLOCKS = {
   inflation: { type: "and", conditions: [{ type: "lesson", lessonId: 19 }, { type: "scenario", requires: ["market_crash_2008"] }], hint: "Complete 'Understanding Bonds' lesson and 'Market Crash of 2008' scenario" },
   ipo_frenzy: { type: "and", conditions: [{ type: "lesson", lessonId: 11 }, { type: "lesson", lessonId: 18 }, { type: "scenario", requires: ["inflation"] }], hint: "Complete 'Reading Earnings Reports' + 'What is Crypto?' lessons and 'Inflation Buster' scenario" },
   side_hustle: { type: "and", conditions: [{ type: "allScenarios" }, { type: "lesson", lessonId: 20 }], hint: "Complete all other scenarios and 'Building Your First Portfolio' lesson" },
+  steady_saver: { type: "always" },
 };
 
 const DIFF_COLORS = { Beginner: T.green, Easy: T.green, Intermediate: T.accent, Medium: T.accent, Advanced: "#8b5cf6" };

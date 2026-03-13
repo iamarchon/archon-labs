@@ -113,7 +113,7 @@ export default function AutoInvest({ dbUser, stocks, livePrices, refreshUser }) 
       </Reveal>
 
       {/* Create Plan Form */}
-      <Reveal delay={70}>
+      <Reveal delay={0.07}>
         <Card style={{ padding: "32px", marginBottom: "24px" }}>
           <h2 style={{ fontSize: "18px", fontWeight: 700, letterSpacing: "-0.4px", color: T.ink, marginBottom: "20px" }}>
             New Auto-Invest Plan
@@ -236,7 +236,7 @@ export default function AutoInvest({ dbUser, stocks, livePrices, refreshUser }) 
       </Reveal>
 
       {/* Active Plans */}
-      <Reveal delay={140}>
+      <Reveal delay={0.14}>
         <h2 style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.5px", color: T.ink, marginBottom: "16px" }}>
           Your Plans
         </h2>
@@ -323,7 +323,7 @@ export default function AutoInvest({ dbUser, stocks, livePrices, refreshUser }) 
       </Reveal>
 
       {/* DCA Explainer */}
-      <Reveal delay={210}>
+      <Reveal delay={0.21}>
         <Card style={{ padding: "28px", marginTop: "24px", background: T.bg, boxShadow: "none" }}>
           <h3 style={{ fontSize: "15px", fontWeight: 700, color: T.ink, marginBottom: "10px" }}>
             Why Auto-Invest?
