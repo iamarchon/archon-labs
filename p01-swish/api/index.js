@@ -359,6 +359,27 @@ app.get("/api/news/:symbol", async (req, res) => {
   }
 });
 
+/* ── Transactions (trade history) ── */
+app.get("/api/transactions", async (req, res) => {
+  const { userId, ticker } = req.query;
+  if (!userId || !ticker) return res.status(400).json({ error: "userId and ticker required" });
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("transactions")
+      .select("id, action, shares, price, created_at")
+      .eq("user_id", userId)
+      .eq("ticker", ticker)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    res.json({ transactions: data || [] });
+  } catch (err) {
+    console.error("Transactions fetch error:", err);
+    res.status(500).json({ error: "Failed to fetch transactions" });
+  }
+});
+
 /* ── Watchlist API routes ──
    DB column is "ticker" but frontend uses "symbol" — map on the way in/out.
    After running: ALTER TABLE watchlist RENAME COLUMN ticker TO symbol;

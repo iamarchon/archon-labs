@@ -33,7 +33,7 @@ const PerfTooltip = ({ active, payload }) => {
   );
 };
 
-export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, onClaimXp, fireConfetti, watchlist = [], watchlistItems = [], toggleWatch }) {
+export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, onClaimXp, fireConfetti, watchlist = [], watchlistItems = [], toggleWatch }) {
   const navigate = useNavigate();
 
   const portfolioValue = holdings.reduce((sum, h) => {
@@ -572,7 +572,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
                 return (
                   <div key={h.ticker}>
                     <div
-                      onClick={() => navigate(`/stock/${s.ticker}`)}
+                      onClick={() => onOpenDetail?.(s) || navigate(`/stock/${s.ticker}`)}
                       style={{ display: "flex", alignItems: "center", padding: "14px 4px", cursor: "pointer", transition: "background .15s", borderRadius: "8px" }}
                       onMouseEnter={e => e.currentTarget.style.background = T.bg}
                       onMouseLeave={e => e.currentTarget.style.background = "transparent"}

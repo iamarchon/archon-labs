@@ -12,6 +12,7 @@ import AuthGate from "./components/AuthGate";
 import TopNav from "./components/TopNav";
 import TickerStrip from "./components/TickerStrip";
 import TradeModal from "./components/TradeModal";
+import StockDetailModal from "./components/StockDetailModal";
 import Dashboard from "./pages/Dashboard";
 import Markets from "./pages/Markets";
 import Learn from "./pages/Learn";
@@ -41,6 +42,7 @@ function AppShell() {
   const [tradeStock, setTradeStock] = useState(null);
   const [tradeSuccess, setTradeSuccess] = useState(null);
   const [tradeFirstTrade, setTradeFirstTrade] = useState(false);
+  const [detailStock, setDetailStock] = useState(null);
   const { pathname } = useLocation();
 
   // Close trade modal on route change
@@ -48,6 +50,7 @@ function AppShell() {
     setTradeStock(null);
     setTradeSuccess(null);
     setTradeFirstTrade(false);
+    setDetailStock(null);
   }, [pathname]);
   const { fireConfetti } = useConfetti();
   const prevLevelRef = useRef(null);
@@ -194,7 +197,12 @@ function AppShell() {
     checkChallengesAfterAction();
   };
 
-  // Navigate to stock detail
+  // Open stock detail modal
+  const openDetail = useCallback((stock) => {
+    setDetailStock(stock);
+  }, []);
+
+  // Navigate to stock detail page
   const goToStock = useCallback((stock) => {
     navigate(`/stock/${stock.ticker}`);
   }, [navigate]);
@@ -241,7 +249,7 @@ function AppShell() {
           <Routes>
             <Route path="/" element={
               dbUser?.role === "teacher" ? <Navigate to="/teacher" replace /> :
-              <Dashboard stocks={stocks} onTrade={goToStock}
+              <Dashboard stocks={stocks} onTrade={goToStock} onOpenDetail={openDetail}
                 holdings={holdings} cash={cash} xp={xp} level={level}
                 streak={streak} username={username} livePrices={livePrices}
                 dbUser={dbUser} saveSnapshot={saveSnapshot}
@@ -257,7 +265,8 @@ function AppShell() {
             <Route path="/portfolio" element={<Navigate to="/" replace />} />
             <Route path="/stock/:symbol" element={
               <StockDetail stocks={stocks} livePrices={livePrices}
-                onTrade={setTradeStock} holdings={holdings} cash={cash} />
+                onTrade={setTradeStock} onOpenDetail={openDetail}
+                holdings={holdings} cash={cash} userId={dbUser?.id} />
             } />
             <Route path="/challenges" element={
               <Challenges dbUser={dbUser} onClaimXp={onClaimXp} fireConfetti={fireConfetti} />
@@ -272,6 +281,17 @@ function AppShell() {
           </Routes>
         </main>
       </div>
+
+      {detailStock && !tradeStock && (
+        <StockDetailModal
+          stock={detailStock}
+          onClose={() => setDetailStock(null)}
+          onTrade={(s) => { setDetailStock(null); setTradeStock(s); }}
+          holdings={holdings}
+          livePrices={livePrices}
+          userId={dbUser?.id}
+        />
+      )}
 
       {tradeStock && (
         <TradeModal
