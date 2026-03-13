@@ -41,6 +41,14 @@ function AppShell() {
   const [tradeStock, setTradeStock] = useState(null);
   const [tradeSuccess, setTradeSuccess] = useState(null);
   const [tradeFirstTrade, setTradeFirstTrade] = useState(false);
+  const { pathname } = useLocation();
+
+  // Close trade modal on route change
+  useEffect(() => {
+    setTradeStock(null);
+    setTradeSuccess(null);
+    setTradeFirstTrade(false);
+  }, [pathname]);
   const { fireConfetti } = useConfetti();
   const prevLevelRef = useRef(null);
   const initialLoadDone = useRef(false);
