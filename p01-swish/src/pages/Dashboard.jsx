@@ -160,12 +160,20 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
 
   // Build chart from current holdings × historical candle prices
   // Wait until sim prices are confirmed to avoid chart using seed/avg_cost fallback
+  // Key: candle fetch runs once per range change. "Now" point is appended only AFTER candles load.
+  const candlesLoaded = useRef(false);
+  useEffect(() => {
+    // Reset on range change
+    candlesLoaded.current = false;
+  }, [perfRange]);
+
+  // Candle fetch effect — runs when range changes or prices load. Does NOT depend on `total`.
   useEffect(() => {
     if (!allHeldPricesLoaded) return;
     const activeHoldings = holdings.filter(h => Number(h.shares) >= 0.001);
     if (activeHoldings.length === 0) {
-      // No holdings — show flat line at cash
       setChartPoints([{ value: cash, label: "Now" }]);
+      candlesLoaded.current = true;
       return;
     }
     let cancelled = false;
@@ -185,27 +193,19 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
         }));
         if (cancelled) return;
 
-        // Find common timestamps across all tickers (use the ticker with most data points as base)
         const tickers = Object.keys(candleData);
         if (tickers.length === 0) {
-          // No candle data available — show flat line (only if total confirmed)
-          if (total != null) {
-            setChartPoints([
-              { value: total, label: "Start" },
-              { value: total, label: "Now" },
-            ]);
-          }
+          // No candle data — leave chart empty until "Now" effect below fills it
+          candlesLoaded.current = true;
           return;
         }
 
-        // Use the ticker with the most timestamps as the reference timeline
         let refTicker = tickers[0];
         for (const tk of tickers) {
           if (candleData[tk].t.length > candleData[refTicker].t.length) refTicker = tk;
         }
         const refTimestamps = candleData[refTicker].t;
 
-        // For each reference timestamp, compute portfolio value
         const formatLabel = (ts) => {
           const d = new Date(ts * 1000);
           if (perfRange === "1D") return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
@@ -213,7 +213,6 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
           return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
         };
 
-        // Build price lookup for each ticker: timestamp → close
         const priceMaps = {};
         for (const tk of tickers) {
           const map = {};
@@ -223,10 +222,8 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
           priceMaps[tk] = map;
         }
 
-        // For tickers without data at a given timestamp, find nearest previous close
         const getPrice = (ticker, timestamp) => {
           if (priceMaps[ticker]?.[timestamp] !== undefined) return priceMaps[ticker][timestamp];
-          // Find nearest earlier timestamp
           const cd = candleData[ticker];
           if (!cd) return null;
           let best = null;
@@ -236,7 +233,6 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
           return best;
         };
 
-        // Sample down to ~40 points max for smooth chart
         const step = Math.max(1, Math.floor(refTimestamps.length / 40));
         const points = [];
         for (let i = 0; i < refTimestamps.length; i++) {
@@ -248,7 +244,6 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
             if (price !== null) {
               portfolioVal += Number(h.shares) * price;
             } else {
-              // Fallback: use current live price
               const seedStock = stocks.find(x => x.ticker === h.ticker);
               portfolioVal += Number(h.shares) * (livePrices[h.ticker] ?? seedStock?.price ?? Number(h.avg_cost));
             }
@@ -256,21 +251,31 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
           points.push({ value: portfolioVal, label: formatLabel(ts) });
         }
 
-        // Append current live value as final point (only if total is confirmed)
-        if (total != null) {
-          const lastPt = points[points.length - 1];
-          if (!lastPt || Math.abs(total - lastPt.value) > 0.01) {
-            points.push({ value: total, label: "Now" });
-          }
-        }
-
+        candlesLoaded.current = true;
         setChartPoints(points);
       } catch {
-        if (total != null) setChartPoints([{ value: total, label: "Now" }]);
+        candlesLoaded.current = true;
+        // Don't set a single "Now" point on error — leave chart empty
       }
     })();
     return () => { cancelled = true; };
-  }, [holdings, perfRange, cash, total, stocks, livePrices, allHeldPricesLoaded]);
+  }, [holdings, perfRange, cash, stocks, livePrices, allHeldPricesLoaded]);
+
+  // Append live "Now" point AFTER candles have loaded — separate effect so it doesn't re-trigger candle fetch
+  useEffect(() => {
+    if (!candlesLoaded.current || total == null) return;
+    setChartPoints(prev => {
+      if (prev.length === 0) {
+        // No candle data was available — show flat line
+        return [{ value: total, label: "Start" }, { value: total, label: "Now" }];
+      }
+      // Remove any existing "Now" point, then append fresh one
+      const withoutNow = prev.filter(p => p.label !== "Now");
+      const lastPt = withoutNow[withoutNow.length - 1];
+      if (lastPt && Math.abs(total - lastPt.value) < 0.01) return withoutNow;
+      return [...withoutNow, { value: total, label: "Now" }];
+    });
+  }, [total]);
 
   // Global leaderboard preview
   const [leaderboard, setLeaderboard] = useState([]);
