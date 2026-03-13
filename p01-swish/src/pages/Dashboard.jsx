@@ -49,24 +49,21 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
   // Portfolio snapshots — fetched per range
   const [chartPoints, setChartPoints] = useState([]);
   const [perfRange, setPerfRange] = useState("1D");
-  const [sessionDelta, setSessionDelta] = useState(null);
   const [lastSessionValue, setLastSessionValue] = useState(null);
   const snapshotSaved = useRef(false);
-  const sessionFetched = useRef(false);
 
-  // Save snapshot ONCE on dashboard load (not on every total change)
+  // Save snapshot ONCE then fetch "since last session" — sequential to avoid race
   useEffect(() => {
-    if (!dbUser || total <= 0 || snapshotSaved.current) return;
-    snapshotSaved.current = true;
-    saveSnapshot?.(total);
-  }, [dbUser, total, saveSnapshot]);
-
-  // Fetch "since last session" ONCE (not on every total change)
-  useEffect(() => {
-    if (!dbUser || sessionFetched.current) return;
-    sessionFetched.current = true;
+    if (!dbUser || total <= 0) return;
     let cancelled = false;
     (async () => {
+      // Save snapshot once
+      if (!snapshotSaved.current) {
+        snapshotSaved.current = true;
+        await saveSnapshot?.(total);
+      }
+
+      // Fetch second-most-recent snapshot (previous session)
       try {
         const { data: prev } = await supabase
           .from("portfolio_snapshots")
@@ -85,7 +82,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, [dbUser]);
+  }, [dbUser?.id, total, saveSnapshot]);
 
   // Fetch chart snapshots filtered by selected range — re-runs when range changes
   useEffect(() => {
@@ -126,7 +123,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, [dbUser, perfRange, total]);
+  }, [dbUser?.id, perfRange, total]);
 
   // Global leaderboard preview
   const [leaderboard, setLeaderboard] = useState([]);
@@ -323,10 +320,10 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
   const rangeLast = chartPoints.length >= 2 ? chartPoints[chartPoints.length - 1].value : total;
   const rangeGain = rangeLast - rangeBaseline;
   const rangeGainPct = rangeBaseline > 0 ? (rangeGain / rangeBaseline) * 100 : 0;
-  const perfColor = rangeGain >= 0 ? "#22c55e" : "#ef4444";
+  const perfColor = chartPoints.length < 2 ? "#22c55e" : rangeGain >= 0 ? "#22c55e" : "#ef4444";
 
-  // Compute sessionDelta from stored lastSessionValue
-  const computedSessionDelta = lastSessionValue > 0 ? total - lastSessionValue : sessionDelta;
+  // Compute sessionDelta from stored lastSessionValue (live, updates with total)
+  const computedSessionDelta = lastSessionValue > 0 ? total - lastSessionValue : null;
 
   return (
     <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px 24px 100px" }}>
@@ -374,9 +371,14 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
                 </div>
               </>
             ) : (
-              <div style={{ padding: "20px 0", textAlign: "center", color: T.inkFaint, fontSize: "13px" }}>
-                Keep trading to build your performance history
-              </div>
+              <>
+                <div style={{ padding: "32px 0", textAlign: "center", color: T.inkFaint, fontSize: "13px" }}>
+                  Not enough data yet for this period — check back soon 📈
+                </div>
+                <div style={{ display: "flex", justifyContent: "center", marginTop: "2px" }}>
+                  <RangeTabs selected={perfRange} onChange={setPerfRange} />
+                </div>
+              </>
             )}
           </div>
 
