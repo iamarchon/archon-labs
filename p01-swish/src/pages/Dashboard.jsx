@@ -278,6 +278,28 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
     })();
   }, [watchlist, wlRange]);
 
+  // Holdings daily change (1D % from Finnhub quote API)
+  const [holdingsDailyChange, setHoldingsDailyChange] = useState({});
+
+  useEffect(() => {
+    if (holdings.length === 0) return;
+    const tickers = holdings.filter(h => Number(h.shares) > 0).map(h => h.ticker);
+    if (tickers.length === 0) return;
+    (async () => {
+      const results = {};
+      await Promise.all(tickers.map(async (ticker) => {
+        try {
+          const res = await fetch(`${baseUrl}/api/quote/${encodeURIComponent(ticker)}`);
+          const data = await res.json();
+          if (data.c && data.c > 0) {
+            results[ticker] = data.dp ?? 0;
+          }
+        } catch { /* ignore */ }
+      }));
+      setHoldingsDailyChange(results);
+    })();
+  }, [holdings]);
+
   // Holdings time range + price history
   const [holdingsRange, setHoldingsRange] = useState("1D");
   const [holdingsPriceHistory, setHoldingsPriceHistory] = useState({});
@@ -350,25 +372,27 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
               {(() => {
                 const activeH = holdings.filter(h => Number(h.shares) > 0);
                 if (activeH.length === 0) return null;
-                let best = null, bestPct = -Infinity;
+                let bestTicker = null, bestPct = -Infinity;
                 for (const h of activeH) {
-                  const s = stocks.find(x => x.ticker === h.ticker);
-                  if (!s) continue;
-                  const pct = s.changePct ?? 0;
-                  if (pct > bestPct) { bestPct = pct; best = s; }
+                  const dp = holdingsDailyChange[h.ticker];
+                  if (dp === undefined) continue;
+                  if (dp > bestPct) { bestPct = dp; bestTicker = h.ticker; }
                 }
-                if (best && bestPct > 0) {
+                if (bestTicker && bestPct > 0) {
                   return (
                     <div style={{ color: T.green, fontSize: "13px", fontWeight: 500, marginTop: "6px", animation: "fadeIn .4s ease" }}>
-                      Best performer today: {best.ticker} +{bestPct.toFixed(2)}%
+                      Best performer today: {bestTicker} +{bestPct.toFixed(2)}%
                     </div>
                   );
                 }
-                return (
-                  <div style={{ color: T.inkFaint, fontSize: "13px", fontWeight: 500, marginTop: "6px", animation: "fadeIn .4s ease" }}>
-                    Markets down today — stay patient
-                  </div>
-                );
+                if (bestTicker !== null) {
+                  return (
+                    <div style={{ color: T.inkFaint, fontSize: "13px", fontWeight: 500, marginTop: "6px", animation: "fadeIn .4s ease" }}>
+                      Markets down today — stay patient
+                    </div>
+                  );
+                }
+                return null;
               })()}
             </div>
           </div>
