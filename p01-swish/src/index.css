@@ -33,10 +33,61 @@ input::placeholder { color: #86868b; }
   .mobile-nav { display: flex !important; }
   .desktop-nav-links { display: none !important; }
 
-  /* FIX 1 & 4: Learn + Scenarios grids → 1 column on mobile */
+  /* Learn + Scenarios grids → 1 column on mobile */
   .learn-grid { grid-template-columns: 1fr !important; }
   .scenarios-grid { grid-template-columns: 1fr !important; }
 
-  /* FIX 5: Auto-Invest frequency buttons stack on mobile */
+  /* Auto-Invest frequency buttons stack on mobile */
   .freq-buttons { flex-direction: column !important; }
+
+  /* Dashboard: Market Movers → horizontal scroll */
+  .movers-grid {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 10px !important;
+  }
+  .movers-grid::-webkit-scrollbar { display: none; }
+  .movers-grid > div { min-width: 120px !important; flex-shrink: 0 !important; }
+
+  /* Dashboard: Movers header — stack on mobile */
+  .movers-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  /* Dashboard: Watchlist header — stack into 2 rows */
+  .watchlist-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  .watchlist-header-right {
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+
+  /* Dashboard: Progress + Insights → 1 column */
+  .dash-two-col { grid-template-columns: 1fr !important; }
+
+  /* Dashboard: Leagues + Leaderboard → 1 column */
+  .dash-leagues-lb { grid-template-columns: 1fr !important; }
+
+  /* LeaguesTile: header — stack title + buttons */
+  .leagues-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  /* Dashboard: Hero card — tighter padding on mobile */
+  .dash-hero { padding: 28px 20px !important; }
+  .dash-hero .portfolio-value { font-size: 36px !important; }
+}
+
+/* Tablet breakpoint for Learn + Scenarios grids */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .learn-grid { grid-template-columns: repeat(2, 1fr) !important; }
 }

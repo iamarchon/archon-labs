@@ -335,11 +335,11 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
 
       {/* Hero */}
       <Reveal>
-        <Card hover={false} style={{ padding: "48px 52px", marginBottom: "16px", background: "linear-gradient(160deg,#ffffff 60%,#f0f7ff 100%)" }}>
+        <Card hover={false} className="dash-hero" style={{ padding: "48px 52px", marginBottom: "16px", background: "linear-gradient(160deg,#ffffff 60%,#f0f7ff 100%)" }}>
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: "32px" }}>
             <div>
               <div style={{ color: T.inkFaint, fontSize: "12px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "10px" }}>Portfolio Value</div>
-              <div style={{ fontSize: "56px", fontWeight: 700, letterSpacing: "-2.5px", color: T.ink, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+              <div className="portfolio-value" style={{ fontSize: "56px", fontWeight: 700, letterSpacing: "-2.5px", color: T.ink, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
                 ${total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "12px" }}>
@@ -395,7 +395,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       {/* Row 2: Market Movers — full width, own range tabs */}
       <Reveal delay={0.04}>
         <Card style={{ padding: "28px 30px", marginBottom: "16px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+          <div className="movers-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
             <div>
               <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Market Movers</div>
               <div style={{ color: T.inkFaint, fontSize: "11px", fontWeight: 500, letterSpacing: "0.03em", marginTop: "2px" }}>{moversRangeLabel}</div>
@@ -406,7 +406,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
             </div>
           </div>
           {moversLoading ? (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "10px" }}>
+            <div className="movers-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "10px" }}>
               {[0,1,2,3,4].map(i => (
                 <div key={i} style={{ padding: "16px", borderRadius: "14px", background: T.bg, border: `1px solid ${T.line}`, textAlign: "center", height: "110px" }}>
                   <div style={{ width: "36px", height: "14px", background: T.line, borderRadius: "4px", margin: "0 auto 12px" }} />
@@ -418,7 +418,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
           ) : movers.length === 0 ? (
             <div style={{ padding: "24px 0", textAlign: "center", color: T.inkFaint, fontSize: "13px" }}>Market data unavailable</div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "10px" }}>
+            <div className="movers-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "10px" }}>
               {movers.map(m => {
                 const stock = stocks.find(x => x.ticker === m.symbol);
                 return (
@@ -443,9 +443,9 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       {watchlist.length > 0 && (
         <Reveal delay={0.06}>
           <Card style={{ padding: "28px 30px", marginBottom: "16px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+            <div className="watchlist-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
               <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Watchlist 👀</div>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div className="watchlist-header-right" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <RangeTabs selected={wlRange} onChange={setWlRange} />
                 <button onClick={() => navigate("/markets")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>Browse Markets</button>
               </div>
@@ -618,7 +618,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       </Reveal>
 
       {/* Row 4: Your Progress + Your Insights — side by side */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", alignItems: "stretch", marginBottom: "16px" }}>
+      <div className="dash-two-col" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", alignItems: "stretch", marginBottom: "16px" }}>
         <Reveal delay={0.1}>
           <Card style={{ padding: "28px 30px", height: "100%" }}>
             <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px", marginBottom: "22px" }}>Your Progress 🏆</div>
@@ -678,7 +678,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       </div>
 
       {/* Row 5: My Leagues + Leaderboard — side by side */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", alignItems: "stretch", marginBottom: "16px" }}>
+      <div className="dash-leagues-lb" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", alignItems: "stretch", marginBottom: "16px" }}>
         <Reveal delay={0.14}>
           <LeaguesTile userId={dbUser?.id} cardStyle={{ height: "100%" }} />
         </Reveal>

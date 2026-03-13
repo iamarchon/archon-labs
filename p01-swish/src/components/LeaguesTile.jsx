@@ -107,7 +107,7 @@ export default function LeaguesTile({ userId, cardStyle = {} }) {
 
   return (
     <Card hover={false} style={{ padding: "28px 30px", ...cardStyle }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+      <div className="leagues-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>My Leagues 🏆</div>
         <div style={{ display: "flex", gap: "8px" }}>
           <button onClick={() => { setShowCreate(v => !v); setShowJoin(false); setCreatedCode(null); setFormError(null); setFormSuccess(null); }}

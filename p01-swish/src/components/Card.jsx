@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { T } from "../tokens";
 
-export default function Card({ children, style = {}, hover = true, onClick }) {
+export default function Card({ children, style = {}, hover = true, onClick, className }) {
   const [hov, setHov] = useState(false);
   return (
-    <div onClick={onClick}
+    <div onClick={onClick} className={className}
       onMouseEnter={() => hover && setHov(true)}
       onMouseLeave={() => hover && setHov(false)}
       style={{
