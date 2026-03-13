@@ -62,6 +62,17 @@ input::placeholder { color: #86868b; }
   /* Markets: hide sparkline on mobile for cleaner stock rows */
   .stock-sparkline { display: none !important; }
 
+  /* Notification dropdown: full-width on mobile */
+  .notif-dropdown {
+    position: fixed !important;
+    top: 56px !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    border-radius: 14px !important;
+  }
+  .notif-backdrop { display: block !important; }
+
   /* Dashboard: Progress + Insights → 1 column */
   .dash-two-col { grid-template-columns: 1fr !important; }
 

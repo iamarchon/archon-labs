@@ -68,11 +68,19 @@ export default function NotificationBell({ notifications, unreadCount, onMarkAll
         )}
       </button>
 
+      {/* Mobile backdrop */}
+      {open && (
+        <div className="notif-backdrop" onClick={() => setOpen(false)} style={{
+          display: "none", position: "fixed", inset: 0, zIndex: 199,
+          background: "rgba(0,0,0,.2)",
+        }} />
+      )}
+
       {/* Dropdown panel */}
       {open && (
-        <div style={{
+        <div className="notif-dropdown" style={{
           position: "absolute", top: "calc(100% + 8px)", right: "-8px",
-          width: "340px", maxHeight: "400px",
+          width: "340px", maxHeight: "70vh",
           background: T.white, borderRadius: "14px",
           boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05)",
           zIndex: 200, overflow: "hidden",
@@ -88,7 +96,7 @@ export default function NotificationBell({ notifications, unreadCount, onMarkAll
           </div>
 
           {/* List */}
-          <div style={{ maxHeight: "348px", overflowY: "auto" }}>
+          <div style={{ maxHeight: "calc(70vh - 52px)", overflowY: "auto" }}>
             {notifications.length === 0 ? (
               <div style={{ padding: "32px 18px", textAlign: "center", color: T.inkFaint, fontSize: "13px" }}>
                 No notifications yet
