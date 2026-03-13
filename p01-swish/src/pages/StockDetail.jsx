@@ -274,12 +274,12 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, onOpenDe
             <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px", marginBottom: "18px" }}>My Position</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "20px" }}>
               {[
-                ["Shares Held", heldShares],
-                ["Avg Cost", `$${avgCost.toFixed(2)}`],
-                ["Cost Basis", `$${costBasis.toFixed(2)}`],
-                ["Current Value", `$${posValue.toFixed(2)}`],
-                ["Unrealized P&L", { val: unrealizedPL, fmt: `${unrealizedPL >= 0 ? "+" : ""}$${unrealizedPL.toFixed(2)}`, color: unrealizedPL >= 0 ? T.green : T.red }],
-                ["Return %", { val: returnPct, fmt: `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(2)}%`, color: returnPct >= 0 ? T.green : T.red }],
+                ["Shares I Own", heldShares],
+                ["Avg Price Paid", `$${avgCost.toFixed(2)}`],
+                ["What I Paid", `$${costBasis.toFixed(2)}`],
+                ["Worth Now", `$${posValue.toFixed(2)}`],
+                ["My Profit / Loss", { val: unrealizedPL, fmt: `${unrealizedPL >= 0 ? "+" : ""}$${unrealizedPL.toFixed(2)}`, color: unrealizedPL >= 0 ? T.green : T.red }],
+                ["% Gain / Loss", { val: returnPct, fmt: `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(2)}%`, color: returnPct >= 0 ? T.green : T.red }],
               ].map(([label, val]) => (
                 <div key={label} style={{ background: T.bg, borderRadius: "12px", padding: "14px 16px" }}>
                   <div style={{ color: T.inkFaint, fontSize: "10px", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "5px" }}>{label}</div>
