@@ -151,6 +151,9 @@ function AppShell() {
     }
   }, [dbUser]);
 
+  // Trade success toast state
+  const [tradeToast, setTradeToast] = useState(null);
+
   // Challenge toast state
   const [challengeToast, setChallengeToast] = useState(null);
 
@@ -195,6 +198,12 @@ function AppShell() {
     // Swap to success state inside the same modal
     setTradeSuccess({ action, shares });
     setTradeFirstTrade(wasFirstTrade);
+
+    // Show trade success toast
+    const verb = action === "BUY" ? "Bought" : "Sold";
+    const xpText = wasFirstTrade ? "+100 XP earned" : "+10 XP earned";
+    setTradeToast(`${verb} ${shares} ${stock.ticker} share${shares > 1 ? "s" : ""}! ${xpText}`);
+    setTimeout(() => setTradeToast(null), 3000);
 
     // Save snapshot after trade
     const portfolioValue = holdings.reduce((sum, h) => {
@@ -321,6 +330,20 @@ function AppShell() {
           success={tradeSuccess}
           isFirstTrade={tradeFirstTrade}
         />
+      )}
+
+      {tradeToast && (
+        <div style={{
+          position: "fixed", top: "64px", left: "50%", transform: "translateX(-50%)",
+          zIndex: 1002, background: T.white, borderRadius: "14px",
+          padding: "14px 22px", display: "flex", alignItems: "center", gap: "10px",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.05)",
+          animation: "fadeIn .25s ease, slideUp .25s ease",
+          whiteSpace: "nowrap", maxWidth: "90vw",
+        }}>
+          <span style={{ fontSize: "16px" }}>&#10004;</span>
+          <span style={{ fontSize: "14px", fontWeight: 600, color: T.ink }}>{tradeToast}</span>
+        </div>
       )}
 
       {challengeToast && (

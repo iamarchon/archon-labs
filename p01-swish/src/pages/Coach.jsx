@@ -2,20 +2,28 @@ import { useState, useEffect, useRef } from "react";
 import { T } from "../tokens";
 import Reveal from "../components/Reveal";
 
+const STARTER_CHIPS = [
+  "Why is my portfolio down?",
+  "What should I buy with $50?",
+  "Explain P/E ratio",
+  "How does DCA work?",
+];
+
 export default function Coach() {
   const [messages, setMessages] = useState([
     { role: "coach", text: "Ready to talk markets. Ask me anything — portfolio strategy, how to read a chart, or what a P/E ratio actually means." }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showChips, setShowChips] = useState(true);
   const bottomRef = useRef(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
 
-  const send = async () => {
-    if (!input.trim() || loading) return;
-    const text = input.trim();
-    const newMessages = [...messages, { role: "user", text }];
+  const sendMessage = async (text) => {
+    if (!text.trim() || loading) return;
+    setShowChips(false);
+    const newMessages = [...messages, { role: "user", text: text.trim() }];
     setInput("");
     setMessages(newMessages);
     setLoading(true);
@@ -48,6 +56,8 @@ export default function Coach() {
     setLoading(false);
   };
 
+  const send = () => sendMessage(input);
+
   return (
     <div style={{ maxWidth: "700px", margin: "0 auto", padding: "40px 28px 0", display: "flex", flexDirection: "column", height: "calc(100vh - 130px)" }}>
       <Reveal>
@@ -67,6 +77,21 @@ export default function Coach() {
             <div style={{ maxWidth: "68%", padding: "14px 18px", borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: msg.role === "user" ? T.ink : T.white, color: msg.role === "user" ? T.white : T.inkMid, fontSize: "15px", lineHeight: "1.65", letterSpacing: "-0.1px", boxShadow: msg.role === "coach" ? "0 2px 12px rgba(0,0,0,.06), 0 0 0 1px rgba(0,0,0,.04)" : "none", fontWeight: msg.role === "user" ? 500 : 400 }}>{msg.text}</div>
           </div>
         ))}
+        {showChips && messages.length === 1 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", animation: "fadeIn .3s ease" }}>
+            {STARTER_CHIPS.map(chip => (
+              <button key={chip} onClick={() => sendMessage(chip)} style={{
+                background: T.white, border: `1px solid ${T.line}`, borderRadius: "20px",
+                padding: "8px 16px", fontSize: "14px", color: T.ink, cursor: "pointer",
+                transition: "all .15s", whiteSpace: "nowrap",
+                boxShadow: "0 1px 4px rgba(0,0,0,.04)",
+              }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = T.ghost; e.currentTarget.style.background = T.bg; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = T.line; e.currentTarget.style.background = T.white; }}
+              >{chip}</button>
+            ))}
+          </div>
+        )}
         {loading && (
           <div style={{ display: "flex", gap: "5px", padding: "14px 18px", background: T.white, borderRadius: "18px 18px 18px 4px", width: "fit-content", boxShadow: "0 2px 12px rgba(0,0,0,.06), 0 0 0 1px rgba(0,0,0,.04)" }}>
             {[0, 1, 2].map(i => <div key={i} style={{ width: "7px", height: "7px", borderRadius: "50%", background: T.ghost, animation: `bounce 1.2s ${i * .2}s infinite ease-in-out` }} />)}

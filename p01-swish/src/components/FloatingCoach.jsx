@@ -1,16 +1,26 @@
 import { useState, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { MessageCircle, X } from "lucide-react";
 import { T } from "../tokens";
 
 const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
+const STARTER_CHIPS = [
+  "Why is my portfolio down?",
+  "What should I buy with $50?",
+  "Explain P/E ratio",
+  "How does DCA work?",
+];
+
 export default function FloatingCoach() {
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
     { role: "coach", text: "Ready to talk markets. Ask me anything — portfolio strategy, how to read a chart, or what a P/E ratio actually means." }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showChips, setShowChips] = useState(true);
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -25,10 +35,10 @@ export default function FloatingCoach() {
     }
   }, [open]);
 
-  const send = async () => {
-    if (!input.trim() || loading) return;
-    const text = input.trim();
-    const newMessages = [...messages, { role: "user", text }];
+  const sendMessage = async (text) => {
+    if (!text.trim() || loading) return;
+    setShowChips(false);
+    const newMessages = [...messages, { role: "user", text: text.trim() }];
     setInput("");
     setMessages(newMessages);
     setLoading(true);
@@ -57,6 +67,10 @@ export default function FloatingCoach() {
     }
     setLoading(false);
   };
+
+  const send = () => sendMessage(input);
+
+  if (location.pathname === "/coach") return null;
 
   return (
     <>
@@ -151,6 +165,20 @@ export default function FloatingCoach() {
                   </div>
                 </div>
               ))}
+              {showChips && messages.length === 1 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", animation: "fadeIn .3s ease" }}>
+                  {STARTER_CHIPS.map(chip => (
+                    <button key={chip} onClick={() => sendMessage(chip)} style={{
+                      background: T.white, border: `1px solid ${T.line}`, borderRadius: "20px",
+                      padding: "7px 14px", fontSize: "13px", color: T.ink, cursor: "pointer",
+                      transition: "all .15s", whiteSpace: "nowrap",
+                    }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = T.ghost; e.currentTarget.style.background = T.bg; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = T.line; e.currentTarget.style.background = T.white; }}
+                    >{chip}</button>
+                  ))}
+                </div>
+              )}
               {loading && (
                 <div style={{
                   display: "flex", gap: "5px", padding: "12px 16px",
