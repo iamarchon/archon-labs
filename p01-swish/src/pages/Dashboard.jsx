@@ -347,11 +347,29 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
                 <span style={{ color: rangeGain >= 0 ? T.green : T.red, fontSize: "17px", fontWeight: 600 }}>{rangeGain >= 0 ? "▲" : "▼"} {rangeGain >= 0 ? "+" : ""}{(rangeGainPct ?? 0).toFixed(2)}%</span>
                 <span style={{ color: T.inkFaint, fontSize: "15px" }}>{rangeGain >= 0 ? "+" : "−"}${Math.abs(rangeGain ?? 0).toFixed(2)} {rangeLabel}</span>
               </div>
-              {lastSessionValue > 0 && computedSessionDelta != null && !isNaN(computedSessionDelta) && (
-                <div style={{ color: computedSessionDelta >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 500, marginTop: "6px", animation: "fadeIn .4s ease" }}>
-                  {computedSessionDelta >= 0 ? "↑" : "↓"} {computedSessionDelta >= 0 ? "+" : ""}${(computedSessionDelta ?? 0).toFixed(2)} since last session
-                </div>
-              )}
+              {(() => {
+                const activeH = holdings.filter(h => Number(h.shares) > 0);
+                if (activeH.length === 0) return null;
+                let best = null, bestPct = -Infinity;
+                for (const h of activeH) {
+                  const s = stocks.find(x => x.ticker === h.ticker);
+                  if (!s) continue;
+                  const pct = s.changePct ?? 0;
+                  if (pct > bestPct) { bestPct = pct; best = s; }
+                }
+                if (best && bestPct > 0) {
+                  return (
+                    <div style={{ color: T.green, fontSize: "13px", fontWeight: 500, marginTop: "6px", animation: "fadeIn .4s ease" }}>
+                      Best performer today: {best.ticker} +{bestPct.toFixed(2)}%
+                    </div>
+                  );
+                }
+                return (
+                  <div style={{ color: T.inkFaint, fontSize: "13px", fontWeight: 500, marginTop: "6px", animation: "fadeIn .4s ease" }}>
+                    Markets down today — stay patient
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
@@ -627,10 +645,12 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
             <div style={{ display: "flex", alignItems: "center", gap: "8px", color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px", marginBottom: "22px" }}><TrendingUp size={16} strokeWidth={1.5} color={T.inkFaint} />Your Progress</div>
             {(() => {
               const LEVELS = [
-                { name: "Bronze", color: "#92400e", threshold: 0 },
-                { name: "Silver", color: "#6b7280", threshold: 100 },
-                { name: "Gold", color: "#f59e0b", threshold: 300 },
-                { name: "Platinum", color: "#8b5cf6", threshold: 750 },
+                { name: "Rookie", color: "#92400e", threshold: 0 },
+                { name: "Beginner", color: "#6b7280", threshold: 100 },
+                { name: "Rising Star", color: "#3b82f6", threshold: 300 },
+                { name: "Investor", color: "#f59e0b", threshold: 600 },
+                { name: "Trader", color: "#8b5cf6", threshold: 1000 },
+                { name: "Expert", color: "#059669", threshold: 1500 },
                 { name: "Legend", color: "#f59e0b", threshold: 2000 },
               ];
               const currentIdx = LEVELS.findIndex(l => l.name === level);
@@ -760,7 +780,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
         <Card style={{ padding: "28px 30px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "22px" }}>
             <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Challenges</div>
-            <button onClick={() => navigate("/challenges")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>See all</button>
+            <button onClick={() => navigate("/challenges")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "14px", fontWeight: 500 }}>View all {challenges.length} challenges &rarr;</button>
           </div>
           {challengesLoading ? (
             <div style={{ padding: "20px 0", textAlign: "center", color: T.inkFaint, fontSize: "13px" }}>Loading challenges...</div>

@@ -18,6 +18,7 @@ export default function LeaguesTile({ userId, cardStyle = {} }) {
   const [formLoading, setFormLoading] = useState(false);
   const [expandedLeague, setExpandedLeague] = useState(null);
   const [leagueMembers, setLeagueMembers] = useState({});
+  const [revealedCode, setRevealedCode] = useState(null);
 
   const fetchLeagues = useCallback(async () => {
     if (!userId) return;
@@ -185,9 +186,17 @@ export default function LeaguesTile({ userId, cardStyle = {} }) {
                   <div style={{ color: T.ink, fontSize: "14px", fontWeight: 600 }}>{league.name}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "2px" }}>
                     <span style={{ color: T.inkFaint, fontSize: "12px" }}>{league.member_count} member{league.member_count !== 1 ? "s" : ""}</span>
-                    <span onClick={e => { e.stopPropagation(); copyCode(league.code); }}
-                      style={{ color: T.accent, fontSize: "11px", fontWeight: 500, cursor: "pointer" }}>
-                      Code: {league.code} 📋
+                    <span onClick={e => {
+                        e.stopPropagation();
+                        if (revealedCode === league.id) {
+                          copyCode(league.code);
+                        } else {
+                          setRevealedCode(league.id);
+                          setTimeout(() => setRevealedCode(prev => prev === league.id ? null : prev), 3000);
+                        }
+                      }}
+                      style={{ color: T.accent, fontSize: "11px", fontWeight: 500, cursor: "pointer", fontVariantNumeric: "tabular-nums" }}>
+                      Code: {revealedCode === league.id ? league.code : "••••••"} {revealedCode === league.id ? "📋" : "👁"}
                     </span>
                   </div>
                 </div>
