@@ -288,8 +288,8 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
   const rangeLabelFinal = filteredSnapshots.length >= 2 ? rangeLabel : "all time";
 
   const perfColor = filteredSnapshots.length >= 2
-    ? filteredSnapshots[filteredSnapshots.length - 1].value >= rangeBaseline ? T.green : T.red
-    : T.accent;
+    ? (filteredSnapshots[filteredSnapshots.length - 1].value ?? 0) >= (rangeBaseline ?? 0) ? "#22c55e" : "#ef4444"
+    : "#22c55e";
 
   return (
     <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px 24px 100px" }}>
@@ -344,7 +344,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
           </div>
 
           <div style={{ display: "flex", marginTop: "24px", paddingTop: "28px", borderTop: `1px solid ${T.line}` }}>
-            {[["Invested", `$${portfolioValue.toFixed(2)}`], ["Available Cash", `$${cash.toFixed(2)}`]].map((stat, i, arr) => (
+            {[["Invested", `$${(portfolioValue ?? 0).toFixed(2)}`], ["Available Cash", `$${(cash ?? 0).toFixed(2)}`]].map((stat, i, arr) => (
               <div key={stat[0]} style={{ flex: 1, textAlign: "center", borderRight: i < arr.length - 1 ? `1px solid ${T.line}` : "none" }}>
                 <div style={{ color: T.inkFaint, fontSize: "10.5px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "5px" }}>{stat[0]}</div>
                 <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>{stat[1]}</div>
@@ -451,9 +451,9 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
                     <div style={{ textAlign: "right", minWidth: "110px" }}>
                       {item.price != null ? (
                         <>
-                          <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", fontVariantNumeric: "tabular-nums" }}>${item.price.toFixed(2)}</div>
-                          <div style={{ color: item.changePct >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 600, marginTop: "1px", fontVariantNumeric: "tabular-nums" }}>
-                            {item.changePct >= 0 ? "+" : ""}{item.changePct.toFixed(2)}%
+                          <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", fontVariantNumeric: "tabular-nums" }}>${(item.price ?? 0).toFixed(2)}</div>
+                          <div style={{ color: (item.changePct ?? 0) >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 600, marginTop: "1px", fontVariantNumeric: "tabular-nums" }}>
+                            {(item.changePct ?? 0) >= 0 ? "+" : ""}{(item.changePct ?? 0).toFixed(2)}%
                           </div>
                         </>
                       ) : (
@@ -654,7 +654,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
                         {rank <= 3 ? ["🥇", "🥈", "🥉"][rank - 1] : `#${rank}`}
                       </div>
                       <div style={{ flex: 1 }}><span style={{ color: isUser ? T.accent : T.ink, fontSize: "13px", fontWeight: isUser ? 700 : 500 }}>@{entry.username}</span></div>
-                      <div style={{ color: entry.gain_pct >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 600 }}>
+                      <div style={{ color: (entry.gain_pct ?? 0) >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 600 }}>
                         {(entry.gain_pct ?? 0) >= 0 ? "+" : ""}{(entry.gain_pct ?? 0).toFixed(1)}%
                       </div>
                     </div>
