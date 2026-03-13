@@ -89,21 +89,24 @@ function AppShell() {
     return set;
   }, []);
 
-  // Price state: only fetch HELD tickers on app init (Dashboard needs ~5, not all 47)
-  // Full universe is fetched by Markets/StockSearch when that page mounts
+  // Price state: ONLY held tickers fetched at app level.
+  // All other tickers fetched by Markets/StockSearch when that page mounts.
   const [dailyQuotes, setDailyQuotes] = useState({});
   const [quotesLoaded, setQuotesLoaded] = useState(false);
-  const [quotesTimedOut, setQuotesTimedOut] = useState(false);
 
-  // Derive the tickers we actually need for portfolio value (held tickers only)
+  // Derive held tickers from holdings (only when holdings are loaded from Supabase)
   const heldTickers = useMemo(() => {
     return holdings.filter(h => Number(h.shares) > 0).map(h => h.ticker);
   }, [holdings]);
 
-  // Fetch ONLY held tickers — fast (1 batch, <1s) instead of 47 tickers (10 batches, ~3s)
+  // Fetch ONLY held tickers — nothing else runs at app level
+  // Wait for holdings to actually load (non-empty) before fetching, to avoid the
+  // race where holdings=[] → quotesLoaded=true → Phase 2 fetches everything
   useEffect(() => {
+    // Don't fetch until we know what the user holds (wait for Supabase)
+    if (userLoading) return;
     if (heldTickers.length === 0) {
-      // No holdings — nothing to fetch, mark as loaded immediately
+      // User genuinely has no holdings — mark loaded immediately
       setQuotesLoaded(true);
       return;
     }
@@ -126,67 +129,14 @@ function AppShell() {
         } catch { /* ignore */ }
       }));
       if (!cancelled && Object.keys(results).length > 0) {
-        setDailyQuotes(prev => ({ ...prev, ...results }));
+        setDailyQuotes(results); // replace, not merge — held tickers are the only source
         setQuotesLoaded(true);
       }
     };
     fetchHeldQuotes();
-    // Re-poll held tickers every 30s to keep portfolio value fresh
     const id = setInterval(fetchHeldQuotes, 30000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [heldTickers, CRYPTO_SYMBOLS]);
-
-  // 4s timeout fallback: if quotesLoaded is still false after 4s, force it true
-  useEffect(() => {
-    if (quotesLoaded) return;
-    const timer = setTimeout(() => {
-      if (!quotesLoaded) {
-        console.warn("[quotes] 4s timeout — forcing quotesLoaded=true with available data");
-        setQuotesTimedOut(true);
-        setQuotesLoaded(true);
-      }
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, [quotesLoaded]);
-
-  // Fetch remaining universe tickers in background (for TickerStrip, Movers, etc.)
-  // This does NOT block quotesLoaded or allHeldPricesLoaded
-  useEffect(() => {
-    if (!quotesLoaded) return; // wait until held tickers are done first
-    const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
-    let cancelled = false;
-    const delay = (ms) => new Promise(r => setTimeout(r, ms));
-    const heldSet = new Set(heldTickers);
-    const remainingTickers = allUniverseTickers.filter(t => !heldSet.has(t));
-    if (remainingTickers.length === 0) return;
-
-    const fetchRemaining = async () => {
-      const results = {};
-      for (let i = 0; i < remainingTickers.length; i += 5) {
-        if (cancelled) return;
-        const batch = remainingTickers.slice(i, i + 5);
-        await Promise.all(batch.map(async (ticker) => {
-          try {
-            const isCrypto = CRYPTO_SYMBOLS.has(ticker);
-            const url = isCrypto
-              ? `${baseUrl}/api/crypto/quote/${encodeURIComponent(ticker)}`
-              : `${baseUrl}/api/quote/${encodeURIComponent(ticker)}`;
-            const res = await fetch(url);
-            const data = await res.json();
-            if (data.source === "swish" && data.c && data.c > 0) {
-              results[ticker] = { dp: data.dp ?? 0, price: data.c };
-            }
-          } catch { /* ignore */ }
-        }));
-        if (i + 5 < remainingTickers.length) await delay(250);
-      }
-      if (!cancelled && Object.keys(results).length > 0) {
-        setDailyQuotes(prev => ({ ...prev, ...results }));
-      }
-    };
-    fetchRemaining();
-    return () => { cancelled = true; };
-  }, [quotesLoaded, heldTickers, allUniverseTickers, CRYPTO_SYMBOLS]);
+  }, [heldTickers, CRYPTO_SYMBOLS, userLoading]);
 
   // Derive livePrices from dailyQuotes for backward compatibility
   const livePrices = useMemo(() => {
@@ -399,14 +349,12 @@ function AppShell() {
   const shouldShowTutorial = showTutorial && dbUser && totalTrades === 0 && dbUser.role !== "teacher";
 
   // Check that EVERY held ticker has a real quote from /api/quote — not seed or avg_cost fallback
-  // If 4s timeout fired, force true so user isn't stuck on skeleton forever
-  const allHeldPricesLoaded = quotesTimedOut ? true : (
-    quotesLoaded && holdings.length > 0
-      ? holdings.every(h => {
-          const s = stocks.find(x => x.ticker === h.ticker);
-          return s?.priceLoaded === true;
-        })
-      : quotesLoaded // no holdings → just need quotes to have loaded
+  const allHeldPricesLoaded = quotesLoaded && (holdings.length > 0
+    ? holdings.every(h => {
+        const s = stocks.find(x => x.ticker === h.ticker);
+        return s?.priceLoaded === true;
+      })
+    : true // no holdings → just need quotes to have loaded
   );
 
   // Only compute portfolio value when ALL held tickers have sim-feed prices
