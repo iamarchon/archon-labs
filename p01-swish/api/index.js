@@ -47,6 +47,10 @@ app.post("/api/coach", async (req, res) => {
   }
 });
 
+/* ── Crypto fallback cache (30s TTL) for /api/quote passthrough ── */
+const cryptoQuoteCache = new Map();
+const CRYPTO_QUOTE_TTL = 30_000;
+
 /* ── GET /api/quote/:symbol — Finnhub stock quote ── */
 app.get("/api/quote/:symbol", async (req, res) => {
   const apiKey = process.env.FINNHUB_API_KEY;
@@ -54,12 +58,33 @@ app.get("/api/quote/:symbol", async (req, res) => {
     return res.status(500).json({ error: "FINNHUB_API_KEY not set in .env" });
   }
 
+  const ticker = req.params.symbol.toUpperCase();
+
   try {
-    const symbol = encodeURIComponent(req.params.symbol.toUpperCase());
+    const symbol = encodeURIComponent(ticker);
     const response = await fetch(
       `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`
     );
     const data = await response.json();
+
+    // If Finnhub returns zeros and ticker is a known crypto, fall back to CoinGecko
+    if ((!data.c || data.c === 0) && CRYPTO_ID_MAP[ticker]) {
+      const cached = cryptoQuoteCache.get(ticker);
+      if (cached && Date.now() - cached.ts < CRYPTO_QUOTE_TTL) {
+        return res.json(cached.data);
+      }
+      const cgId = CRYPTO_ID_MAP[ticker];
+      const cgUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${cgId}&vs_currencies=usd&include_24hr_change=true`;
+      const cgRes = await fetch(cgUrl);
+      const cgData = await cgRes.json();
+      const coin = cgData[cgId];
+      if (coin && coin.usd > 0) {
+        const result = { c: coin.usd, dp: coin.usd_24h_change ?? 0, source: "swish" };
+        cryptoQuoteCache.set(ticker, { ts: Date.now(), data: result });
+        return res.json(result);
+      }
+    }
+
     res.json({ ...data, source: "swish" });
   } catch (err) {
     res.status(502).json({ error: "Failed to reach Finnhub API" });
