@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { MessageCircle, X } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { T } from "../tokens";
 
 const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
@@ -165,8 +166,10 @@ export default function FloatingCoach() {
                     color: msg.role === "user" ? T.white : T.inkMid,
                     fontSize: "14px", lineHeight: "1.6", letterSpacing: "-0.1px",
                     fontWeight: msg.role === "user" ? 500 : 400,
-                  }}>
-                    {msg.text}
+                  }}
+                    className={msg.role === "coach" ? "coach-md" : undefined}
+                  >
+                    {msg.role === "coach" ? <ReactMarkdown>{msg.text}</ReactMarkdown> : msg.text}
                   </div>
                 </div>
               ))}

@@ -1,7 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
 import { T } from "../tokens";
 import Reveal from "../components/Reveal";
+
+const mdStyles = { "& ul": { listStyle: "disc", paddingLeft: "1rem", margin: "0.25rem 0" }, "& li": { marginBottom: "0.25rem" }, "& strong": { fontWeight: 600 }, "& p": { margin: 0 } };
+const MdContainer = ({ children, style }) => (
+  <div style={style} className="coach-md">{children}</div>
+);
 
 const STARTER_CHIPS = [
   "Why is my portfolio down?",
@@ -83,7 +89,7 @@ export default function Coach() {
       <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "14px", paddingBottom: "20px" }}>
         {messages.map((msg, i) => (
           <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start", animation: "fadeIn .22s ease" }}>
-            <div style={{ maxWidth: "68%", padding: "14px 18px", borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: msg.role === "user" ? T.ink : T.white, color: msg.role === "user" ? T.white : T.inkMid, fontSize: "15px", lineHeight: "1.65", letterSpacing: "-0.1px", boxShadow: msg.role === "coach" ? "0 2px 12px rgba(0,0,0,.06), 0 0 0 1px rgba(0,0,0,.04)" : "none", fontWeight: msg.role === "user" ? 500 : 400 }}>{msg.text}</div>
+            <div className={msg.role === "coach" ? "coach-md" : undefined} style={{ maxWidth: "68%", padding: "14px 18px", borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: msg.role === "user" ? T.ink : T.white, color: msg.role === "user" ? T.white : T.inkMid, fontSize: "15px", lineHeight: "1.65", letterSpacing: "-0.1px", boxShadow: msg.role === "coach" ? "0 2px 12px rgba(0,0,0,.06), 0 0 0 1px rgba(0,0,0,.04)" : "none", fontWeight: msg.role === "user" ? 500 : 400 }}>{msg.role === "coach" ? <ReactMarkdown>{msg.text}</ReactMarkdown> : msg.text}</div>
           </div>
         ))}
         {showChips && messages.length === 1 && (
