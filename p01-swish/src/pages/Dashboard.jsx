@@ -294,27 +294,44 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
     })();
   }, [watchlist, wlRange]);
 
-  // Holdings daily change (1D % from Finnhub quote API)
-  const [holdingsDailyChange, setHoldingsDailyChange] = useState({});
+  // Holdings % change for the selected hero chart range (perfRange)
+  const [holdingsPerfChange, setHoldingsPerfChange] = useState({});
 
   useEffect(() => {
     if (holdings.length === 0) return;
     const tickers = holdings.filter(h => Number(h.shares) > 0).map(h => h.ticker);
     if (tickers.length === 0) return;
+    setHoldingsPerfChange({});
     (async () => {
       const results = {};
-      await Promise.all(tickers.map(async (ticker) => {
-        try {
-          const res = await fetch(`${baseUrl}/api/quote/${encodeURIComponent(ticker)}`);
-          const data = await res.json();
-          if (data.c && data.c > 0) {
-            results[ticker] = data.dp ?? 0;
-          }
-        } catch { /* ignore */ }
-      }));
-      setHoldingsDailyChange(results);
+      if (perfRange === "1D") {
+        // Use Finnhub quote API for 1D daily percent change
+        await Promise.all(tickers.map(async (ticker) => {
+          try {
+            const res = await fetch(`${baseUrl}/api/quote/${encodeURIComponent(ticker)}`);
+            const data = await res.json();
+            if (data.c && data.c > 0) {
+              results[ticker] = data.dp ?? 0;
+            }
+          } catch { /* ignore */ }
+        }));
+      } else {
+        // Use candle API for longer ranges
+        await Promise.all(tickers.map(async (ticker) => {
+          try {
+            const res = await fetch(`${baseUrl}/api/candles?symbol=${encodeURIComponent(ticker)}&range=${perfRange}`);
+            const data = await res.json();
+            if (data.s === "ok" && data.c?.length >= 2) {
+              const first = data.c[0];
+              const last = data.c[data.c.length - 1];
+              results[ticker] = ((last - first) / first) * 100;
+            }
+          } catch { /* ignore */ }
+        }));
+      }
+      setHoldingsPerfChange(results);
     })();
-  }, [holdings]);
+  }, [holdings, perfRange]);
 
   // Holdings time range + price history
   const [holdingsRange, setHoldingsRange] = useState("1D");
@@ -391,23 +408,25 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
               {(() => {
                 const activeH = holdings.filter(h => Number(h.shares) > 0);
                 if (activeH.length === 0) return null;
+                const BEST_LABELS = { "1D": "today", "1W": "this week", "1M": "this month", "3M": "last 3 months", "1Y": "this year" };
+                const periodLabel = BEST_LABELS[perfRange] || "today";
                 let bestTicker = null, bestPct = -Infinity;
                 for (const h of activeH) {
-                  const dp = holdingsDailyChange[h.ticker];
+                  const dp = holdingsPerfChange[h.ticker];
                   if (dp === undefined) continue;
                   if (dp > bestPct) { bestPct = dp; bestTicker = h.ticker; }
                 }
                 if (bestTicker && bestPct > 0) {
                   return (
                     <div style={{ color: T.green, fontSize: "13px", fontWeight: 500, marginTop: "6px", animation: "fadeIn .4s ease" }}>
-                      Best performer today: {bestTicker} +{bestPct.toFixed(2)}%
+                      Best performer {periodLabel}: {bestTicker} +{bestPct.toFixed(2)}%
                     </div>
                   );
                 }
                 if (bestTicker !== null) {
                   return (
                     <div style={{ color: T.inkFaint, fontSize: "13px", fontWeight: 500, marginTop: "6px", animation: "fadeIn .4s ease" }}>
-                      Markets down today — stay patient
+                      All holdings down {periodLabel} — stay patient
                     </div>
                   );
                 }
