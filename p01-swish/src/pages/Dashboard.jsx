@@ -62,16 +62,28 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
     if (!dbUser) return;
     (async () => {
       try {
+        // Fetch all snapshots for chart
         const { data } = await supabase
           .from("portfolio_snapshots")
           .select("total_value, created_at")
           .eq("user_id", dbUser.id)
           .order("created_at", { ascending: true });
-        if (data?.length) {
-          setSnapshots(data);
-          const lastVal = Number(data[data.length - 1].total_value);
-          const delta = total - lastVal;
-          if (Math.abs(delta) > 0.01) setSessionDelta(delta);
+        if (data?.length) setSnapshots(data);
+
+        // Fetch SECOND most recent snapshot (previous session, not the one just saved)
+        const { data: prev } = await supabase
+          .from("portfolio_snapshots")
+          .select("total_value")
+          .eq("user_id", dbUser.id)
+          .order("created_at", { ascending: false })
+          .range(1, 1)
+          .maybeSingle();
+        if (prev) {
+          const lastVal = Number(prev.total_value);
+          if (lastVal > 0) {
+            const delta = total - lastVal;
+            setSessionDelta(delta);
+          }
         }
       } catch { /* ignore */ }
     })();
