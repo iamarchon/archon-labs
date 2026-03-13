@@ -72,7 +72,7 @@ export default function Challenges({ dbUser, onClaimXp, fireConfetti }) {
       </Reveal>
 
       <Reveal delay={0.04}>
-        <div style={{ display: "flex", gap: "4px", background: T.white, borderRadius: "10px", padding: "3px", marginBottom: "24px", boxShadow: "0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)", width: "fit-content" }}>
+        <div style={{ display: "flex", gap: "4px", background: T.white, borderRadius: "10px", padding: "3px", marginBottom: "24px", boxShadow: "0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)", width: "fit-content", maxWidth: "100%", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
           {CATEGORIES.map(cat => (
             <button key={cat} onClick={() => setFilter(cat)} style={{
               background: filter === cat ? T.accent : "transparent",
@@ -100,7 +100,7 @@ export default function Challenges({ dbUser, onClaimXp, fireConfetti }) {
           </div>
         </Card>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <div className="challenges-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
           {filtered.map((ch, i) => {
             const claimable = ch.percent >= 100 && !ch.completedAt;
             const done = !!ch.completedAt;
@@ -110,7 +110,7 @@ export default function Challenges({ dbUser, onClaimXp, fireConfetti }) {
             return (
               <Reveal key={ch.id} delay={0.04 + i * 0.03}>
                 <Card style={{ padding: "24px 28px", height: "100%" }}>
-                  <div style={{ display: "flex", gap: "6px", marginBottom: "14px", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: "6px", marginBottom: "14px", flexWrap: "wrap", alignItems: "center" }}>
                     <span style={{ fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "4px", background: diff.bg, color: diff.color, textTransform: "uppercase", letterSpacing: "0.04em" }}>{diff.label}</span>
                     <span style={{ fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "4px", background: T.bg, color: T.inkFaint, textTransform: "uppercase", letterSpacing: "0.04em" }}>{ch.category}</span>
                     <span style={{ fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "4px", background: ch.type === "weekly" ? "#e3f2fd" : T.bg, color: ch.type === "weekly" ? T.accent : T.inkFaint, textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -146,7 +146,7 @@ export default function Challenges({ dbUser, onClaimXp, fireConfetti }) {
                     ) : (
                       <div />
                     )}
-                    <div style={{ fontSize: "12px", fontWeight: 600, color: barColor, background: `${barColor}12`, padding: "4px 10px", borderRadius: "6px" }}>
+                    <div style={{ fontSize: "12px", fontWeight: 600, color: barColor, background: `${barColor}12`, padding: "4px 10px", borderRadius: "6px", whiteSpace: "nowrap", flexShrink: 0 }}>
                       +{ch.xpReward} XP
                     </div>
                   </div>

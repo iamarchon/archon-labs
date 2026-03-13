@@ -44,6 +44,7 @@ input::placeholder { color: #86868b; }
   /* Learn + Scenarios grids → 1 column on mobile */
   .learn-grid { grid-template-columns: 1fr !important; }
   .scenarios-grid { grid-template-columns: 1fr !important; }
+  .challenges-grid { grid-template-columns: 1fr !important; }
 
   /* Auto-Invest frequency buttons stack on mobile */
   .freq-buttons { flex-direction: column !important; }
