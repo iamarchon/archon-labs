@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { T } from "../tokens";
 import Reveal from "../components/Reveal";
 
@@ -10,6 +11,14 @@ const STARTER_CHIPS = [
 ];
 
 export default function Coach() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      navigate("/", { replace: true });
+    }
+  }, [navigate]);
+
   const [messages, setMessages] = useState([
     { role: "coach", text: "Ready to talk markets. Ask me anything — portfolio strategy, how to read a chart, or what a P/E ratio actually means." }
   ]);
