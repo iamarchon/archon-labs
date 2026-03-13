@@ -59,9 +59,6 @@ input::placeholder { color: #86868b; }
     gap: 10px !important;
   }
 
-  /* Markets: hide sparkline on mobile for cleaner stock rows */
-  .stock-sparkline { display: none !important; }
-
   /* Notification dropdown: full-width on mobile */
   .notif-dropdown {
     position: fixed !important;
