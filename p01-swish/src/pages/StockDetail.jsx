@@ -21,7 +21,7 @@ const ChartTooltip = ({ active, payload }) => {
   const p = payload[0].payload;
   return (
     <div style={{ background: T.ink, color: T.white, padding: "8px 14px", borderRadius: "10px", fontSize: "13px", boxShadow: "0 4px 16px rgba(0,0,0,.2)" }}>
-      <div style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>${p.price.toFixed(2)}</div>
+      <div style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>${(p.price ?? 0).toFixed(2)}</div>
       <div style={{ color: T.ghost, fontSize: "11px", marginTop: "2px" }}>{p.time}</div>
     </div>
   );
@@ -168,7 +168,7 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
               {currentPrice != null ? `$${currentPrice.toFixed(2)}` : "$..."}
             </div>
             <div style={{ color: changePct >= 0 ? T.green : T.red, fontSize: "15px", fontWeight: 600, marginTop: "2px" }}>
-              {changeAmt >= 0 ? "+" : ""}{changeAmt.toFixed(2)} ({changePct >= 0 ? "+" : ""}{changePct.toFixed(2)}%)
+              {(changeAmt ?? 0) >= 0 ? "+" : ""}{(changeAmt ?? 0).toFixed(2)} ({(changePct ?? 0) >= 0 ? "+" : ""}{(changePct ?? 0).toFixed(2)}%)
               <span style={{ color: T.inkFaint, fontWeight: 400, fontSize: "12px", marginLeft: "6px" }}>{rangeLabel}</span>
             </div>
           </div>

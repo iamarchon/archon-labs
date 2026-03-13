@@ -27,7 +27,7 @@ const PerfTooltip = ({ active, payload }) => {
   const p = payload[0].payload;
   return (
     <div style={{ background: T.ink, color: T.white, padding: "8px 14px", borderRadius: "10px", fontSize: "13px", boxShadow: "0 4px 16px rgba(0,0,0,.2)" }}>
-      <div style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>${p.value.toFixed(2)}</div>
+      <div style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>${(p.value ?? 0).toFixed(2)}</div>
       <div style={{ color: T.ghost, fontSize: "11px", marginTop: "2px" }}>{p.label}</div>
     </div>
   );
@@ -304,12 +304,12 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
                 ${total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "12px" }}>
-                <span style={{ color: rangeGain >= 0 ? T.green : T.red, fontSize: "17px", fontWeight: 600 }}>{rangeGain >= 0 ? "▲" : "▼"} {rangeGain >= 0 ? "+" : ""}{rangeGainPct.toFixed(2)}%</span>
-                <span style={{ color: T.inkFaint, fontSize: "15px" }}>{rangeGain >= 0 ? "+" : "−"}${Math.abs(rangeGain).toFixed(2)} {rangeLabelFinal}</span>
+                <span style={{ color: rangeGain >= 0 ? T.green : T.red, fontSize: "17px", fontWeight: 600 }}>{rangeGain >= 0 ? "▲" : "▼"} {rangeGain >= 0 ? "+" : ""}{(rangeGainPct ?? 0).toFixed(2)}%</span>
+                <span style={{ color: T.inkFaint, fontSize: "15px" }}>{rangeGain >= 0 ? "+" : "−"}${Math.abs(rangeGain ?? 0).toFixed(2)} {rangeLabelFinal}</span>
               </div>
               {sessionDelta != null && (
                 <div style={{ color: sessionDelta >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 500, marginTop: "6px", animation: "fadeIn .4s ease" }}>
-                  {sessionDelta >= 0 ? "↑" : "↓"} {sessionDelta >= 0 ? "+" : ""}${sessionDelta.toFixed(2)} since last session
+                  {sessionDelta >= 0 ? "↑" : "↓"} {sessionDelta >= 0 ? "+" : ""}${(sessionDelta ?? 0).toFixed(2)} since last session
                 </div>
               )}
             </div>
@@ -390,8 +390,8 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
                     <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", letterSpacing: "-0.2px", marginBottom: "8px" }}>{m.symbol}</div>
                     <Sparkline data={m.sparkline} width={64} height={24} />
                     <div style={{ marginTop: "8px" }}>
-                      <div style={{ color: T.ink, fontWeight: 600, fontSize: "13px", fontVariantNumeric: "tabular-nums" }}>${m.price.toFixed(2)}</div>
-                      <div style={{ color: m.changePercent >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 500, marginTop: "2px", fontVariantNumeric: "tabular-nums" }}>{m.changePercent >= 0 ? "+" : ""}{m.changePercent.toFixed(2)}%</div>
+                      <div style={{ color: T.ink, fontWeight: 600, fontSize: "13px", fontVariantNumeric: "tabular-nums" }}>${(m.price ?? 0).toFixed(2)}</div>
+                      <div style={{ color: (m.changePercent ?? 0) >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 500, marginTop: "2px", fontVariantNumeric: "tabular-nums" }}>{(m.changePercent ?? 0) >= 0 ? "+" : ""}{(m.changePercent ?? 0).toFixed(2)}%</div>
                     </div>
                   </div>
                 );
@@ -545,12 +545,12 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
                       </div>
                       <div style={{ textAlign: "center", minWidth: "120px" }}>
                         <div style={{ color: T.ink, fontSize: "13px", fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>{shares} shares</div>
-                        <div style={{ color: T.inkFaint, fontSize: "11px", marginTop: "1px", fontVariantNumeric: "tabular-nums" }}>avg ${avgCost.toFixed(2)}</div>
+                        <div style={{ color: T.inkFaint, fontSize: "11px", marginTop: "1px", fontVariantNumeric: "tabular-nums" }}>avg ${(avgCost ?? 0).toFixed(2)}</div>
                       </div>
                       <div style={{ textAlign: "right", minWidth: "110px" }}>
-                        <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", fontVariantNumeric: "tabular-nums" }}>${currentPrice.toFixed(2)}</div>
-                        <div style={{ color: pct >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 600, marginTop: "1px", fontVariantNumeric: "tabular-nums" }}>
-                          {pct >= 0 ? "+" : ""}{pct.toFixed(2)}%
+                        <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", fontVariantNumeric: "tabular-nums" }}>${(currentPrice ?? 0).toFixed(2)}</div>
+                        <div style={{ color: (pct ?? 0) >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 600, marginTop: "1px", fontVariantNumeric: "tabular-nums" }}>
+                          {(pct ?? 0) >= 0 ? "+" : ""}{(pct ?? 0).toFixed(2)}%
                         </div>
                       </div>
                     </div>
@@ -655,7 +655,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
                       </div>
                       <div style={{ flex: 1 }}><span style={{ color: isUser ? T.accent : T.ink, fontSize: "13px", fontWeight: isUser ? 700 : 500 }}>@{entry.username}</span></div>
                       <div style={{ color: entry.gain_pct >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 600 }}>
-                        {entry.gain_pct >= 0 ? "+" : ""}{entry.gain_pct.toFixed(1)}%
+                        {(entry.gain_pct ?? 0) >= 0 ? "+" : ""}{(entry.gain_pct ?? 0).toFixed(1)}%
                       </div>
                     </div>
                   );
@@ -685,8 +685,8 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
                               {i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}
                             </span>
                             <span style={{ flex: 1, color: m.user_id === dbUser?.id ? T.accent : T.ink, fontSize: "12px", fontWeight: m.user_id === dbUser?.id ? 600 : 400 }}>@{m.username}</span>
-                            <span style={{ color: m.gain_pct >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 600 }}>
-                              {m.gain_pct >= 0 ? "+" : ""}{m.gain_pct.toFixed(1)}%
+                            <span style={{ color: (m.gain_pct ?? 0) >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 600 }}>
+                              {(m.gain_pct ?? 0) >= 0 ? "+" : ""}{(m.gain_pct ?? 0).toFixed(1)}%
                             </span>
                           </div>
                         ))}

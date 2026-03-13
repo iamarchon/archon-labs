@@ -11,7 +11,7 @@ export default function TradeModal({ stock, onClose, onTrade, cash = 10000, hold
     return () => window.removeEventListener("keydown", h);
   }, [onClose]);
 
-  const price = stock.price ?? 0;
+  const price = Number(stock.price) || 0;
   const total = (price * shares).toFixed(2);
   const holding = holdings.find(h => h.ticker === stock.ticker);
   const ownedShares = holding ? Number(holding.shares) : 0;
@@ -78,7 +78,7 @@ export default function TradeModal({ stock, onClose, onTrade, cash = 10000, hold
                   {action === "BUY" ? "Cash Available" : "Shares Owned"}
                 </span>
                 <span style={{ color: T.ink, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-                  {action === "BUY" ? `$${cash.toFixed(2)}` : ownedShares}
+                  {action === "BUY" ? `$${(cash ?? 0).toFixed(2)}` : ownedShares}
                 </span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "13px" }}>

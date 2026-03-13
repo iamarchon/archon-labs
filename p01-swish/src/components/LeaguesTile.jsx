@@ -207,8 +207,8 @@ export default function LeaguesTile({ userId, cardStyle = {} }) {
                             {i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}
                           </span>
                           <span style={{ flex: 1, color: m.user_id === userId ? T.accent : T.ink, fontSize: "13px", fontWeight: m.user_id === userId ? 600 : 400 }}>@{m.username}</span>
-                          <span style={{ color: m.gain_pct >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-                            {m.gain_pct >= 0 ? "+" : ""}{m.gain_pct.toFixed(1)}%
+                          <span style={{ color: (m.gain_pct ?? 0) >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                            {(m.gain_pct ?? 0) >= 0 ? "+" : ""}{(m.gain_pct ?? 0).toFixed(1)}%
                           </span>
                         </div>
                       ))}

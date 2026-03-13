@@ -36,8 +36,8 @@ function RankRow({ entry, rank, isUser }) {
           <div style={{ color: T.ink, fontWeight: 700, fontSize: "17px", letterSpacing: "-0.4px", fontVariantNumeric: "tabular-nums" }}>
             ${entry.total_value?.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <div style={{ color: entry.gain_pct >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 500 }}>
-            {entry.gain_pct >= 0 ? "+" : ""}{entry.gain_pct.toFixed(1)}%
+          <div style={{ color: (entry.gain_pct ?? 0) >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 500 }}>
+            {(entry.gain_pct ?? 0) >= 0 ? "+" : ""}{(entry.gain_pct ?? 0).toFixed(1)}%
           </div>
         </div>
       </div>
@@ -180,8 +180,8 @@ export default function Leaderboard({ userId }) {
                                   {i < 3 ? ["🥇", "🥈", "🥉"][i] : `#${i + 1}`}
                                 </span>
                                 <span style={{ flex: 1, color: m.user_id === userId ? T.accent : T.ink, fontSize: "14px", fontWeight: m.user_id === userId ? 600 : 400 }}>@{m.username}</span>
-                                <span style={{ color: m.gain_pct >= 0 ? T.green : T.red, fontSize: "14px", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-                                  {m.gain_pct >= 0 ? "+" : ""}{m.gain_pct.toFixed(1)}%
+                                <span style={{ color: (m.gain_pct ?? 0) >= 0 ? T.green : T.red, fontSize: "14px", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                                  {(m.gain_pct ?? 0) >= 0 ? "+" : ""}{(m.gain_pct ?? 0).toFixed(1)}%
                                 </span>
                               </div>
                             ))}
