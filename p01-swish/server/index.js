@@ -47,11 +47,64 @@ app.post("/api/coach", async (req, res) => {
   }
 });
 
-/* ── Crypto fallback cache (30s TTL) for /api/quote passthrough ── */
-const cryptoQuoteCache = new Map();
-const CRYPTO_QUOTE_TTL = 30_000;
+/* ── Sim Price Engine — in-memory random walk with auto-seeding ── */
+const simPrices = new Map(); // ticker → { price, openPrice, lastUpdate }
+const simSeedLocks = new Map(); // ticker → Promise (prevent concurrent seed fetches)
 
-/* ── GET /api/quote/:symbol — Finnhub stock quote ── */
+function simWalk(entry) {
+  const now = Date.now();
+  const elapsed = (now - entry.lastUpdate) / 1000; // seconds since last update
+  if (elapsed < 2) return; // don't walk faster than every 2s
+  // Random walk: ±0.15% per step, capped at ±3% from open
+  const drift = (Math.random() - 0.5) * 0.003 * entry.price;
+  let newPrice = entry.price + drift;
+  // Clamp to ±3% of open to keep sim realistic for a day
+  const maxDev = entry.openPrice * 0.03;
+  newPrice = Math.max(entry.openPrice - maxDev, Math.min(entry.openPrice + maxDev, newPrice));
+  newPrice = Math.round(newPrice * 100) / 100;
+  if (newPrice <= 0) newPrice = entry.openPrice; // safety
+  entry.price = newPrice;
+  entry.lastUpdate = now;
+}
+
+async function seedSimPrice(ticker, apiKey) {
+  // If already seeding this ticker, wait for that to finish
+  if (simSeedLocks.has(ticker)) return simSeedLocks.get(ticker);
+
+  const seedPromise = (async () => {
+    try {
+      // Try Finnhub first (works for stocks)
+      const fhRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ticker)}&token=${apiKey}`);
+      const fhData = await fhRes.json();
+      if (fhData.c && fhData.c > 0) {
+        const entry = { price: fhData.c, openPrice: fhData.c, dp: fhData.dp ?? 0, lastUpdate: Date.now() };
+        simPrices.set(ticker, entry);
+        return entry;
+      }
+
+      // Finnhub returned 0 — try CoinGecko for crypto
+      if (CRYPTO_ID_MAP[ticker]) {
+        const cgId = CRYPTO_ID_MAP[ticker];
+        const cgRes = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${cgId}&vs_currencies=usd&include_24hr_change=true`);
+        const cgData = await cgRes.json();
+        const coin = cgData[cgId];
+        if (coin && coin.usd > 0) {
+          const entry = { price: coin.usd, openPrice: coin.usd, dp: coin.usd_24h_change ?? 0, lastUpdate: Date.now() };
+          simPrices.set(ticker, entry);
+          return entry;
+        }
+      }
+    } catch { /* seed failed — will return null */ }
+    return null;
+  })();
+
+  simSeedLocks.set(ticker, seedPromise);
+  const result = await seedPromise;
+  simSeedLocks.delete(ticker);
+  return result;
+}
+
+/* ── GET /api/quote/:symbol — Sim price engine with auto-seeding ── */
 app.get("/api/quote/:symbol", async (req, res) => {
   const apiKey = process.env.FINNHUB_API_KEY;
   if (!apiKey) {
@@ -61,30 +114,23 @@ app.get("/api/quote/:symbol", async (req, res) => {
   const ticker = req.params.symbol.toUpperCase();
 
   try {
-    const symbol = encodeURIComponent(ticker);
-    const response = await fetch(
-      `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`
-    );
-    const data = await response.json();
-
-    // If Finnhub returns zeros or null dp (no real data) and ticker is a known crypto, fall back to CoinGecko
-    if ((!data.c || data.c === 0 || data.dp == null) && CRYPTO_ID_MAP[ticker]) {
-      const cached = cryptoQuoteCache.get(ticker);
-      if (cached && Date.now() - cached.ts < CRYPTO_QUOTE_TTL) {
-        return res.json(cached.data);
-      }
-      const cgId = CRYPTO_ID_MAP[ticker];
-      const cgUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${cgId}&vs_currencies=usd&include_24hr_change=true`;
-      const cgRes = await fetch(cgUrl);
-      const cgData = await cgRes.json();
-      const coin = cgData[cgId];
-      if (coin && coin.usd > 0) {
-        const result = { c: coin.usd, dp: coin.usd_24h_change ?? 0, source: "swish" };
-        cryptoQuoteCache.set(ticker, { ts: Date.now(), data: result });
-        return res.json(result);
-      }
+    // Check sim cache first — instant return
+    let entry = simPrices.get(ticker);
+    if (entry) {
+      simWalk(entry);
+      const dp = entry.openPrice > 0 ? ((entry.price - entry.openPrice) / entry.openPrice) * 100 : 0;
+      return res.json({ c: entry.price, dp: Math.round(dp * 100) / 100, source: "swish" });
     }
 
+    // Not in sim yet — seed from real price (one-time Finnhub/CoinGecko hit)
+    entry = await seedSimPrice(ticker, apiKey);
+    if (entry) {
+      return res.json({ c: entry.price, dp: entry.dp, source: "swish" });
+    }
+
+    // Seed failed — fall back to raw Finnhub passthrough
+    const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ticker)}&token=${apiKey}`);
+    const data = await response.json();
     res.json({ ...data, source: "swish" });
   } catch (err) {
     res.status(502).json({ error: "Failed to reach Finnhub API" });
