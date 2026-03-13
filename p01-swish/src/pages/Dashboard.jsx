@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { TrendingUp, Lightbulb, Star, Users, Briefcase, Activity, Flame, Award } from "lucide-react";
 import { T } from "../tokens";
 import supabase from "../lib/supabase";
@@ -31,6 +31,26 @@ const PerfTooltip = ({ active, payload }) => {
       <div style={{ color: T.ghost, fontSize: "11px", marginTop: "2px" }}>{p.label}</div>
     </div>
   );
+};
+
+// Custom dot: pulsing circle on the last data point only
+const PulseDot = ({ cx, cy, index, dataLength, color, showPulse }) => {
+  if (index !== dataLength - 1) return null;
+  return (
+    <g>
+      {showPulse && (
+        <circle cx={cx} cy={cy} r={4} fill={color} opacity={0.4}
+          style={{ animation: "chartPulse 1.5s ease infinite" }} />
+      )}
+      <circle cx={cx} cy={cy} r={3.5} fill={color} />
+    </g>
+  );
+};
+
+// Y-axis formatter: $8.5k style
+const formatYAxis = (value) => {
+  if (value >= 1000) return `$${(value / 1000).toFixed(1)}k`;
+  return `$${value}`;
 };
 
 export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, quotesLoaded = false, allHeldPricesLoaded: allHeldPricesLoadedProp = false, onClaimXp, fireConfetti, watchlist = [], watchlistItems = [], toggleWatch }) {
@@ -578,11 +598,14 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
           <div style={{ marginTop: "28px" }}>
             {chartPoints.length >= 2 ? (
               <>
-                <ResponsiveContainer width="100%" height={120}>
-                  <AreaChart data={chartPoints} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
-                    <XAxis dataKey="label" hide />
+                <ResponsiveContainer width="100%" height={140}>
+                  <AreaChart data={chartPoints} margin={{ top: 8, right: 8, bottom: 0, left: 4 }}>
+                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#9ca3af", fontSize: 10 }} interval="preserveStartEnd" minTickGap={40} />
+                    <YAxis orientation="right" width={45} axisLine={false} tickLine={false} tick={{ fill: "#9ca3af", fontSize: 10 }} tickFormatter={formatYAxis} domain={["dataMin - 50", "dataMax + 50"]} />
                     <Tooltip content={<PerfTooltip />} cursor={{ stroke: T.ghost, strokeDasharray: "4 4" }} />
-                    <Area type="monotone" dataKey="value" stroke={chartColor} strokeWidth={2} fill="transparent" dot={false} />
+                    <Area type="monotone" dataKey="value" stroke={chartColor} strokeWidth={2} fill="transparent"
+                      dot={(props) => <PulseDot {...props} dataLength={chartPoints.length} color={chartColor} showPulse={isMarketOpen()} />}
+                      activeDot={{ r: 4, fill: chartColor, stroke: "#fff", strokeWidth: 2 }} />
                   </AreaChart>
                 </ResponsiveContainer>
                 <div style={{ display: "flex", justifyContent: "center", marginTop: "10px" }}>

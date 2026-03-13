@@ -37,6 +37,7 @@ input::placeholder { color: #86868b; }
 @keyframes pullSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes sheetSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes chartPulse { 0% { r: 4; opacity: 0.4; } 100% { r: 10; opacity: 0; } }
 
 /* Floating coach bubble + sheet: visible only below 768px */
 .floating-coach-bubble { display: none; }
