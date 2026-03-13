@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { T } from "../tokens";
 
 /* ── Stock defaults (hardcoded seed prices, replaced by live on mount) ── */
@@ -83,7 +84,8 @@ const BADGE_STYLES = {
 };
 
 /* ── StockRow ── */
-const StockRow = ({ stock, onTrade, onOpenTrade, onWatch, watched }) => {
+const StockRow = ({ stock, onOpenTrade, onWatch, watched }) => {
+  const navigate = useNavigate();
   const [hov, setHov] = useState(false);
   const pos = stock.changePct >= 0;
   const badge = stock.isETF ? "ETF" : stock.isCrypto ? "Crypto" : null;
@@ -91,7 +93,7 @@ const StockRow = ({ stock, onTrade, onOpenTrade, onWatch, watched }) => {
 
   return (
     <div
-      onClick={() => onTrade(stock)}
+      onClick={() => navigate(`/stock/${stock.ticker}`)}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
@@ -180,7 +182,7 @@ const StockRow = ({ stock, onTrade, onOpenTrade, onWatch, watched }) => {
 };
 
 /* ── Main component ── */
-export default function StockSearch({ onTrade, onOpenTrade, onWatch, watchlist = [] }) {
+export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
   const [query, setQuery]           = useState("");
   const [sector, setSector]         = useState("All");
   const [results, setResults]       = useState([]);
@@ -484,7 +486,6 @@ export default function StockSearch({ onTrade, onOpenTrade, onWatch, watchlist =
           <StockRow
             key={stock.ticker + i}
             stock={stock}
-            onTrade={onTrade}
             onOpenTrade={onOpenTrade}
             onWatch={onWatch}
             watched={watchlist.includes(stock.ticker)}

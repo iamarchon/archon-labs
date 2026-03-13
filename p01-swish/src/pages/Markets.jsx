@@ -2,7 +2,7 @@ import { T } from "../tokens";
 import Reveal from "../components/Reveal";
 import StockSearch from "../components/StockSearch";
 
-export default function Markets({ onTrade, onOpenTrade, watchlist, onWatch }) {
+export default function Markets({ onOpenTrade, watchlist, onWatch }) {
   return (
     <div style={{ maxWidth: "860px", margin: "0 auto", padding: "40px 28px 100px" }}>
       <Reveal>
@@ -14,7 +14,7 @@ export default function Markets({ onTrade, onOpenTrade, watchlist, onWatch }) {
         </div>
       </Reveal>
       <Reveal delay={0.08}>
-        <StockSearch onTrade={onTrade} onOpenTrade={onOpenTrade} onWatch={onWatch} watchlist={watchlist} />
+        <StockSearch onOpenTrade={onOpenTrade} onWatch={onWatch} watchlist={watchlist} />
       </Reveal>
     </div>
   );

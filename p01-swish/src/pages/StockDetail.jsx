@@ -167,7 +167,7 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
             <div style={{ fontSize: "36px", fontWeight: 700, letterSpacing: "-1.2px", color: T.ink, fontVariantNumeric: "tabular-nums" }}>
               {currentPrice != null ? `$${currentPrice.toFixed(2)}` : "$..."}
             </div>
-            <div style={{ color: changePct >= 0 ? T.green : T.red, fontSize: "15px", fontWeight: 600, marginTop: "2px" }}>
+            <div style={{ color: (changePct ?? 0) >= 0 ? T.green : T.red, fontSize: "15px", fontWeight: 600, marginTop: "2px" }}>
               {(changeAmt ?? 0) >= 0 ? "+" : ""}{(changeAmt ?? 0).toFixed(2)} ({(changePct ?? 0) >= 0 ? "+" : ""}{(changePct ?? 0).toFixed(2)}%)
               <span style={{ color: T.inkFaint, fontWeight: 400, fontSize: "12px", marginLeft: "6px" }}>{rangeLabel}</span>
             </div>
