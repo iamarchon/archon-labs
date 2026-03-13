@@ -8,6 +8,11 @@ const STEPS = [
     icon: "👋",
   },
   {
+    title: "Your AI Coach Has Your Back",
+    body: "Swish is powered by AI. Get plain-English news summaries, a personal coach to answer any money question, and smart insights — all built for you.",
+    icon: "🤖",
+  },
+  {
     title: "Make Your First Trade",
     body: "Head to Markets, pick a stock you know, and buy a few shares. You'll earn +100 XP for your first trade!",
     icon: "📈",
