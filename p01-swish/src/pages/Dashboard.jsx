@@ -45,15 +45,57 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   }, [allHeldPricesLoadedProp]);
   const allHeldPricesLoaded = allHeldPricesLoadedProp || timedOut;
 
-  // Portfolio value: compute when prices are loaded (or after 4s timeout)
+  // Market hours check: Mon–Fri 9:30am–4:00pm US Eastern
+  const isMarketOpen = useCallback(() => {
+    const now = new Date();
+    const et = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+    const day = et.getDay();
+    if (day === 0 || day === 6) return false; // weekend
+    const mins = et.getHours() * 60 + et.getMinutes();
+    return mins >= 570 && mins < 960; // 9:30 (570) to 16:00 (960)
+  }, []);
+
+  // Live polling during market hours — 5s interval for held tickers
+  const [liveQuotes, setLiveQuotes] = useState({});
+  useEffect(() => {
+    if (!allHeldPricesLoaded || holdings.length === 0) return;
+    if (!isMarketOpen()) return;
+    let cancelled = false;
+    const heldTickers = holdings.filter(h => Number(h.shares) > 0).map(h => h.ticker);
+    if (heldTickers.length === 0) return;
+
+    const poll = async () => {
+      const results = {};
+      await Promise.all(heldTickers.map(async (ticker) => {
+        try {
+          const res = await fetch(`${baseUrl}/api/quote/${encodeURIComponent(ticker)}`);
+          const data = await res.json();
+          if (data.source === "swish" && data.c && data.c > 0) {
+            results[ticker] = { price: data.c, dp: data.dp ?? 0 };
+          }
+        } catch { /* ignore */ }
+      }));
+      if (!cancelled && Object.keys(results).length > 0) {
+        setLiveQuotes(results);
+      }
+    };
+    const id = setInterval(poll, 5000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [allHeldPricesLoaded, holdings, isMarketOpen]);
+
+  // Portfolio value: use live polled prices when available, else props
   const portfolioValue = allHeldPricesLoaded ? holdings.reduce((sum, h) => {
     const shares = Number(h.shares);
+    const lq = liveQuotes[h.ticker];
+    if (lq) return sum + shares * lq.price;
     const s = stocks.find(x => x.ticker === h.ticker);
     const price = s?.price ?? livePrices[h.ticker] ?? Number(h.avg_cost);
     return sum + shares * price;
   }, 0) : null;
   // Use prop totalValue when available (quote-backed), fall back to local calc after timeout
-  const total = totalValue ?? (allHeldPricesLoaded ? (portfolioValue ?? 0) + cash : null);
+  const total = (Object.keys(liveQuotes).length > 0 && portfolioValue != null)
+    ? portfolioValue + cash
+    : totalValue ?? (allHeldPricesLoaded ? (portfolioValue ?? 0) + cash : null);
   const gain = total != null ? total - 10000 : null;
   const gainPct = gain != null ? (gain / 10000) * 100 : null;
 
@@ -472,7 +514,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
     const delta = chartPoints[chartPoints.length - 1].value - chartPoints[0].value;
     return delta >= 0 ? "#22c55e" : "#ef4444";
   }, [chartPoints]);
-  const chartFill = chartColor === "#22c55e" ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)";
+  // chartFill removed — chart now renders as unfilled line
 
   // Compute sessionDelta from stored lastSessionValue (live, updates with total)
   const computedSessionDelta = lastSessionValue > 0 ? total - lastSessionValue : null;
@@ -540,7 +582,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
                   <AreaChart data={chartPoints} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
                     <XAxis dataKey="label" hide />
                     <Tooltip content={<PerfTooltip />} cursor={{ stroke: T.ghost, strokeDasharray: "4 4" }} />
-                    <Area type="monotone" dataKey="value" stroke={chartColor} strokeWidth={2} fill={chartFill} dot={false} />
+                    <Area type="monotone" dataKey="value" stroke={chartColor} strokeWidth={2} fill="transparent" dot={false} />
                   </AreaChart>
                 </ResponsiveContainer>
                 <div style={{ display: "flex", justifyContent: "center", marginTop: "10px" }}>
