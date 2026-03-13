@@ -549,13 +549,16 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       {/* Row 4: Your Holdings — full width list */}
       <Reveal delay={0.08}>
         <Card style={{ padding: "28px 30px", marginBottom: "16px" }}>
+          {(() => {
+            const activeHoldings = holdings.filter(h => Number(h.shares) > 0);
+            return (<>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
             <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Your Holdings</div>
-            {holdings.length > 0 && (
+            {activeHoldings.length > 0 && (
               <RangeTabs selected={holdingsRange} onChange={setHoldingsRange} />
             )}
           </div>
-          {holdings.length === 0 ? (
+          {activeHoldings.length === 0 ? (
             <div style={{ padding: "40px 20px", textAlign: "center" }}>
               <div style={{ fontSize: "36px", marginBottom: "12px" }}>📈</div>
               <div style={{ color: T.ink, fontSize: "16px", fontWeight: 600, marginBottom: "6px" }}>Your portfolio is empty</div>
@@ -571,7 +574,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
             </div>
           ) : (
             <div>
-              {holdings.map((h, i) => {
+              {activeHoldings.map((h, i) => {
                 const s = stocks.find(x => x.ticker === h.ticker);
                 if (!s) return null;
                 const shares = Number(h.shares), avgCost = Number(h.avg_cost);
@@ -602,7 +605,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
                         </div>
                       </div>
                     </div>
-                    {i < holdings.length - 1 && (
+                    {i < activeHoldings.length - 1 && (
                       <div style={{ height: "1px", background: T.line, margin: "0 4px" }} />
                     )}
                   </div>
@@ -610,6 +613,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
               })}
             </div>
           )}
+          </>); })()}
         </Card>
       </Reveal>
 
