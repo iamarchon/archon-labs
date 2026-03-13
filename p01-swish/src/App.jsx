@@ -282,16 +282,18 @@ function AppShell() {
     setTradeToast(`${verb} ${shares} ${stock.ticker} share${shares > 1 ? "s" : ""}! ${xpText}`);
     setTimeout(() => setTradeToast(null), 3000);
 
-    // Save snapshot after trade
-    const portfolioValue = holdings.reduce((sum, h) => {
-      const s = stocks.find(x => x.ticker === h.ticker);
-      const price = (s?.priceLoaded ? s.price : null) ?? livePrices[h.ticker] ?? Number(h.avg_cost);
-      return sum + Number(h.shares) * price;
-    }, 0);
-    const newCash = action === "BUY"
-      ? cash - (stock.price * shares)
-      : cash + (stock.price * shares);
-    saveSnapshot(portfolioValue + newCash);
+    // Save snapshot after trade — only if quotes are loaded (prevents stale price leak)
+    if (quotesLoaded) {
+      const portfolioValue = holdings.reduce((sum, h) => {
+        const s = stocks.find(x => x.ticker === h.ticker);
+        const price = (s?.priceLoaded ? s.price : null) ?? livePrices[h.ticker] ?? Number(h.avg_cost);
+        return sum + Number(h.shares) * price;
+      }, 0);
+      const newCash = action === "BUY"
+        ? cash - (stock.price * shares)
+        : cash + (stock.price * shares);
+      saveSnapshot(portfolioValue + newCash);
+    }
 
     // Background challenge check
     checkChallengesAfterAction();
@@ -333,12 +335,15 @@ function AppShell() {
 
   const shouldShowTutorial = showTutorial && dbUser && totalTrades === 0 && dbUser.role !== "teacher";
 
-  const portfolioValue = holdings.reduce((sum, h) => {
-    const price = livePrices[h.ticker] ?? stocks.find(x => x.ticker === h.ticker)?.price ?? Number(h.avg_cost);
+  // Only compute portfolio value when quotes are loaded — prevents seed/avg_cost prices leaking in
+  const portfolioValue = quotesLoaded ? holdings.reduce((sum, h) => {
+    const s = stocks.find(x => x.ticker === h.ticker);
+    // Only use price if it came from a real quote, not seed data
+    const price = (s?.priceLoaded ? s.price : null) ?? livePrices[h.ticker] ?? Number(h.avg_cost);
     return sum + Number(h.shares) * price;
-  }, 0);
-  const totalValue = portfolioValue + cash;
-  const portfolioGain = ((totalValue - 10000) / 10000) * 100;
+  }, 0) : 0;
+  const totalValue = quotesLoaded ? portfolioValue + cash : null;
+  const portfolioGain = totalValue != null ? ((totalValue - 10000) / 10000) * 100 : null;
 
   return (
     <>
@@ -355,8 +360,8 @@ function AppShell() {
                 holdings={holdings} cash={cash} xp={xp} level={level}
                 streak={streak} username={username} livePrices={livePrices}
                 dbUser={dbUser} saveSnapshot={saveSnapshot}
-                totalTrades={totalTrades} totalValue={quotesLoaded ? totalValue : null}
-                portfolioGain={quotesLoaded ? portfolioGain : null}
+                totalTrades={totalTrades} totalValue={totalValue}
+                portfolioGain={portfolioGain}
                 quotesLoaded={quotesLoaded}
                 onClaimXp={onClaimXp} fireConfetti={fireConfetti}
                 watchlist={watchlist} watchlistItems={watchlistItems}

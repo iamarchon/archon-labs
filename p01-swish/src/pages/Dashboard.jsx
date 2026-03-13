@@ -36,14 +36,17 @@ const PerfTooltip = ({ active, payload }) => {
 export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, quotesLoaded = false, onClaimXp, fireConfetti, watchlist = [], watchlistItems = [], toggleWatch }) {
   const navigate = useNavigate();
 
-  const portfolioValue = holdings.reduce((sum, h) => {
+  // Portfolio value: ONLY compute when quotes are loaded to prevent stale/seed prices leaking in
+  const portfolioValue = quotesLoaded ? holdings.reduce((sum, h) => {
     const shares = Number(h.shares);
     const s = stocks.find(x => x.ticker === h.ticker);
     const price = (s?.priceLoaded ? s.price : null) ?? livePrices[h.ticker] ?? Number(h.avg_cost);
     return sum + shares * price;
-  }, 0);
-  const total = portfolioValue + cash;
-  const gain = total - 10000, gainPct = (gain / 10000) * 100;
+  }, 0) : null;
+  // Use the prop totalValue (already gated by quotesLoaded in App.jsx) as the single source of truth
+  const total = totalValue;
+  const gain = total != null ? total - 10000 : null;
+  const gainPct = gain != null ? (gain / 10000) * 100 : null;
 
   // Portfolio snapshots — fetched per range
   const [chartPoints, setChartPoints] = useState([]);
@@ -52,11 +55,12 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   const snapshotSaved = useRef(false);
 
   // Save snapshot ONCE then fetch "since last session" — sequential to avoid race
+  // CRITICAL: only save after quotesLoaded is true to prevent writing stale/seed prices
   useEffect(() => {
-    if (!dbUser || total <= 0) return;
+    if (!dbUser || !quotesLoaded || total == null || total <= 0) return;
     let cancelled = false;
     (async () => {
-      // Save snapshot once
+      // Save snapshot once (only after real quotes are loaded)
       if (!snapshotSaved.current) {
         snapshotSaved.current = true;
         await saveSnapshot?.(total);
@@ -87,7 +91,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, [dbUser?.id, total, saveSnapshot]);
+  }, [dbUser?.id, total, saveSnapshot, quotesLoaded]);
 
   // Build chart from current holdings × historical candle prices
   useEffect(() => {
@@ -450,7 +454,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
             <div>
               <div style={{ color: T.inkFaint, fontSize: "12px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "10px" }}>Portfolio Value</div>
               <div className="portfolio-value" style={{ fontSize: "56px", fontWeight: 700, letterSpacing: "-2.5px", color: T.ink, fontVariantNumeric: "tabular-nums", lineHeight: 1, opacity: quotesLoaded ? 1 : 0.4, animation: quotesLoaded ? "none" : "pulse 1.5s ease infinite", transition: "opacity .3s ease" }}>
-                ${total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ${(total ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               {hasRangeData && (
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "12px" }}>
@@ -516,7 +520,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
           </div>
 
           <div style={{ display: "flex", marginTop: "24px", paddingTop: "28px", borderTop: `1px solid ${T.line}` }}>
-            {[["Invested", `$${(portfolioValue ?? 0).toFixed(2)}`], ["Available Cash", `$${(cash ?? 0).toFixed(2)}`]].map((stat, i, arr) => (
+            {[["Invested", portfolioValue != null ? `$${portfolioValue.toFixed(2)}` : "—"], ["Available Cash", `$${(cash ?? 0).toFixed(2)}`]].map((stat, i, arr) => (
               <div key={stat[0]} style={{ flex: 1, textAlign: "center", borderRight: i < arr.length - 1 ? `1px solid ${T.line}` : "none" }}>
                 <div style={{ color: T.inkFaint, fontSize: "10.5px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "5px" }}>{stat[0]}</div>
                 <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>{stat[1]}</div>
