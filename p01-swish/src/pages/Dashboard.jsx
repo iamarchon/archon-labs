@@ -33,17 +33,17 @@ const PerfTooltip = ({ active, payload }) => {
   );
 };
 
-export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, quotesLoaded = false, onClaimXp, fireConfetti, watchlist = [], watchlistItems = [], toggleWatch }) {
+export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, quotesLoaded = false, allHeldPricesLoaded = false, onClaimXp, fireConfetti, watchlist = [], watchlistItems = [], toggleWatch }) {
   const navigate = useNavigate();
 
-  // Portfolio value: ONLY compute when quotes are loaded to prevent stale/seed prices leaking in
-  const portfolioValue = quotesLoaded ? holdings.reduce((sum, h) => {
+  // Portfolio value: ONLY compute when ALL held ticker prices are from /api/quote sim feed
+  const portfolioValue = allHeldPricesLoaded ? holdings.reduce((sum, h) => {
     const shares = Number(h.shares);
     const s = stocks.find(x => x.ticker === h.ticker);
-    const price = (s?.priceLoaded ? s.price : null) ?? livePrices[h.ticker] ?? Number(h.avg_cost);
-    return sum + shares * price;
+    // s.priceLoaded is guaranteed true here — no fallback needed
+    return sum + shares * (s?.price ?? 0);
   }, 0) : null;
-  // Use the prop totalValue (already gated by quotesLoaded in App.jsx) as the single source of truth
+  // Use the prop totalValue (already gated by allHeldPricesLoaded in App.jsx) as the single source of truth
   const total = totalValue;
   const gain = total != null ? total - 10000 : null;
   const gainPct = gain != null ? (gain / 10000) * 100 : null;
@@ -55,9 +55,9 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   const snapshotSaved = useRef(false);
 
   // Save snapshot ONCE then fetch "since last session" — sequential to avoid race
-  // CRITICAL: only save after quotesLoaded is true to prevent writing stale/seed prices
+  // CRITICAL: only save after ALL held tickers have sim-feed prices
   useEffect(() => {
-    if (!dbUser || !quotesLoaded || total == null || total <= 0) return;
+    if (!dbUser || !allHeldPricesLoaded || total == null || total <= 0) return;
     let cancelled = false;
     (async () => {
       // Save snapshot once (only after real quotes are loaded)
@@ -91,7 +91,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, [dbUser?.id, total, saveSnapshot, quotesLoaded]);
+  }, [dbUser?.id, total, saveSnapshot, allHeldPricesLoaded]);
 
   // Build chart from current holdings × historical candle prices
   useEffect(() => {
@@ -453,7 +453,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: "32px" }}>
             <div>
               <div style={{ color: T.inkFaint, fontSize: "12px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "10px" }}>Portfolio Value</div>
-              <div className="portfolio-value" style={{ fontSize: "56px", fontWeight: 700, letterSpacing: "-2.5px", color: T.ink, fontVariantNumeric: "tabular-nums", lineHeight: 1, opacity: quotesLoaded ? 1 : 0.4, animation: quotesLoaded ? "none" : "pulse 1.5s ease infinite", transition: "opacity .3s ease" }}>
+              <div className="portfolio-value" style={{ fontSize: "56px", fontWeight: 700, letterSpacing: "-2.5px", color: T.ink, fontVariantNumeric: "tabular-nums", lineHeight: 1, opacity: allHeldPricesLoaded ? 1 : 0.4, animation: allHeldPricesLoaded ? "none" : "pulse 1.5s ease infinite", transition: "opacity .3s ease" }}>
                 ${(total ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               {hasRangeData && (

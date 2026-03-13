@@ -204,8 +204,13 @@ function AppShell() {
   }, [level, fireConfetti, dbUser]);
 
   // Save portfolio snapshot helper — once per day max (upsert on snapshot_date)
+  // GUARD: reject implausible values (sim starts at $10k, valid range $3k–$50k)
   const saveSnapshot = useCallback(async (value) => {
     if (!dbUser) return;
+    if (value == null || value < 3000 || value > 50000) {
+      console.warn("[snapshot] REJECTED implausible value:", value);
+      return;
+    }
     try {
       const now = new Date();
       const snapshotDate = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
@@ -282,12 +287,11 @@ function AppShell() {
     setTradeToast(`${verb} ${shares} ${stock.ticker} share${shares > 1 ? "s" : ""}! ${xpText}`);
     setTimeout(() => setTradeToast(null), 3000);
 
-    // Save snapshot after trade — only if quotes are loaded (prevents stale price leak)
-    if (quotesLoaded) {
+    // Save snapshot after trade — only if ALL held ticker prices are from sim feed
+    if (allHeldPricesLoaded) {
       const portfolioValue = holdings.reduce((sum, h) => {
         const s = stocks.find(x => x.ticker === h.ticker);
-        const price = (s?.priceLoaded ? s.price : null) ?? livePrices[h.ticker] ?? Number(h.avg_cost);
-        return sum + Number(h.shares) * price;
+        return sum + Number(h.shares) * (s?.price ?? 0);
       }, 0);
       const newCash = action === "BUY"
         ? cash - (stock.price * shares)
@@ -335,14 +339,21 @@ function AppShell() {
 
   const shouldShowTutorial = showTutorial && dbUser && totalTrades === 0 && dbUser.role !== "teacher";
 
-  // Only compute portfolio value when quotes are loaded — prevents seed/avg_cost prices leaking in
-  const portfolioValue = quotesLoaded ? holdings.reduce((sum, h) => {
+  // Check that EVERY held ticker has a real quote from /api/quote — not seed or avg_cost fallback
+  const allHeldPricesLoaded = quotesLoaded && holdings.length > 0
+    ? holdings.every(h => {
+        const s = stocks.find(x => x.ticker === h.ticker);
+        return s?.priceLoaded === true;
+      })
+    : quotesLoaded; // no holdings → just need quotes to have loaded
+
+  // Only compute portfolio value when ALL held tickers have sim-feed prices
+  const portfolioValue = allHeldPricesLoaded ? holdings.reduce((sum, h) => {
     const s = stocks.find(x => x.ticker === h.ticker);
-    // Only use price if it came from a real quote, not seed data
-    const price = (s?.priceLoaded ? s.price : null) ?? livePrices[h.ticker] ?? Number(h.avg_cost);
-    return sum + Number(h.shares) * price;
+    // s.priceLoaded is guaranteed true for all held tickers here
+    return sum + Number(h.shares) * (s?.price ?? 0);
   }, 0) : 0;
-  const totalValue = quotesLoaded ? portfolioValue + cash : null;
+  const totalValue = allHeldPricesLoaded ? portfolioValue + cash : null;
   const portfolioGain = totalValue != null ? ((totalValue - 10000) / 10000) * 100 : null;
 
   return (
@@ -363,6 +374,7 @@ function AppShell() {
                 totalTrades={totalTrades} totalValue={totalValue}
                 portfolioGain={portfolioGain}
                 quotesLoaded={quotesLoaded}
+                allHeldPricesLoaded={allHeldPricesLoaded}
                 onClaimXp={onClaimXp} fireConfetti={fireConfetti}
                 watchlist={watchlist} watchlistItems={watchlistItems}
                 toggleWatch={toggleWatch} />
