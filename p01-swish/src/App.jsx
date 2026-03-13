@@ -81,37 +81,55 @@ function AppShell() {
 
   const { executeTrade } = useTrade(dbUser?.id, onTradeComplete);
 
-  // Fetch 1D daily % change (dp) from quote API for all tickers
-  const [dailyPcts, setDailyPcts] = useState({});
+  // Crypto tickers to include in movers/ticker tape alongside equities
+  const CRYPTO_TICKERS = useMemo(() => [
+    { ticker: "BTC", name: "Bitcoin", price: 0, changePct: 0 },
+    { ticker: "ETH", name: "Ethereum", price: 0, changePct: 0 },
+    { ticker: "COIN", name: "Coinbase Global", price: 0, changePct: 0 },
+  ], []);
+
+  // Fetch 1D daily % change (dp) from quote API for all tickers + crypto
+  const [dailyQuotes, setDailyQuotes] = useState({});
   useEffect(() => {
     const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
+    const cryptoSymbols = new Set(CRYPTO_TICKERS.map(c => c.ticker));
+    const allTickers = [...tickers, ...CRYPTO_TICKERS.filter(c => !tickers.includes(c.ticker)).map(c => c.ticker)];
     (async () => {
       const results = {};
-      await Promise.all(tickers.map(async (ticker) => {
+      await Promise.all(allTickers.map(async (ticker) => {
         try {
-          const res = await fetch(`${baseUrl}/api/quote/${encodeURIComponent(ticker)}`);
+          const isCrypto = cryptoSymbols.has(ticker);
+          const url = isCrypto
+            ? `${baseUrl}/api/crypto/quote/${encodeURIComponent(ticker)}`
+            : `${baseUrl}/api/quote/${encodeURIComponent(ticker)}`;
+          const res = await fetch(url);
           const data = await res.json();
           if (data.c && data.c > 0) {
-            results[ticker] = data.dp ?? 0;
+            results[ticker] = { dp: data.dp ?? 0, price: data.c };
           }
         } catch { /* ignore */ }
       }));
-      setDailyPcts(results);
+      setDailyQuotes(results);
     })();
-  }, [tickers]);
+  }, [tickers, CRYPTO_TICKERS]);
 
-  // Merge live WebSocket prices + daily % into seed data
-  const stocks = useMemo(() =>
-    SEED_STOCKS.map(s => {
+  // Merge live WebSocket prices + daily % into seed data, plus crypto
+  const stocks = useMemo(() => {
+    const equities = SEED_STOCKS.map(s => {
       const live = livePrices[s.ticker];
-      const dp = dailyPcts[s.ticker];
-      if (live == null && dp == null) return s;
+      const q = dailyQuotes[s.ticker];
+      if (live == null && !q) return s;
       const price = live ?? s.price;
-      const changePct = dp ?? ((price - s.price) / s.price) * 100;
-      return { ...s, price, changePct, dailyPct: dp };
-    }),
-    [livePrices, dailyPcts]
-  );
+      const changePct = q?.dp ?? ((price - s.price) / s.price) * 100;
+      return { ...s, price, changePct, dailyPct: q?.dp };
+    });
+    const crypto = CRYPTO_TICKERS.map(c => {
+      const q = dailyQuotes[c.ticker];
+      if (!q) return null;
+      return { ...c, price: q.price, changePct: q.dp, dailyPct: q.dp, isCrypto: true };
+    }).filter(Boolean);
+    return [...equities, ...crypto];
+  }, [livePrices, dailyQuotes, CRYPTO_TICKERS]);
 
   const cash = dbUser ? Number(dbUser.cash) : 10000;
   const xp = dbUser?.xp ?? 0;
