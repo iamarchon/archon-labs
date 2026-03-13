@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from
 import { useEffect } from "react";
 import { T } from "./tokens";
 import { SEED_STOCKS } from "./data";
+import { STOCK_CATEGORIES } from "./data/stockCategories";
 import useLivePrices from "./hooks/useLivePrices";
 import useUserData from "./hooks/useUserData";
 import useTrade from "./hooks/useTrade";
@@ -81,24 +82,25 @@ function AppShell() {
 
   const { executeTrade } = useTrade(dbUser?.id, onTradeComplete);
 
-  // Crypto tickers to include in movers/ticker tape alongside equities
-  const CRYPTO_TICKERS = useMemo(() => [
-    { ticker: "BTC", name: "Bitcoin", price: 0, changePct: 0 },
-    { ticker: "ETH", name: "Ethereum", price: 0, changePct: 0 },
-    { ticker: "COIN", name: "Coinbase Global", price: 0, changePct: 0 },
-  ], []);
+  // Full universe of tickers from STOCK_CATEGORIES (equities + ETFs + crypto)
+  const allUniverseTickers = useMemo(() => Object.keys(STOCK_CATEGORIES), []);
+  const CRYPTO_SYMBOLS = useMemo(() => {
+    const set = new Set();
+    for (const [ticker, cat] of Object.entries(STOCK_CATEGORIES)) {
+      if (cat === "Crypto") set.add(ticker);
+    }
+    return set;
+  }, []);
 
-  // Fetch 1D daily % change (dp) from quote API for all tickers + crypto
+  // Fetch 1D daily % change (dp) from quote API for the full universe
   const [dailyQuotes, setDailyQuotes] = useState({});
   useEffect(() => {
     const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
-    const cryptoSymbols = new Set(CRYPTO_TICKERS.map(c => c.ticker));
-    const allTickers = [...tickers, ...CRYPTO_TICKERS.filter(c => !tickers.includes(c.ticker)).map(c => c.ticker)];
     (async () => {
       const results = {};
-      await Promise.all(allTickers.map(async (ticker) => {
+      await Promise.all(allUniverseTickers.map(async (ticker) => {
         try {
-          const isCrypto = cryptoSymbols.has(ticker);
+          const isCrypto = CRYPTO_SYMBOLS.has(ticker);
           const url = isCrypto
             ? `${baseUrl}/api/crypto/quote/${encodeURIComponent(ticker)}`
             : `${baseUrl}/api/quote/${encodeURIComponent(ticker)}`;
@@ -111,10 +113,11 @@ function AppShell() {
       }));
       setDailyQuotes(results);
     })();
-  }, [tickers, CRYPTO_TICKERS]);
+  }, [allUniverseTickers, CRYPTO_SYMBOLS]);
 
-  // Merge live WebSocket prices + daily % into seed data, plus crypto
+  // Merge live WebSocket prices + daily % into seed data, plus non-seed symbols
   const stocks = useMemo(() => {
+    const seedTickers = new Set(SEED_STOCKS.map(s => s.ticker));
     const equities = SEED_STOCKS.map(s => {
       const live = livePrices[s.ticker];
       const q = dailyQuotes[s.ticker];
@@ -123,13 +126,23 @@ function AppShell() {
       const changePct = q?.dp ?? ((price - s.price) / s.price) * 100;
       return { ...s, price, changePct, dailyPct: q?.dp };
     });
-    const crypto = CRYPTO_TICKERS.map(c => {
-      const q = dailyQuotes[c.ticker];
-      if (!q) return null;
-      return { ...c, price: q.price, changePct: q.dp, dailyPct: q.dp, isCrypto: true };
-    }).filter(Boolean);
-    return [...equities, ...crypto];
-  }, [livePrices, dailyQuotes, CRYPTO_TICKERS]);
+    // Add non-seed symbols (crypto, ETFs, other equities) from quote data
+    const extras = allUniverseTickers
+      .filter(t => !seedTickers.has(t) && dailyQuotes[t])
+      .map(ticker => {
+        const q = dailyQuotes[ticker];
+        return {
+          ticker,
+          name: ticker,
+          price: q.price,
+          changePct: q.dp,
+          dailyPct: q.dp,
+          sector: STOCK_CATEGORIES[ticker] || "Other",
+          isCrypto: CRYPTO_SYMBOLS.has(ticker),
+        };
+      });
+    return [...equities, ...extras];
+  }, [livePrices, dailyQuotes, allUniverseTickers, CRYPTO_SYMBOLS]);
 
   const cash = dbUser ? Number(dbUser.cash) : 10000;
   const xp = dbUser?.xp ?? 0;
