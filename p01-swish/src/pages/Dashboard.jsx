@@ -6,7 +6,6 @@ import { T } from "../tokens";
 import supabase from "../lib/supabase";
 import Reveal from "../components/Reveal";
 import Card from "../components/Card";
-import Sparkline from "../components/Sparkline";
 import ProgressBar from "../components/ProgressBar";
 import InsightsTile from "../components/InsightsTile";
 import LeaguesTile from "../components/LeaguesTile";
@@ -287,25 +286,20 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
     setClaimingId(null);
   };
 
-  // Market Movers — own independent range
-  const [movers, setMovers] = useState([]);
-  const [moversLoading, setMoversLoading] = useState(true);
-  const [moversRange, setMoversRange] = useState("1D");
-
-  useEffect(() => {
-    setMoversLoading(true);
-    (async () => {
-      try {
-        const res = await fetch(`${baseUrl}/api/movers?range=${moversRange}`);
-        const data = await res.json();
-        setMovers(data.movers || []);
-      } catch { /* ignore */ }
-      setMoversLoading(false);
-    })();
-  }, [moversRange]);
-
-  const MOVERS_LABELS = { "1D": "Today", "1W": "Past week", "1M": "Past month", "3M": "Past 3 months", "1Y": "Past year" };
-  const moversRangeLabel = MOVERS_LABELS[moversRange] || "Today";
+  // Market Movers — derived from sim price feed (stocks prop)
+  const movers = useMemo(() => {
+    return [...stocks]
+      .filter(s => s.price > 0 && s.changePct !== undefined)
+      .sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct))
+      .slice(0, 5)
+      .map(s => ({
+        symbol: s.ticker,
+        price: s.price,
+        changePercent: s.changePct,
+        trending: s.changePct >= 0 ? "up" : "down",
+        sparkline: s.sparkline || [],
+      }));
+  }, [stocks]);
 
   // Watchlist range + price history + live quotes + collapsed state
   const [wlRange, setWlRange] = useState("1D");
@@ -530,30 +524,17 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
         </Card>
       </Reveal>
 
-      {/* Row 2: Market Movers — full width, own range tabs */}
+      {/* Row 2: Market Movers — top 5 by absolute % change */}
       <Reveal delay={0.04}>
         <Card style={{ padding: "28px 30px", marginBottom: "16px" }}>
-          <div className="movers-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+          <div className="movers-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px", color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}><Activity size={16} strokeWidth={1.5} color={T.inkFaint} />Market Movers</div>
-              <div style={{ color: T.inkFaint, fontSize: "11px", fontWeight: 500, letterSpacing: "0.03em", marginTop: "2px" }}>{moversRangeLabel}</div>
+              <div style={{ color: T.inkFaint, fontSize: "11px", fontWeight: 500, letterSpacing: "0.03em", marginTop: "2px" }}>Biggest moves today</div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <RangeTabs selected={moversRange} onChange={setMoversRange} />
-              <button onClick={() => navigate("/markets")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>All stocks</button>
-            </div>
+            <button onClick={() => navigate("/markets")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>All stocks</button>
           </div>
-          {moversLoading ? (
-            <div className="movers-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "10px" }}>
-              {[0,1,2,3,4].map(i => (
-                <div key={i} style={{ padding: "16px", borderRadius: "14px", background: T.bg, border: `1px solid ${T.line}`, textAlign: "center", height: "110px" }}>
-                  <div style={{ width: "36px", height: "14px", background: T.line, borderRadius: "4px", margin: "0 auto 12px" }} />
-                  <div style={{ width: "64px", height: "24px", background: T.line, borderRadius: "4px", margin: "0 auto 10px" }} />
-                  <div style={{ width: "48px", height: "12px", background: T.line, borderRadius: "3px", margin: "0 auto" }} />
-                </div>
-              ))}
-            </div>
-          ) : movers.length === 0 ? (
+          {movers.length === 0 ? (
             <div style={{ padding: "24px 0", textAlign: "center", color: T.inkFaint, fontSize: "13px" }}>Market data unavailable</div>
           ) : (
             <div className="movers-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: "10px" }}>
@@ -564,7 +545,6 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
                     onMouseEnter={e => { e.currentTarget.style.borderColor = T.ghost; e.currentTarget.style.background = T.white; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = T.line; e.currentTarget.style.background = T.bg; }}>
                     <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", letterSpacing: "-0.2px", marginBottom: "8px" }}>{m.symbol}</div>
-                    <Sparkline data={m.sparkline} width={64} height={24} />
                     <div style={{ marginTop: "8px" }}>
                       <div style={{ color: T.ink, fontWeight: 600, fontSize: "13px", fontVariantNumeric: "tabular-nums" }}>${(m.price ?? 0).toFixed(2)}</div>
                       <div style={{ color: (m.changePercent ?? 0) >= 0 ? T.green : T.red, fontSize: "12px", fontWeight: 500, marginTop: "2px", fontVariantNumeric: "tabular-nums" }}>{(m.changePercent ?? 0) >= 0 ? "+" : ""}{(m.changePercent ?? 0).toFixed(2)}%</div>
