@@ -298,7 +298,7 @@ function AppShell() {
 
     // Save snapshot after trade — only if ALL held ticker prices are from sim feed
     if (allHeldPricesLoaded) {
-      const portfolioValue = holdings.reduce((sum, h) => {
+      const portfolioValue = activeHoldings.reduce((sum, h) => {
         const s = stocks.find(x => x.ticker === h.ticker);
         return sum + Number(h.shares) * (s?.price ?? 0);
       }, 0);
@@ -348,9 +348,12 @@ function AppShell() {
 
   const shouldShowTutorial = showTutorial && dbUser && totalTrades === 0 && dbUser.role !== "teacher";
 
+  // Only check held tickers (shares > 0) — ignore 0-share rows from past sells
+  const activeHoldings = useMemo(() => holdings.filter(h => Number(h.shares) > 0), [holdings]);
+
   // Check that EVERY held ticker has a real quote from /api/quote — not seed or avg_cost fallback
-  const allHeldPricesLoaded = quotesLoaded && (holdings.length > 0
-    ? holdings.every(h => {
+  const allHeldPricesLoaded = quotesLoaded && (activeHoldings.length > 0
+    ? activeHoldings.every(h => {
         const s = stocks.find(x => x.ticker === h.ticker);
         return s?.priceLoaded === true;
       })
@@ -358,7 +361,7 @@ function AppShell() {
   );
 
   // Only compute portfolio value when ALL held tickers have sim-feed prices
-  const portfolioValue = allHeldPricesLoaded ? holdings.reduce((sum, h) => {
+  const portfolioValue = allHeldPricesLoaded ? activeHoldings.reduce((sum, h) => {
     const s = stocks.find(x => x.ticker === h.ticker);
     // s.priceLoaded is guaranteed true for all held tickers here
     return sum + Number(h.shares) * (s?.price ?? 0);
