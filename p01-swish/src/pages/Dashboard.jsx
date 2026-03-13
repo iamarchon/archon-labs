@@ -286,23 +286,21 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
     setClaimingId(null);
   };
 
-  // Market Movers — split into Stocks and Crypto tabs
+  // Market Movers — split into Stocks and Crypto tabs using isCrypto field
   const [moversTab, setMoversTab] = useState("Stocks");
-  const MOVERS_CRYPTO_SET = useMemo(() => new Set(["BTC", "ETH", "COIN"]), []);
 
   const stockMovers = useMemo(() => {
     return [...stocks]
-      .filter(s => s.price > 0 && s.changePct !== undefined && !MOVERS_CRYPTO_SET.has(s.ticker))
+      .filter(s => s.price > 0 && s.changePct !== undefined && !s.isCrypto)
       .sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct))
       .slice(0, 5);
-  }, [stocks, MOVERS_CRYPTO_SET]);
+  }, [stocks]);
 
   const cryptoMovers = useMemo(() => {
     return [...stocks]
-      .filter(s => s.price > 0 && s.changePct !== undefined && MOVERS_CRYPTO_SET.has(s.ticker))
-      .sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct))
-      .slice(0, 5);
-  }, [stocks, MOVERS_CRYPTO_SET]);
+      .filter(s => s.price > 0 && s.changePct !== undefined && s.isCrypto)
+      .sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct));
+  }, [stocks]);
 
   const activeMovers = moversTab === "Stocks" ? stockMovers : cryptoMovers;
 

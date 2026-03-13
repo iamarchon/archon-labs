@@ -121,10 +121,9 @@ function AppShell() {
     const equities = SEED_STOCKS.map(s => {
       const live = livePrices[s.ticker];
       const q = dailyQuotes[s.ticker];
-      if (live == null && !q) return s;
-      const price = live ?? s.price;
+      const price = live ?? q?.price ?? s.price;
       const changePct = q?.dp ?? ((price - s.price) / s.price) * 100;
-      return { ...s, price, changePct, dailyPct: q?.dp };
+      return { ...s, price, changePct, dailyPct: q?.dp, sector: STOCK_CATEGORIES[s.ticker] || "Other", isCrypto: CRYPTO_SYMBOLS.has(s.ticker) };
     });
     // Add non-seed symbols (crypto, ETFs, other equities) from quote data
     const extras = allUniverseTickers
