@@ -69,7 +69,7 @@ export default function useNotifications(dbUser, xp, streak) {
           type: "challenge",
           icon: "🏆",
           text: `You can claim "${ch.title}"! Earn +${ch.xpReward} XP`,
-          link: "/challenges",
+          link: `/challenges?highlight=${encodeURIComponent(ch.title)}`,
         });
       }
     }

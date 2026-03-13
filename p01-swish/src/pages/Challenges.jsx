@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { T } from "../tokens";
 import Card from "../components/Card";
 import ProgressBar from "../components/ProgressBar";
@@ -15,6 +16,11 @@ export default function Challenges({ dbUser, onClaimXp, fireConfetti }) {
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState("all");
   const [claimingId, setClaimingId] = useState(null);
+  const [searchParams] = useSearchParams();
+  const [highlightTitle, setHighlightTitle] = useState(null);
+  const [toast, setToast] = useState(null);
+  const highlightProcessed = useRef(false);
+  const containerRef = useRef(null);
 
   const fetchChallenges = useCallback(async () => {
     if (!dbUser?.id) {
@@ -60,10 +66,46 @@ export default function Challenges({ dbUser, onClaimXp, fireConfetti }) {
     return day === 0 ? 1 : day === 1 ? 7 : 8 - day;
   };
 
+  // Handle ?highlight= param after challenges load
+  useEffect(() => {
+    if (loading || highlightProcessed.current || challenges.length === 0) return;
+    const param = searchParams.get("highlight");
+    if (!param) return;
+    highlightProcessed.current = true;
+
+    // Small delay to let cards render
+    setTimeout(() => {
+      const el = containerRef.current?.querySelector(`[data-challenge-title="${CSS.escape(param)}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setHighlightTitle(param);
+        setToast(param);
+        setTimeout(() => {
+          setHighlightTitle(null);
+          setToast(null);
+          window.history.replaceState(null, "", window.location.pathname);
+        }, 3000);
+      }
+    }, 300);
+  }, [loading, challenges, searchParams]);
+
   const filtered = filter === "all" ? challenges : challenges.filter(c => c.category === filter);
 
   return (
-    <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px 24px 100px" }}>
+    <div ref={containerRef} style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px 24px 100px" }}>
+      {/* Highlight toast */}
+      {toast && (
+        <div style={{
+          position: "fixed", top: "64px", left: "50%", transform: "translateX(-50%)",
+          zIndex: 300, background: T.accent, color: T.white,
+          padding: "10px 20px", borderRadius: "12px", fontSize: "13px", fontWeight: 600,
+          boxShadow: "0 4px 20px rgba(0,113,227,0.3)",
+          animation: "fadeIn .25s ease, slideUp .25s ease",
+          whiteSpace: "nowrap", maxWidth: "90vw", overflow: "hidden", textOverflow: "ellipsis",
+        }}>
+          Scrolled to {toast} — tap Claim XP to collect
+        </div>
+      )}
       <Reveal>
         <div style={{ marginBottom: "28px" }}>
           <h1 style={{ fontSize: "36px", fontWeight: 700, letterSpacing: "-1.2px", color: T.ink, margin: 0 }}>Challenges</h1>
@@ -109,7 +151,15 @@ export default function Challenges({ dbUser, onClaimXp, fireConfetti }) {
 
             return (
               <Reveal key={ch.id} delay={0.04 + i * 0.03}>
-                <Card style={{ padding: "24px 28px", height: "100%" }}>
+                <Card data-challenge-title={ch.title} style={{
+                  padding: "24px 28px", height: "100%",
+                  ...(highlightTitle === ch.title ? {
+                    outline: `2px solid ${T.accent}`,
+                    boxShadow: `0 0 0 4px rgba(0,113,227,0.15), 0 2px 12px rgba(0,0,0,0.06)`,
+                    background: "rgba(0,113,227,0.04)",
+                    transition: "all .3s ease",
+                  } : {}),
+                }}>
                   <div style={{ display: "flex", gap: "6px", marginBottom: "14px", flexWrap: "wrap", alignItems: "center" }}>
                     <span style={{ fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "4px", background: diff.bg, color: diff.color, textTransform: "uppercase", letterSpacing: "0.04em" }}>{diff.label}</span>
                     <span style={{ fontSize: "10px", fontWeight: 600, padding: "2px 8px", borderRadius: "4px", background: T.bg, color: T.inkFaint, textTransform: "uppercase", letterSpacing: "0.04em" }}>{ch.category}</span>
