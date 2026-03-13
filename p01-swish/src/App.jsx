@@ -45,6 +45,7 @@ function AppShell() {
   const [tradeSuccess, setTradeSuccess] = useState(null);
   const [tradeFirstTrade, setTradeFirstTrade] = useState(false);
   const [detailStock, setDetailStock] = useState(null);
+  const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem("swish_tutorial_done"));
   const { pathname } = useLocation();
 
   // Close trade modal on route change
@@ -233,11 +234,6 @@ function AppShell() {
     return <RoleSelect userId={dbUser.id} onSelect={handleRoleSelect} />;
   }
 
-  // Tutorial overlay for brand-new users
-  const [showTutorial, setShowTutorial] = useState(() => {
-    if (localStorage.getItem("swish_tutorial_done")) return false;
-    return true;
-  });
   const shouldShowTutorial = showTutorial && dbUser && totalTrades === 0 && dbUser.role !== "teacher";
 
   const portfolioValue = holdings.reduce((sum, h) => {
