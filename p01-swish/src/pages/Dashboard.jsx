@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { T } from "../tokens";
@@ -320,7 +320,12 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
   const rangeLast = chartPoints.length >= 2 ? chartPoints[chartPoints.length - 1].value : total;
   const rangeGain = rangeLast - rangeBaseline;
   const rangeGainPct = rangeBaseline > 0 ? (rangeGain / rangeBaseline) * 100 : 0;
-  const perfColor = chartPoints.length < 2 ? "#22c55e" : rangeGain >= 0 ? "#22c55e" : "#ef4444";
+  const chartColor = useMemo(() => {
+    if (!chartPoints || chartPoints.length < 2) return "#22c55e";
+    const delta = chartPoints[chartPoints.length - 1].value - chartPoints[0].value;
+    return delta >= 0 ? "#22c55e" : "#ef4444";
+  }, [chartPoints]);
+  const chartFill = chartColor === "#22c55e" ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)";
 
   // Compute sessionDelta from stored lastSessionValue (live, updates with total)
   const computedSessionDelta = lastSessionValue > 0 ? total - lastSessionValue : null;
@@ -355,15 +360,9 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
               <>
                 <ResponsiveContainer width="100%" height={120}>
                   <AreaChart data={chartPoints} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
-                    <defs>
-                      <linearGradient id="perfFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={perfColor} stopOpacity={0.12} />
-                        <stop offset="100%" stopColor={perfColor} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
                     <XAxis dataKey="label" hide />
                     <Tooltip content={<PerfTooltip />} cursor={{ stroke: T.ghost, strokeDasharray: "4 4" }} />
-                    <Area type="monotone" dataKey="value" stroke={perfColor} strokeWidth={2} fill="url(#perfFill)" dot={false} />
+                    <Area type="monotone" dataKey="value" stroke={chartColor} strokeWidth={2} fill={chartFill} dot={false} />
                   </AreaChart>
                 </ResponsiveContainer>
                 <div style={{ display: "flex", justifyContent: "center", marginTop: "10px" }}>
