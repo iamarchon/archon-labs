@@ -81,15 +81,36 @@ function AppShell() {
 
   const { executeTrade } = useTrade(dbUser?.id, onTradeComplete);
 
-  // Merge live WebSocket prices into seed data
+  // Fetch 1D daily % change (dp) from quote API for all tickers
+  const [dailyPcts, setDailyPcts] = useState({});
+  useEffect(() => {
+    const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
+    (async () => {
+      const results = {};
+      await Promise.all(tickers.map(async (ticker) => {
+        try {
+          const res = await fetch(`${baseUrl}/api/quote/${encodeURIComponent(ticker)}`);
+          const data = await res.json();
+          if (data.c && data.c > 0) {
+            results[ticker] = data.dp ?? 0;
+          }
+        } catch { /* ignore */ }
+      }));
+      setDailyPcts(results);
+    })();
+  }, [tickers]);
+
+  // Merge live WebSocket prices + daily % into seed data
   const stocks = useMemo(() =>
     SEED_STOCKS.map(s => {
       const live = livePrices[s.ticker];
-      if (live == null) return s;
-      const changePct = ((live - s.price) / s.price) * 100;
-      return { ...s, price: live, changePct };
+      const dp = dailyPcts[s.ticker];
+      if (live == null && dp == null) return s;
+      const price = live ?? s.price;
+      const changePct = dp ?? ((price - s.price) / s.price) * 100;
+      return { ...s, price, changePct, dailyPct: dp };
     }),
-    [livePrices]
+    [livePrices, dailyPcts]
   );
 
   const cash = dbUser ? Number(dbUser.cash) : 10000;
