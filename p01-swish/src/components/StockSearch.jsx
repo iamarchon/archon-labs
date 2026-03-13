@@ -190,6 +190,7 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
   const [searchMode, setSearchMode] = useState(false);
   const debounceRef                 = useRef(null);
   const inputRef                    = useRef(null);
+  const searchCancelledRef          = useRef(false);
 
   // Dynamic data from APIs
   const [etfPrices, setEtfPrices]     = useState({});   // ticker → { price, changePct }
@@ -198,24 +199,27 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
 
   // Fetch ETF prices on mount (Finnhub supports ETF quotes)
   useEffect(() => {
+    let cancelled = false;
     ETF_DEFAULTS.forEach(async (etf) => {
       try {
         const res = await fetch(`${baseUrl}/api/quote/${etf.ticker}`);
         const data = await res.json();
-        if (data.c && data.c > 0) {
+        if (!cancelled && data.c && data.c > 0) {
           setEtfPrices(prev => ({ ...prev, [etf.ticker]: { price: data.c, changePct: data.dp ?? 0 } }));
         }
       } catch { /* ignore */ }
     });
+    return () => { cancelled = true; };
   }, [baseUrl]);
 
   // Fetch top 20 crypto from CoinGecko on mount
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         const res = await fetch(`${baseUrl}/api/crypto/top`);
         const data = await res.json();
-        if (data.coins) {
+        if (!cancelled && data.coins) {
           setCryptoTop(data.coins.map(c => ({
             ticker: c.symbol, name: c.name, price: c.price,
             changePct: c.changePct, sector: "Crypto", isCrypto: true,
@@ -224,6 +228,7 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
         }
       } catch { /* ignore */ }
     })();
+    return () => { cancelled = true; };
   }, [baseUrl]);
 
   // Build featured list based on sector
@@ -254,6 +259,7 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
 
   const doSearch = useCallback(async (q) => {
     if (!q || q.length < 1) { setSearchMode(false); setResults([]); return; }
+    searchCancelledRef.current = false;
     setSearchMode(true);
     setSearching(true);
     try {
@@ -316,6 +322,7 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
       );
 
       const [cryptoResults, { stocks: finnhubStocks, etfs: finnhubEtfs }] = await Promise.all([cryptoPromise, finnhubPromise]);
+      if (searchCancelledRef.current) return;
 
       // Merge: local ETF matches + Finnhub ETFs → deduplicate
       const etfMerged = [...localEtfMatches];
@@ -345,6 +352,7 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
       const needQuotes = combined.filter(s => s.price == null && !s.isCrypto);
       if (needQuotes.length > 0) {
         const quotes = await Promise.all(needQuotes.map(s => fetchQuote(s.ticker)));
+        if (searchCancelledRef.current) return;
         setResults(prev => prev.map(s => {
           if (s.price != null || s.isCrypto) return s;
           const idx = needQuotes.findIndex(n => n.ticker === s.ticker);
@@ -363,6 +371,7 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
             return data.c > 0 ? { price: data.c, changePct: data.dp ?? 0 } : null;
           } catch { return null; }
         }));
+        if (searchCancelledRef.current) return;
         setResults(prev => prev.map(s => {
           if (!s.isCrypto || s.price != null) return s;
           const idx = needCrypto.findIndex(n => n.ticker === s.ticker);
@@ -383,7 +392,10 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
     clearTimeout(debounceRef.current);
     if (!query.trim()) { setSearchMode(false); setResults([]); return; }
     debounceRef.current = setTimeout(() => doSearch(query.trim()), 320);
-    return () => clearTimeout(debounceRef.current);
+    return () => {
+      clearTimeout(debounceRef.current);
+      searchCancelledRef.current = true;
+    };
   }, [query, doSearch]);
 
   const displayList = searchMode ? results : featured;
