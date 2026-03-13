@@ -64,14 +64,17 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
         await saveSnapshot?.(total);
       }
 
-      // Fetch second-most-recent snapshot (previous session)
+      // Fetch yesterday's most recent snapshot (before today's date)
       try {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
         const { data: prev } = await supabase
           .from("portfolio_snapshots")
           .select("total_value")
           .eq("user_id", dbUser.id)
+          .lt("created_at", todayStart.toISOString())
           .order("created_at", { ascending: false })
-          .range(1, 1)
+          .limit(1)
           .maybeSingle();
         if (cancelled) return;
         if (prev) {
@@ -109,10 +112,23 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
           return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
         };
 
-        const points = (data || []).map(s => ({
+        // For 1D range, only show today's snapshots with yesterday's close as baseline
+        let filtered = data || [];
+        if (perfRange === "1D") {
+          const todayStart = new Date();
+          todayStart.setHours(0, 0, 0, 0);
+          filtered = filtered.filter(s => new Date(s.created_at) >= todayStart);
+        }
+
+        const points = filtered.map(s => ({
           value: Number(s.total_value),
           label: formatLabel(s.created_at),
         }));
+
+        // For 1D, prepend yesterday's close as the baseline
+        if (perfRange === "1D" && lastSessionValue > 0) {
+          points.unshift({ value: lastSessionValue, label: "Close" });
+        }
 
         // Append current live value as the final point
         const lastVal = points.length > 0 ? points[points.length - 1].value : null;
@@ -124,7 +140,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, [dbUser?.id, perfRange, total]);
+  }, [dbUser?.id, perfRange, total, lastSessionValue]);
 
   // Global leaderboard preview
   const [leaderboard, setLeaderboard] = useState([]);
@@ -339,8 +355,9 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   // Derive chart color + range P&L from fetched chartPoints
   const RANGE_LABELS = { "1D": "today", "1W": "this week", "1M": "this month", "3M": "3 months", "1Y": "this year" };
   const rangeLabel = RANGE_LABELS[perfRange] || "this year";
-  const rangeBaseline = chartPoints.length >= 2 ? chartPoints[0].value : 10000;
-  const rangeLast = chartPoints.length >= 2 ? chartPoints[chartPoints.length - 1].value : total;
+  const hasRangeData = chartPoints.length >= 2;
+  const rangeBaseline = hasRangeData ? chartPoints[0].value : 10000;
+  const rangeLast = hasRangeData ? chartPoints[chartPoints.length - 1].value : total;
   const rangeGain = rangeLast - rangeBaseline;
   const rangeGainPct = rangeBaseline > 0 ? (rangeGain / rangeBaseline) * 100 : 0;
   const chartColor = useMemo(() => {
@@ -365,10 +382,12 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
               <div className="portfolio-value" style={{ fontSize: "56px", fontWeight: 700, letterSpacing: "-2.5px", color: T.ink, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
                 ${total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "12px" }}>
-                <span style={{ color: rangeGain >= 0 ? T.green : T.red, fontSize: "17px", fontWeight: 600 }}>{rangeGain >= 0 ? "▲" : "▼"} {rangeGain >= 0 ? "+" : ""}{(rangeGainPct ?? 0).toFixed(2)}%</span>
-                <span style={{ color: T.inkFaint, fontSize: "15px" }}>{rangeGain >= 0 ? "+" : "−"}${Math.abs(rangeGain ?? 0).toFixed(2)} {rangeLabel}</span>
-              </div>
+              {hasRangeData && (
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "12px" }}>
+                  <span style={{ color: rangeGain >= 0 ? T.green : T.red, fontSize: "17px", fontWeight: 600 }}>{rangeGain >= 0 ? "▲" : "▼"} {rangeGain >= 0 ? "+" : ""}{(rangeGainPct ?? 0).toFixed(2)}%</span>
+                  <span style={{ color: T.inkFaint, fontSize: "15px" }}>{rangeGain >= 0 ? "+" : "−"}${Math.abs(rangeGain ?? 0).toFixed(2)} {rangeLabel}</span>
+                </div>
+              )}
               {(() => {
                 const activeH = holdings.filter(h => Number(h.shares) > 0);
                 if (activeH.length === 0) return null;
