@@ -178,7 +178,44 @@ export default function Learn({ dbUser, refreshUser, fireConfetti }) {
         </Card>
       </Reveal>
 
-      <Reveal delay={0.06}>
+      {/* Up Next — first incomplete lesson */}
+      {(() => {
+        const nextLesson = LESSONS.find(l => !completedIds.has(l.id));
+        if (!nextLesson) return null;
+        return (
+          <Reveal delay={0.06}>
+            <div
+              onClick={() => setActiveLesson(nextLesson)}
+              style={{
+                background: "#eff6ff", borderLeft: "4px solid #0071e3",
+                borderRadius: "14px", padding: "22px 26px", marginBottom: "20px",
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                cursor: "pointer", transition: "box-shadow .18s ease",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+              }}
+              onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)"}
+              onMouseLeave={e => e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)"}
+            >
+              <div>
+                <div style={{ fontSize: "11px", fontWeight: 600, color: "#2563eb", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: "6px" }}>UP NEXT</div>
+                <div style={{ fontSize: "17px", fontWeight: 700, color: T.ink, letterSpacing: "-0.3px" }}>{nextLesson.title}</div>
+              </div>
+              <button
+                style={{
+                  background: "#2563eb", color: "#fff", border: "none",
+                  padding: "9px 18px", borderRadius: "10px",
+                  fontSize: "13px", fontWeight: 500, cursor: "pointer",
+                  flexShrink: 0, transition: "opacity .15s",
+                }}
+                onMouseEnter={e => e.currentTarget.style.opacity = "0.88"}
+                onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+              >Start lesson →</button>
+            </div>
+          </Reveal>
+        );
+      })()}
+
+      <Reveal delay={0.07}>
         <div style={{ display: "flex", gap: "6px", marginBottom: "20px" }}>
           {CATS.map(c => (
             <button
@@ -204,21 +241,22 @@ export default function Learn({ dbUser, refreshUser, fireConfetti }) {
           const isLocked = lesson.category === "Advanced" && userLevel === "Bronze";
 
           return (
-            <Reveal key={lesson.id} delay={i * 0.04 + 0.08}>
+            <Reveal key={lesson.id} delay={i * 0.04 + 0.09}>
               <Card
                 style={{
                   padding: "24px 22px", cursor: isLocked ? "default" : "pointer",
                   opacity: isLocked ? 0.5 : 1,
                   position: "relative",
+                  ...(isCompleted ? { background: "#f0fdf4", borderLeft: `3px solid ${T.green}` } : {}),
                 }}
                 onClick={() => { if (!isLocked) setActiveLesson(lesson); }}
               >
                 {isCompleted && (
                   <div style={{
                     position: "absolute", top: "14px", right: "14px",
-                    width: "22px", height: "22px", borderRadius: "50%",
+                    width: "24px", height: "24px", borderRadius: "50%",
                     background: T.green, display: "flex", alignItems: "center",
-                    justifyContent: "center", color: T.white, fontSize: "12px", fontWeight: 700,
+                    justifyContent: "center", color: T.white, fontSize: "13px", fontWeight: 700,
                   }}>{"\u2713"}</div>
                 )}
                 {isLocked && (
@@ -232,15 +270,22 @@ export default function Learn({ dbUser, refreshUser, fireConfetti }) {
                   background: `${catColor}12`, padding: "2px 8px",
                   borderRadius: "5px", display: "inline-block", marginBottom: "12px",
                 }}>{lesson.category}</span>
-                <div style={{ color: T.ink, fontSize: "15px", fontWeight: 700, letterSpacing: "-0.2px", marginBottom: "8px", lineHeight: 1.3 }}>
+                <div style={{ color: isCompleted ? T.inkSub : T.ink, fontSize: "15px", fontWeight: 700, letterSpacing: "-0.2px", marginBottom: "8px", lineHeight: 1.3 }}>
                   {lesson.title}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                   <span style={{ color: T.inkFaint, fontSize: "12px" }}>{lesson.duration}</span>
-                  <span style={{
-                    fontSize: "10px", fontWeight: 600, color: T.accent,
-                    background: `${T.accent}10`, padding: "2px 8px", borderRadius: "4px",
-                  }}>+{lesson.xpReward} XP</span>
+                  {isCompleted ? (
+                    <span style={{
+                      fontSize: "10px", fontWeight: 600, color: T.green,
+                      background: `${T.green}12`, padding: "2px 8px", borderRadius: "4px",
+                    }}>{"\u2713"} +{lesson.xpReward} XP earned</span>
+                  ) : (
+                    <span style={{
+                      fontSize: "10px", fontWeight: 600, color: T.accent,
+                      background: `${T.accent}10`, padding: "2px 8px", borderRadius: "4px",
+                    }}>+{lesson.xpReward} XP</span>
+                  )}
                   {lesson.unlocksScenario && (
                     <span style={{
                       fontSize: "10px", fontWeight: 600, color: "#D97757",

@@ -27,9 +27,19 @@ const DIFF_ICON_COLORS = {
 
 const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
+function trimToSentence(text, maxLen) {
+  if (text.length <= maxLen) return text;
+  const trimmed = text.slice(0, maxLen);
+  const lastDot = trimmed.lastIndexOf(". ");
+  if (lastDot > 40) return trimmed.slice(0, lastDot + 1);
+  const lastDotEnd = trimmed.lastIndexOf(".");
+  if (lastDotEnd > 40) return trimmed.slice(0, lastDotEnd + 1);
+  return trimmed + "...";
+}
+
 const SCENARIOS = SCENARIO_DATA.map(s => ({
   id: s.id, title: s.title,
-  description: s.setup.slice(0, 90) + "...",
+  description: trimToSentence(s.setup, 120),
   difficulty: s.difficulty, xpReward: s.xp,
 }));
 
@@ -166,7 +176,16 @@ export default function Scenarios({ dbUser, onClaimXp, fireConfetti }) {
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <span style={{ color: T.green, fontSize: 14 }}>&#10003;</span>
                         <span style={{ color: T.green, fontSize: 12, fontWeight: 600 }}>Completed</span>
-                        <span style={{ color: T.inkFaint, fontSize: 11, marginLeft: 4 }}>· Replay</span>
+                        <button
+                          onClick={e => { e.stopPropagation(); handleStart(sc); }}
+                          style={{
+                            fontSize: 11, border: `1px solid ${T.ghost}`, borderRadius: 20,
+                            padding: "3px 10px", color: T.inkSub, background: "transparent",
+                            cursor: "pointer", marginLeft: 6, transition: "background .15s",
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = T.bg}
+                          onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                        >↺ Replay</button>
                       </div>
                     ) : unlocked ? (
                       <span style={{ fontSize: 12, fontWeight: 600, color: T.accent }}>Start &rarr;</span>
