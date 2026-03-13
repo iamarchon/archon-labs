@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { T } from "./tokens";
 import { SEED_STOCKS } from "./data";
 import { STOCK_CATEGORIES } from "./data/stockCategories";
-import useLivePrices from "./hooks/useLivePrices";
 import useUserData from "./hooks/useUserData";
 import useTrade from "./hooks/useTrade";
 import useConfetti from "./hooks/useConfetti";
@@ -40,8 +39,6 @@ function ScrollToTop() {
 
 function AppShell() {
   const navigate = useNavigate();
-  const tickers = useMemo(() => SEED_STOCKS.map(s => s.ticker), []);
-  const livePrices = useLivePrices(tickers);
   const {
     user: dbUser, holdings, watchlist, watchlistItems, loading: userLoading,
     toggleWatch, refreshUser, refreshHoldings, xpToLevel,
@@ -92,11 +89,12 @@ function AppShell() {
     return set;
   }, []);
 
-  // Fetch 1D daily % change (dp) from quote API for the full universe
+  // Single price source: fetch price + dp from quote API for the full universe, poll every 30s
   const [dailyQuotes, setDailyQuotes] = useState({});
+  const fetchQuotesRef = useRef(null);
   useEffect(() => {
     const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
-    (async () => {
+    const fetchQuotes = async () => {
       const results = {};
       await Promise.all(allUniverseTickers.map(async (ticker) => {
         try {
@@ -111,18 +109,30 @@ function AppShell() {
           }
         } catch { /* ignore */ }
       }));
-      setDailyQuotes(results);
-    })();
+      setDailyQuotes(prev => ({ ...prev, ...results }));
+    };
+    fetchQuotesRef.current = fetchQuotes;
+    fetchQuotes();
+    const id = setInterval(fetchQuotes, 30000);
+    return () => clearInterval(id);
   }, [allUniverseTickers, CRYPTO_SYMBOLS]);
 
-  // Merge live WebSocket prices + daily % into seed data, plus non-seed symbols
+  // Derive livePrices from dailyQuotes for backward compatibility
+  const livePrices = useMemo(() => {
+    const map = {};
+    for (const [ticker, q] of Object.entries(dailyQuotes)) {
+      map[ticker] = q.price;
+    }
+    return map;
+  }, [dailyQuotes]);
+
+  // Merge quote data into seed data, plus non-seed symbols — single price source
   const stocks = useMemo(() => {
     const seedTickers = new Set(SEED_STOCKS.map(s => s.ticker));
     const equities = SEED_STOCKS.map(s => {
-      const live = livePrices[s.ticker];
       const q = dailyQuotes[s.ticker];
-      const price = live ?? q?.price ?? s.price;
-      const changePct = q?.dp ?? ((price - s.price) / s.price) * 100;
+      const price = q?.price ?? s.price;
+      const changePct = q?.dp ?? 0;
       return { ...s, price, changePct, dailyPct: q?.dp, sector: STOCK_CATEGORIES[s.ticker] || "Other", isCrypto: CRYPTO_SYMBOLS.has(s.ticker) };
     });
     // Add non-seed symbols (crypto, ETFs, other equities) from quote data
@@ -141,7 +151,7 @@ function AppShell() {
         };
       });
     return [...equities, ...extras];
-  }, [livePrices, dailyQuotes, allUniverseTickers, CRYPTO_SYMBOLS]);
+  }, [dailyQuotes, allUniverseTickers, CRYPTO_SYMBOLS]);
 
   const cash = dbUser ? Number(dbUser.cash) : 10000;
   const xp = dbUser?.xp ?? 0;
