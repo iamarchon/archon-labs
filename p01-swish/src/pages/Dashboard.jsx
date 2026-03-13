@@ -33,14 +33,13 @@ const PerfTooltip = ({ active, payload }) => {
   );
 };
 
-export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, onClaimXp, fireConfetti, watchlist = [], watchlistItems = [], toggleWatch }) {
+export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, quotesLoaded = false, onClaimXp, fireConfetti, watchlist = [], watchlistItems = [], toggleWatch }) {
   const navigate = useNavigate();
 
   const portfolioValue = holdings.reduce((sum, h) => {
     const shares = Number(h.shares);
-    const livePrice = livePrices[h.ticker];
-    const seedStock = stocks.find(x => x.ticker === h.ticker);
-    const price = livePrice ?? seedStock?.price ?? Number(h.avg_cost);
+    const s = stocks.find(x => x.ticker === h.ticker);
+    const price = (s?.priceLoaded ? s.price : null) ?? livePrices[h.ticker] ?? Number(h.avg_cost);
     return sum + shares * price;
   }, 0);
   const total = portfolioValue + cash;
@@ -450,7 +449,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: "32px" }}>
             <div>
               <div style={{ color: T.inkFaint, fontSize: "12px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "10px" }}>Portfolio Value</div>
-              <div className="portfolio-value" style={{ fontSize: "56px", fontWeight: 700, letterSpacing: "-2.5px", color: T.ink, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+              <div className="portfolio-value" style={{ fontSize: "56px", fontWeight: 700, letterSpacing: "-2.5px", color: T.ink, fontVariantNumeric: "tabular-nums", lineHeight: 1, opacity: quotesLoaded ? 1 : 0.4, animation: quotesLoaded ? "none" : "pulse 1.5s ease infinite", transition: "opacity .3s ease" }}>
                 ${total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               {hasRangeData && (

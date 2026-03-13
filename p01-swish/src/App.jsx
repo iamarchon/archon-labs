@@ -89,32 +89,44 @@ function AppShell() {
     return set;
   }, []);
 
-  // Single price source: fetch price + dp from quote API for the full universe, poll every 30s
+  // Single price source: fetch price + dp from our API (source:"swish"), staggered to avoid rate limits
   const [dailyQuotes, setDailyQuotes] = useState({});
-  const fetchQuotesRef = useRef(null);
+  const [quotesLoaded, setQuotesLoaded] = useState(false);
   useEffect(() => {
     const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
+    let cancelled = false;
+    const delay = (ms) => new Promise(r => setTimeout(r, ms));
+
     const fetchQuotes = async () => {
       const results = {};
-      await Promise.all(allUniverseTickers.map(async (ticker) => {
-        try {
-          const isCrypto = CRYPTO_SYMBOLS.has(ticker);
-          const url = isCrypto
-            ? `${baseUrl}/api/crypto/quote/${encodeURIComponent(ticker)}`
-            : `${baseUrl}/api/quote/${encodeURIComponent(ticker)}`;
-          const res = await fetch(url);
-          const data = await res.json();
-          if (data.c && data.c > 0) {
-            results[ticker] = { dp: data.dp ?? 0, price: data.c };
-          }
-        } catch { /* ignore */ }
-      }));
-      setDailyQuotes(prev => ({ ...prev, ...results }));
+      // Stagger requests: batch 5 at a time with 250ms gap to avoid rate limits
+      for (let i = 0; i < allUniverseTickers.length; i += 5) {
+        if (cancelled) return;
+        const batch = allUniverseTickers.slice(i, i + 5);
+        await Promise.all(batch.map(async (ticker) => {
+          try {
+            const isCrypto = CRYPTO_SYMBOLS.has(ticker);
+            const url = isCrypto
+              ? `${baseUrl}/api/crypto/quote/${encodeURIComponent(ticker)}`
+              : `${baseUrl}/api/quote/${encodeURIComponent(ticker)}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            // Only accept prices from our own API (source: "swish")
+            if (data.source === "swish" && data.c && data.c > 0) {
+              results[ticker] = { dp: data.dp ?? 0, price: data.c };
+            }
+          } catch { /* ignore */ }
+        }));
+        if (i + 5 < allUniverseTickers.length) await delay(250);
+      }
+      if (!cancelled && Object.keys(results).length > 0) {
+        setDailyQuotes(prev => ({ ...prev, ...results }));
+        setQuotesLoaded(true);
+      }
     };
-    fetchQuotesRef.current = fetchQuotes;
     fetchQuotes();
     const id = setInterval(fetchQuotes, 30000);
-    return () => clearInterval(id);
+    return () => { cancelled = true; clearInterval(id); };
   }, [allUniverseTickers, CRYPTO_SYMBOLS]);
 
   // Derive livePrices from dailyQuotes for backward compatibility
@@ -131,9 +143,11 @@ function AppShell() {
     const seedTickers = new Set(SEED_STOCKS.map(s => s.ticker));
     const equities = SEED_STOCKS.map(s => {
       const q = dailyQuotes[s.ticker];
+      // Use quote price when available; keep seed price ONLY as visual placeholder before quotes load
       const price = q?.price ?? s.price;
       const changePct = q?.dp ?? 0;
-      return { ...s, price, changePct, dailyPct: q?.dp, sector: STOCK_CATEGORIES[s.ticker] || "Other", isCrypto: CRYPTO_SYMBOLS.has(s.ticker) };
+      const priceLoaded = !!q;
+      return { ...s, price, changePct, dailyPct: q?.dp, priceLoaded, sector: STOCK_CATEGORIES[s.ticker] || "Other", isCrypto: CRYPTO_SYMBOLS.has(s.ticker) };
     });
     // Add non-seed symbols (crypto, ETFs, other equities) from quote data
     const extras = allUniverseTickers
@@ -270,7 +284,8 @@ function AppShell() {
 
     // Save snapshot after trade
     const portfolioValue = holdings.reduce((sum, h) => {
-      const price = livePrices[h.ticker] ?? stocks.find(x => x.ticker === h.ticker)?.price ?? Number(h.avg_cost);
+      const s = stocks.find(x => x.ticker === h.ticker);
+      const price = (s?.priceLoaded ? s.price : null) ?? livePrices[h.ticker] ?? Number(h.avg_cost);
       return sum + Number(h.shares) * price;
     }, 0);
     const newCash = action === "BUY"
@@ -340,8 +355,9 @@ function AppShell() {
                 holdings={holdings} cash={cash} xp={xp} level={level}
                 streak={streak} username={username} livePrices={livePrices}
                 dbUser={dbUser} saveSnapshot={saveSnapshot}
-                totalTrades={totalTrades} totalValue={totalValue}
-                portfolioGain={portfolioGain}
+                totalTrades={totalTrades} totalValue={quotesLoaded ? totalValue : null}
+                portfolioGain={quotesLoaded ? portfolioGain : null}
+                quotesLoaded={quotesLoaded}
                 onClaimXp={onClaimXp} fireConfetti={fireConfetti}
                 watchlist={watchlist} watchlistItems={watchlistItems}
                 toggleWatch={toggleWatch} />

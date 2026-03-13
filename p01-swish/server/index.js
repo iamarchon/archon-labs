@@ -60,7 +60,7 @@ app.get("/api/quote/:symbol", async (req, res) => {
       `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`
     );
     const data = await response.json();
-    res.json(data);
+    res.json({ ...data, source: "swish" });
   } catch (err) {
     res.status(502).json({ error: "Failed to reach Finnhub API" });
   }
@@ -83,8 +83,8 @@ app.get("/api/crypto/quote/:id", async (req, res) => {
     const response = await fetch(url);
     const data = await response.json();
     const coin = data[id];
-    if (!coin) return res.json({ c: 0, dp: 0 });
-    res.json({ c: coin.usd, dp: coin.usd_24h_change ?? 0 });
+    if (!coin) return res.json({ c: 0, dp: 0, source: "swish" });
+    res.json({ c: coin.usd, dp: coin.usd_24h_change ?? 0, source: "swish" });
   } catch (err) {
     res.status(502).json({ error: "Failed to fetch crypto quote" });
   }
