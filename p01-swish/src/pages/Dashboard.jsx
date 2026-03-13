@@ -653,11 +653,17 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
                 { name: "Expert", color: "#059669", threshold: 1500 },
                 { name: "Legend", color: "#f59e0b", threshold: 2000 },
               ];
-              const currentIdx = LEVELS.findIndex(l => l.name === level);
+              // Find current tier by XP (not by name) to avoid mismatch with useUserData levels
+              let currentIdx = 0;
+              for (let i = LEVELS.length - 1; i >= 0; i--) {
+                if (xp >= LEVELS[i].threshold) { currentIdx = i; break; }
+              }
               const nextLevel = currentIdx < LEVELS.length - 1 ? LEVELS[currentIdx + 1] : null;
+              const currentThreshold = LEVELS[currentIdx].threshold;
               const progressPct = nextLevel
-                ? ((xp - LEVELS[currentIdx].threshold) / (nextLevel.threshold - LEVELS[currentIdx].threshold)) * 100
+                ? ((xp - currentThreshold) / (nextLevel.threshold - currentThreshold)) * 100
                 : 100;
+              const displayLevel = LEVELS[currentIdx].name;
               return (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                   <div style={{ background: T.bg, borderRadius: "14px", padding: "16px" }}>
@@ -672,7 +678,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
                   </div>
                   <div style={{ background: T.bg, borderRadius: "14px", padding: "16px" }}>
                     <Award size={24} strokeWidth={1.5} color={LEVELS[currentIdx]?.color || T.inkFaint} />
-                    <div style={{ color: T.ink, fontSize: "18px", fontWeight: 700, letterSpacing: "-0.5px", marginTop: "4px" }}>{level}</div>
+                    <div style={{ color: T.ink, fontSize: "18px", fontWeight: 700, letterSpacing: "-0.5px", marginTop: "4px" }}>{displayLevel}</div>
                     <div style={{ color: T.inkFaint, fontSize: "10px", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase", marginTop: "2px" }}>Current level</div>
                   </div>
                   <div style={{ background: T.bg, borderRadius: "14px", padding: "16px" }}>
