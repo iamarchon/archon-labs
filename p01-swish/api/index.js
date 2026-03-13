@@ -22,6 +22,34 @@ const supabaseAdmin = supabaseUrl && supabaseServiceKey
   ? createClient(supabaseUrl, supabaseServiceKey)
   : null;
 
+/* ── GET /api/dev/seed-transactions — ONE-TIME seed route, DELETE AFTER USE ── */
+app.get("/api/dev/seed-transactions", async (req, res) => {
+  if (!supabaseAdmin) return res.status(500).json({ error: "Supabase not configured" });
+  const rows = [
+    { user_id: 'aaaaaaaa-0001-0001-0001-000000000001', ticker: 'AAPL', action: 'buy', shares: 5, price: 189.30, total: 946.50 },
+    { user_id: 'aaaaaaaa-0001-0001-0001-000000000001', ticker: 'TSLA', action: 'buy', shares: 3, price: 248.50, total: 745.50 },
+    { user_id: 'aaaaaaaa-0001-0001-0001-000000000001', ticker: 'NVDA', action: 'sell', shares: 2, price: 875.40, total: 1750.80 },
+    { user_id: 'aaaaaaaa-0002-0002-0002-000000000002', ticker: 'AAPL', action: 'buy', shares: 10, price: 189.30, total: 1893.00 },
+    { user_id: 'aaaaaaaa-0002-0002-0002-000000000002', ticker: 'GOOGL', action: 'buy', shares: 4, price: 141.80, total: 567.20 },
+    { user_id: 'aaaaaaaa-0002-0002-0002-000000000002', ticker: 'AAPL', action: 'sell', shares: 3, price: 191.00, total: 573.00 },
+    { user_id: 'aaaaaaaa-0002-0002-0002-000000000002', ticker: 'RBLX', action: 'buy', shares: 15, price: 42.15, total: 632.25 },
+    { user_id: 'aaaaaaaa-0003-0003-0003-000000000003', ticker: 'TSLA', action: 'buy', shares: 2, price: 248.50, total: 497.00 },
+    { user_id: 'aaaaaaaa-0003-0003-0003-000000000003', ticker: 'AMZN', action: 'buy', shares: 1, price: 178.25, total: 178.25 },
+    { user_id: 'aaaaaaaa-0004-0004-0004-000000000004', ticker: 'AAPL', action: 'buy', shares: 8, price: 189.30, total: 1514.40 },
+    { user_id: 'aaaaaaaa-0004-0004-0004-000000000004', ticker: 'MSFT', action: 'buy', shares: 6, price: 378.90, total: 2273.40 },
+    { user_id: 'aaaaaaaa-0004-0004-0004-000000000004', ticker: 'GOOGL', action: 'buy', shares: 3, price: 141.80, total: 425.40 },
+    { user_id: 'aaaaaaaa-0004-0004-0004-000000000004', ticker: 'NVDA', action: 'buy', shares: 4, price: 875.40, total: 3501.60 },
+    { user_id: 'aaaaaaaa-0004-0004-0004-000000000004', ticker: 'TSLA', action: 'sell', shares: 2, price: 255.00, total: 510.00 },
+  ];
+  try {
+    const { error } = await supabaseAdmin.from("transactions").insert(rows);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ inserted: rows.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /* ── POST /api/coach — proxy to Anthropic Messages API ── */
 app.post("/api/coach", async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
