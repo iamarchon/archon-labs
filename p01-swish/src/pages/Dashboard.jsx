@@ -91,59 +91,113 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
     return () => { cancelled = true; };
   }, [dbUser?.id, total, saveSnapshot]);
 
-  // Fetch chart snapshots filtered by selected range — re-runs when range changes
+  // Build chart from current holdings × historical candle prices
   useEffect(() => {
-    if (!dbUser) return;
+    const activeHoldings = holdings.filter(h => Number(h.shares) > 0);
+    if (activeHoldings.length === 0) {
+      // No holdings — show flat line at cash
+      setChartPoints([{ value: cash, label: "Now" }]);
+      return;
+    }
     let cancelled = false;
-    const r = PRANGE.find(x => x.label === perfRange);
-    const startDate = new Date(Date.now() - r.days * 86400000).toISOString();
 
     (async () => {
       try {
-        const { data } = await supabase
-          .from("portfolio_snapshots")
-          .select("total_value, created_at")
-          .eq("user_id", dbUser.id)
-          .gte("created_at", startDate)
-          .order("created_at", { ascending: true });
+        // Fetch candles for each held ticker
+        const candleData = {};
+        await Promise.all(activeHoldings.map(async (h) => {
+          try {
+            const res = await fetch(`${baseUrl}/api/candles?symbol=${encodeURIComponent(h.ticker)}&range=${perfRange}`);
+            const data = await res.json();
+            if (data.s === "ok" && data.t?.length >= 2) {
+              candleData[h.ticker] = { t: data.t, c: data.c };
+            }
+          } catch { /* ignore */ }
+        }));
         if (cancelled) return;
 
-        const formatLabel = (dateStr) => {
-          const d = new Date(dateStr);
+        // Find common timestamps across all tickers (use the ticker with most data points as base)
+        const tickers = Object.keys(candleData);
+        if (tickers.length === 0) {
+          // No candle data available — show flat line
+          setChartPoints([
+            { value: total, label: "Start" },
+            { value: total, label: "Now" },
+          ]);
+          return;
+        }
+
+        // Use the ticker with the most timestamps as the reference timeline
+        let refTicker = tickers[0];
+        for (const tk of tickers) {
+          if (candleData[tk].t.length > candleData[refTicker].t.length) refTicker = tk;
+        }
+        const refTimestamps = candleData[refTicker].t;
+
+        // For each reference timestamp, compute portfolio value
+        const formatLabel = (ts) => {
+          const d = new Date(ts * 1000);
           if (perfRange === "1D") return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-          if (perfRange === "1W") return d.toLocaleDateString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" });
+          if (perfRange === "1W") return d.toLocaleDateString("en-US", { weekday: "short" });
           return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
         };
 
-        // For 1D range, only show today's snapshots with yesterday's close as baseline
-        let filtered = data || [];
-        if (perfRange === "1D") {
-          const n = new Date();
-          const utcTodayStart = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate()));
-          filtered = filtered.filter(s => new Date(s.created_at) >= utcTodayStart);
+        // Build price lookup for each ticker: timestamp → close
+        const priceMaps = {};
+        for (const tk of tickers) {
+          const map = {};
+          for (let i = 0; i < candleData[tk].t.length; i++) {
+            map[candleData[tk].t[i]] = candleData[tk].c[i];
+          }
+          priceMaps[tk] = map;
         }
 
-        const points = filtered.map(s => ({
-          value: Number(s.total_value),
-          label: formatLabel(s.created_at),
-        }));
+        // For tickers without data at a given timestamp, find nearest previous close
+        const getPrice = (ticker, timestamp) => {
+          if (priceMaps[ticker]?.[timestamp] !== undefined) return priceMaps[ticker][timestamp];
+          // Find nearest earlier timestamp
+          const cd = candleData[ticker];
+          if (!cd) return null;
+          let best = null;
+          for (let i = cd.t.length - 1; i >= 0; i--) {
+            if (cd.t[i] <= timestamp) { best = cd.c[i]; break; }
+          }
+          return best;
+        };
 
-        // For 1D, prepend yesterday's close as the baseline
-        if (perfRange === "1D" && lastSessionValue > 0) {
-          points.unshift({ value: lastSessionValue, label: "Close" });
+        // Sample down to ~40 points max for smooth chart
+        const step = Math.max(1, Math.floor(refTimestamps.length / 40));
+        const points = [];
+        for (let i = 0; i < refTimestamps.length; i++) {
+          if (i % step !== 0 && i !== refTimestamps.length - 1) continue;
+          const ts = refTimestamps[i];
+          let portfolioVal = cash;
+          for (const h of activeHoldings) {
+            const price = getPrice(h.ticker, ts);
+            if (price !== null) {
+              portfolioVal += Number(h.shares) * price;
+            } else {
+              // Fallback: use current live price
+              const seedStock = stocks.find(x => x.ticker === h.ticker);
+              portfolioVal += Number(h.shares) * (livePrices[h.ticker] ?? seedStock?.price ?? Number(h.avg_cost));
+            }
+          }
+          points.push({ value: portfolioVal, label: formatLabel(ts) });
         }
 
-        // Append current live value as the final point
-        const lastVal = points.length > 0 ? points[points.length - 1].value : null;
-        if (lastVal === null || Math.abs(total - lastVal) > 0.01) {
-          points.push({ value: total, label: formatLabel(new Date().toISOString()) });
+        // Append current live value as final point
+        const lastPt = points[points.length - 1];
+        if (!lastPt || Math.abs(total - lastPt.value) > 0.01) {
+          points.push({ value: total, label: "Now" });
         }
 
         setChartPoints(points);
-      } catch { /* ignore */ }
+      } catch {
+        setChartPoints([{ value: total, label: "Now" }]);
+      }
     })();
     return () => { cancelled = true; };
-  }, [dbUser?.id, perfRange, total, lastSessionValue]);
+  }, [holdings, perfRange, cash, total, stocks, livePrices]);
 
   // Global leaderboard preview
   const [leaderboard, setLeaderboard] = useState([]);
