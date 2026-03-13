@@ -32,4 +32,11 @@ input::placeholder { color: #86868b; }
 @media (max-width: 768px) {
   .mobile-nav { display: flex !important; }
   .desktop-nav-links { display: none !important; }
+
+  /* FIX 1 & 4: Learn + Scenarios grids → 1 column on mobile */
+  .learn-grid { grid-template-columns: 1fr !important; }
+  .scenarios-grid { grid-template-columns: 1fr !important; }
+
+  /* FIX 5: Auto-Invest frequency buttons stack on mobile */
+  .freq-buttons { flex-direction: column !important; }
 }

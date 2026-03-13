@@ -197,7 +197,7 @@ export default function Learn({ dbUser, refreshUser, fireConfetti }) {
         </div>
       </Reveal>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "14px" }}>
+      <div className="learn-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "14px" }}>
         {filtered.map((lesson, i) => {
           const isCompleted = completedIds.has(lesson.id);
           const catColor = CAT_COLORS[lesson.category];

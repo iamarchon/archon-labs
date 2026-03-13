@@ -169,7 +169,7 @@ export default function AutoInvest({ dbUser, stocks, livePrices, refreshUser }) 
               <label style={{ display: "block", fontSize: "12px", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: T.inkFaint, marginBottom: "6px" }}>
                 Frequency
               </label>
-              <div style={{ display: "flex", gap: "8px" }}>
+              <div className="freq-buttons" style={{ display: "flex", gap: "8px" }}>
                 {FREQUENCIES.map(f => (
                   <button
                     key={f.value}

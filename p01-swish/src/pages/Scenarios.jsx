@@ -104,7 +104,7 @@ export default function Scenarios({ dbUser, onClaimXp, fireConfetti }) {
       {loading ? (
         <div style={{ padding: 40, textAlign: "center", color: T.inkFaint, fontSize: 14 }}>Loading scenarios...</div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="scenarios-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           {SCENARIOS.map((sc, i) => {
             const unlock = SCENARIO_UNLOCKS[sc.id];
             const unlocked = checkCondition(unlock, completedScenarios, completedLessons);
