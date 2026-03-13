@@ -663,9 +663,8 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
           ) : (
             <div className="movers-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(activeMovers.length, 5)},1fr)`, gap: "10px" }}>
               {activeMovers.map(m => {
-                const stock = stocks.find(x => x.ticker === m.ticker);
                 return (
-                  <div key={m.ticker} onClick={() => stock && onTrade(stock)} style={{ padding: "16px", borderRadius: "14px", background: T.bg, border: `1px solid ${T.line}`, cursor: "pointer", transition: "all .18s ease", textAlign: "center" }}
+                  <div key={m.ticker} onClick={() => navigate(`/stock/${m.ticker}`)} style={{ padding: "16px", borderRadius: "14px", background: T.bg, border: `1px solid ${T.line}`, cursor: "pointer", transition: "all .18s ease", textAlign: "center" }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = T.ghost; e.currentTarget.style.background = T.white; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = T.line; e.currentTarget.style.background = T.bg; }}>
                     <div style={{ color: T.ink, fontWeight: 700, fontSize: "14px", letterSpacing: "-0.2px", marginBottom: "8px" }}>{m.ticker}</div>
