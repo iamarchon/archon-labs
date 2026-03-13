@@ -128,19 +128,19 @@ function AppShell() {
     prevLevelRef.current = level;
   }, [level, fireConfetti, dbUser]);
 
-  // Save portfolio snapshot helper
+  // Save portfolio snapshot helper — once per day max
   const saveSnapshot = useCallback(async (value) => {
     if (!dbUser) return;
     try {
-      const { data: last } = await supabase
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const { count } = await supabase
         .from("portfolio_snapshots")
-        .select("total_value")
+        .select("id", { count: "exact", head: true })
         .eq("user_id", dbUser.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .gte("created_at", todayStart.toISOString());
 
-      if (!last || Math.abs(Number(last.total_value) - value) > 0.01) {
+      if (count === 0) {
         await supabase.from("portfolio_snapshots").insert({
           user_id: dbUser.id,
           total_value: value,

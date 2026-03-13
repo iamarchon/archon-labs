@@ -64,15 +64,17 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
         await saveSnapshot?.(total);
       }
 
-      // Fetch yesterday's most recent snapshot (before today's date)
+      // Fetch yesterday's most recent snapshot (before today, within 48h)
       try {
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
+        const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
         const { data: prev } = await supabase
           .from("portfolio_snapshots")
           .select("total_value")
           .eq("user_id", dbUser.id)
           .lt("created_at", todayStart.toISOString())
+          .gte("created_at", twoDaysAgo)
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
