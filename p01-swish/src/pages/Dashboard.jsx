@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { T } from "../tokens";
@@ -46,34 +46,28 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
   const total = portfolioValue + cash;
   const gain = total - 10000, gainPct = (gain / 10000) * 100;
 
-  // Portfolio snapshots
-  const [snapshots, setSnapshots] = useState([]);
+  // Portfolio snapshots — fetched per range
+  const [chartPoints, setChartPoints] = useState([]);
   const [perfRange, setPerfRange] = useState("1D");
   const [sessionDelta, setSessionDelta] = useState(null);
   const [lastSessionValue, setLastSessionValue] = useState(null);
+  const snapshotSaved = useRef(false);
+  const sessionFetched = useRef(false);
 
-  // Global leaderboard preview
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [lbTab, setLbTab] = useState("global");
-  const [dashLeagues, setDashLeagues] = useState([]);
-  const [dashLeagueMembers, setDashLeagueMembers] = useState({});
-  const [expandedDashLeague, setExpandedDashLeague] = useState(null);
-
+  // Save snapshot ONCE on dashboard load (not on every total change)
   useEffect(() => {
-    if (!dbUser) return;
+    if (!dbUser || total <= 0 || snapshotSaved.current) return;
+    snapshotSaved.current = true;
+    saveSnapshot?.(total);
+  }, [dbUser, total, saveSnapshot]);
+
+  // Fetch "since last session" ONCE (not on every total change)
+  useEffect(() => {
+    if (!dbUser || sessionFetched.current) return;
+    sessionFetched.current = true;
     let cancelled = false;
     (async () => {
       try {
-        // Fetch all snapshots for chart
-        const { data } = await supabase
-          .from("portfolio_snapshots")
-          .select("total_value, created_at")
-          .eq("user_id", dbUser.id)
-          .order("created_at", { ascending: true });
-        if (cancelled) return;
-        if (data?.length) setSnapshots(data);
-
-        // Fetch SECOND most recent snapshot (previous session, not the one just saved)
         const { data: prev } = await supabase
           .from("portfolio_snapshots")
           .select("total_value")
@@ -86,18 +80,60 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
           const lastVal = Number(prev.total_value);
           if (lastVal > 0 && !isNaN(lastVal)) {
             setLastSessionValue(lastVal);
-            setSessionDelta(total - lastVal);
           }
         }
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, [dbUser, total]);
+  }, [dbUser]);
 
-  // Save snapshot on dashboard load
+  // Fetch chart snapshots filtered by selected range — re-runs when range changes
   useEffect(() => {
-    if (dbUser && total > 0) saveSnapshot?.(total);
-  }, [dbUser, total, saveSnapshot]);
+    if (!dbUser) return;
+    let cancelled = false;
+    const r = PRANGE.find(x => x.label === perfRange);
+    const startDate = new Date(Date.now() - r.days * 86400000).toISOString();
+
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("portfolio_snapshots")
+          .select("total_value, created_at")
+          .eq("user_id", dbUser.id)
+          .gte("created_at", startDate)
+          .order("created_at", { ascending: true });
+        if (cancelled) return;
+
+        const formatLabel = (dateStr) => {
+          const d = new Date(dateStr);
+          if (perfRange === "1D") return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+          if (perfRange === "1W") return d.toLocaleDateString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" });
+          return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        };
+
+        const points = (data || []).map(s => ({
+          value: Number(s.total_value),
+          label: formatLabel(s.created_at),
+        }));
+
+        // Append current live value as the final point
+        const lastVal = points.length > 0 ? points[points.length - 1].value : null;
+        if (lastVal === null || Math.abs(total - lastVal) > 0.01) {
+          points.push({ value: total, label: formatLabel(new Date().toISOString()) });
+        }
+
+        setChartPoints(points);
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [dbUser, perfRange, total]);
+
+  // Global leaderboard preview
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [lbTab, setLbTab] = useState("global");
+  const [dashLeagues, setDashLeagues] = useState([]);
+  const [dashLeagueMembers, setDashLeagueMembers] = useState({});
+  const [expandedDashLeague, setExpandedDashLeague] = useState(null);
 
   // Fetch global leaderboard
   useEffect(() => {
@@ -280,53 +316,17 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
     }
   };
 
-  const filteredSnapshots = (() => {
-    const r = PRANGE.find(x => x.label === perfRange);
-    const cutoff = Date.now() - r.days * 86400000;
-    let filtered = snapshots.filter(s => new Date(s.created_at).getTime() > cutoff);
-
-    // If no snapshots in selected range, fall back to all available snapshots
-    if (filtered.length === 0 && snapshots.length > 0) {
-      filtered = snapshots;
-    }
-
-    // Format label based on selected range
-    const formatLabel = (dateStr) => {
-      const d = new Date(dateStr);
-      if (perfRange === "1D") return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-      if (perfRange === "1W") return d.toLocaleDateString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" });
-      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    };
-
-    const points = filtered.map(s => ({
-      value: Number(s.total_value),
-      label: formatLabel(s.created_at),
-    }));
-
-    // Always append current live value so chart reflects real-time portfolio
-    const lastSnapshotVal = points.length > 0 ? points[points.length - 1].value : null;
-    if (lastSnapshotVal === null || Math.abs(total - lastSnapshotVal) > 0.01) {
-      points.push({ value: total, label: formatLabel(new Date().toISOString()) });
-    }
-
-    return points;
-  })();
-
-  // Range-based P&L for hero subtitle
+  // Derive chart color + range P&L from fetched chartPoints
   const RANGE_LABELS = { "1D": "today", "1W": "this week", "1M": "this month", "3M": "3 months", "1Y": "this year" };
   const rangeLabel = RANGE_LABELS[perfRange] || "this year";
-  const rangeBaseline = (() => {
-    if (filteredSnapshots.length >= 2) return filteredSnapshots[0].value;
-    if (perfRange === "1Y") return 10000;
-    // No snapshot for this window — fall back to all-time
-    if (snapshots.length >= 1) return Number(snapshots[0].total_value ?? 10000);
-    return 10000;
-  })();
-  const rangeGain = total - rangeBaseline;
+  const rangeBaseline = chartPoints.length >= 2 ? chartPoints[0].value : 10000;
+  const rangeLast = chartPoints.length >= 2 ? chartPoints[chartPoints.length - 1].value : total;
+  const rangeGain = rangeLast - rangeBaseline;
   const rangeGainPct = rangeBaseline > 0 ? (rangeGain / rangeBaseline) * 100 : 0;
-  const rangeLabelFinal = filteredSnapshots.length >= 2 ? rangeLabel : "all time";
-
   const perfColor = rangeGain >= 0 ? "#22c55e" : "#ef4444";
+
+  // Compute sessionDelta from stored lastSessionValue
+  const computedSessionDelta = lastSessionValue > 0 ? total - lastSessionValue : sessionDelta;
 
   return (
     <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px 24px 100px" }}>
@@ -342,11 +342,11 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "12px" }}>
                 <span style={{ color: rangeGain >= 0 ? T.green : T.red, fontSize: "17px", fontWeight: 600 }}>{rangeGain >= 0 ? "▲" : "▼"} {rangeGain >= 0 ? "+" : ""}{(rangeGainPct ?? 0).toFixed(2)}%</span>
-                <span style={{ color: T.inkFaint, fontSize: "15px" }}>{rangeGain >= 0 ? "+" : "−"}${Math.abs(rangeGain ?? 0).toFixed(2)} {rangeLabelFinal}</span>
+                <span style={{ color: T.inkFaint, fontSize: "15px" }}>{rangeGain >= 0 ? "+" : "−"}${Math.abs(rangeGain ?? 0).toFixed(2)} {rangeLabel}</span>
               </div>
-              {lastSessionValue > 0 && sessionDelta != null && !isNaN(sessionDelta) && (
-                <div style={{ color: sessionDelta >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 500, marginTop: "6px", animation: "fadeIn .4s ease" }}>
-                  {sessionDelta >= 0 ? "↑" : "↓"} {sessionDelta >= 0 ? "+" : ""}${(sessionDelta ?? 0).toFixed(2)} since last session
+              {lastSessionValue > 0 && computedSessionDelta != null && !isNaN(computedSessionDelta) && (
+                <div style={{ color: computedSessionDelta >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 500, marginTop: "6px", animation: "fadeIn .4s ease" }}>
+                  {computedSessionDelta >= 0 ? "↑" : "↓"} {computedSessionDelta >= 0 ? "+" : ""}${(computedSessionDelta ?? 0).toFixed(2)} since last session
                 </div>
               )}
             </div>
@@ -354,10 +354,10 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
 
           {/* Portfolio performance chart */}
           <div style={{ marginTop: "28px" }}>
-            {filteredSnapshots.length >= 2 ? (
+            {chartPoints.length >= 2 ? (
               <>
                 <ResponsiveContainer width="100%" height={120}>
-                  <AreaChart data={filteredSnapshots} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+                  <AreaChart data={chartPoints} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
                     <defs>
                       <linearGradient id="perfFill" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor={perfColor} stopOpacity={0.12} />
