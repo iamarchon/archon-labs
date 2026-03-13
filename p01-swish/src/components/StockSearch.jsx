@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { T } from "../tokens";
 
@@ -231,21 +231,22 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
     return () => { cancelled = true; };
   }, [baseUrl]);
 
-  // Build featured list based on sector
-  const etfList = ETF_DEFAULTS.map(e => etfPrices[e.ticker]
+  // Build featured list based on sector — memoize to prevent re-render cascades
+  const etfList = useMemo(() => ETF_DEFAULTS.map(e => etfPrices[e.ticker]
     ? { ...e, price: etfPrices[e.ticker].price, changePct: etfPrices[e.ticker].changePct }
     : e
-  );
+  ), [etfPrices]);
 
-  const allFeatured = [...FEATURED_STOCKS, ...cryptoTop, ...etfList];
+  const allFeatured = useMemo(() => [...FEATURED_STOCKS, ...cryptoTop, ...etfList], [cryptoTop, etfList]);
 
-  const featured = sector === "All"
+  const featured = useMemo(() => sector === "All"
     ? [...FEATURED_STOCKS, ...etfList.slice(0, 4), ...cryptoTop.slice(0, 4)]
     : sector === "Crypto"
       ? cryptoTop
       : sector === "ETFs"
         ? etfList
-        : FEATURED_STOCKS.filter(s => s.sector === sector);
+        : FEATURED_STOCKS.filter(s => s.sector === sector),
+  [sector, etfList, cryptoTop]);
 
   // Fetch a quote for any symbol (stock or ETF via Finnhub)
   const fetchQuote = useCallback(async (symbol) => {
@@ -380,6 +381,7 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
         }));
       }
     } catch {
+      if (searchCancelledRef.current) return;
       const q2 = q.toLowerCase();
       setResults(allFeatured.filter(s =>
         s.ticker.toLowerCase().includes(q2) || s.name.toLowerCase().includes(q2)
@@ -390,7 +392,11 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
 
   useEffect(() => {
     clearTimeout(debounceRef.current);
-    if (!query.trim()) { setSearchMode(false); setResults([]); return; }
+    if (!query.trim()) {
+      setSearchMode(prev => prev ? false : prev);
+      setResults(prev => prev.length ? [] : prev);
+      return;
+    }
     debounceRef.current = setTimeout(() => doSearch(query.trim()), 320);
     return () => {
       clearTimeout(debounceRef.current);
