@@ -27,10 +27,17 @@ input::placeholder { color: #86868b; }
 @keyframes slideUp  { from { transform: translateY(16px); } to { transform: translateY(0); } }
 @keyframes slideInRight { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes pullSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes sheetSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+/* Floating coach bubble + sheet: visible only below 768px */
+.floating-coach-bubble { display: none; }
+.floating-coach-sheet { display: none; }
 
 /* Mobile bottom nav: visible only below 768px */
 .mobile-nav { display: none; }
 @media (max-width: 768px) {
+  .floating-coach-bubble { display: flex !important; }
+  .floating-coach-sheet { display: block !important; }
   .mobile-nav { display: flex !important; }
   .desktop-nav-links { display: none !important; }
 

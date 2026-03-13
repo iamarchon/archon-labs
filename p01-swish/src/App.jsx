@@ -29,6 +29,7 @@ import MobileNav from "./components/MobileNav";
 import TutorialOverlay from "./components/TutorialOverlay";
 import usePullToRefresh from "./hooks/usePullToRefresh";
 import PullToRefreshIndicator from "./components/PullToRefreshIndicator";
+import FloatingCoach from "./components/FloatingCoach";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -345,6 +346,7 @@ function AppShell() {
 
       <PullToRefreshIndicator state={pullState} pullDistance={pullDistance} />
       <MobileNav role={dbUser?.role} />
+      {dbUser?.role !== "teacher" && <FloatingCoach />}
 
       {shouldShowTutorial && (
         <TutorialOverlay onDone={() => setShowTutorial(false)} />
