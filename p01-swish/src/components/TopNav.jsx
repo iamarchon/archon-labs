@@ -43,7 +43,7 @@ export default function TopNav({ notifications = [], unreadCount = 0, onMarkAllR
         <NavLink to={role === "teacher" ? "/teacher" : "/"} style={{ fontSize: "17px", fontWeight: 700, letterSpacing: "-0.4px", color: T.ink, textDecoration: "none", userSelect: "none" }}>
           swish<span style={{ color: T.accent }}>.</span>
         </NavLink>
-        <nav style={{ display: "flex", alignItems: "center" }}>
+        <nav className="desktop-nav-links" style={{ display: "flex", alignItems: "center" }}>
           {(role === "teacher" ? TEACHER_NAV : STUDENT_NAV).map(item => (
             <NavLink
               key={item.to}

@@ -26,10 +26,14 @@ export default function useUserData() {
   const [loading, setLoading] = useState(true);
 
   const clerkId = clerkUser?.id;
+  const clerkUserRef = useRef(clerkUser);
+  clerkUserRef.current = clerkUser;
+  const hasFetched = useRef(false);
 
   const fetchData = useCallback(async () => {
     if (!clerkId) return;
-    setLoading(true);
+    // Only show loading spinner on initial fetch — not on re-fetches
+    if (!hasFetched.current) setLoading(true);
 
     try {
       // Fetch or create user
@@ -43,8 +47,9 @@ export default function useUserData() {
 
       if (!user) {
         // First sign in — create user row
-        const username = clerkUser.username
-          || clerkUser.firstName?.toLowerCase()
+        const cu = clerkUserRef.current;
+        const username = cu?.username
+          || cu?.firstName?.toLowerCase()
           || `trader_${clerkId.slice(-6)}`;
 
         const { data: newUser, error: insertErr } = await supabase
@@ -85,8 +90,9 @@ export default function useUserData() {
       console.error("Failed to load user data:", err);
     }
 
+    hasFetched.current = true;
     setLoading(false);
-  }, [clerkId, clerkUser]);
+  }, [clerkId]);
 
   useEffect(() => {
     if (clerkLoaded && clerkId) fetchData();

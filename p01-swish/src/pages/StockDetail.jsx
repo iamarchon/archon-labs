@@ -27,7 +27,7 @@ const ChartTooltip = ({ active, payload }) => {
   );
 };
 
-export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings, cash }) {
+export default function StockDetail({ stocks, livePrices = {}, onTrade, onOpenDetail, holdings, cash, userId }) {
   const { symbol } = useParams();
   const navigate = useNavigate();
   const [range, setRange] = useState("1M");
@@ -144,6 +144,39 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
     return () => { cancelled = true; };
   }, [symbol, stockName]);
 
+  // My Position
+  const holding = holdings?.find(h => h.ticker === symbol);
+  const heldShares = holding ? Number(holding.shares) : 0;
+  const avgCost = holding ? Number(holding.avg_cost) : 0;
+  const costBasis = heldShares * avgCost;
+  const posValue = heldShares * (currentPrice ?? avgCost);
+  const unrealizedPL = posValue - costBasis;
+  const returnPct = costBasis > 0 ? (unrealizedPL / costBasis) * 100 : 0;
+
+  // Trade history
+  const [transactions, setTransactions] = useState([]);
+  const [txLoading, setTxLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId || !symbol) { setTxLoading(false); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${baseUrl}/api/transactions?userId=${userId}&ticker=${encodeURIComponent(symbol)}`);
+        const data = await res.json();
+        if (!cancelled) setTransactions(data.transactions || []);
+      } catch { /* ignore */ }
+      if (!cancelled) setTxLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [userId, symbol]);
+
+  const formatTxDate = (dateStr) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
+      " · " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  };
+
   const tickInterval = candles.length > 5 ? Math.floor(candles.length / 5) : 1;
 
   return (
@@ -231,6 +264,63 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, holdings
               </Card>
             ))}
           </div>
+        </Reveal>
+      )}
+
+      {/* My Position — only if user holds this stock */}
+      {heldShares > 0 && (
+        <Reveal delay={0.12}>
+          <Card hover={false} style={{ padding: "28px 30px", marginBottom: "20px" }}>
+            <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px", marginBottom: "18px" }}>My Position</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "20px" }}>
+              {[
+                ["Shares Held", heldShares],
+                ["Avg Cost", `$${avgCost.toFixed(2)}`],
+                ["Cost Basis", `$${costBasis.toFixed(2)}`],
+                ["Current Value", `$${posValue.toFixed(2)}`],
+                ["Unrealized P&L", { val: unrealizedPL, fmt: `${unrealizedPL >= 0 ? "+" : ""}$${unrealizedPL.toFixed(2)}`, color: unrealizedPL >= 0 ? T.green : T.red }],
+                ["Return %", { val: returnPct, fmt: `${returnPct >= 0 ? "+" : ""}${returnPct.toFixed(2)}%`, color: returnPct >= 0 ? T.green : T.red }],
+              ].map(([label, val]) => (
+                <div key={label} style={{ background: T.bg, borderRadius: "12px", padding: "14px 16px" }}>
+                  <div style={{ color: T.inkFaint, fontSize: "10px", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "5px" }}>{label}</div>
+                  <div style={{ color: typeof val === "object" ? val.color : T.ink, fontSize: "17px", fontWeight: 700, letterSpacing: "-0.4px", fontVariantNumeric: "tabular-nums" }}>
+                    {typeof val === "object" ? val.fmt : val}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Trade History */}
+            <div style={{ color: T.ink, fontSize: "14px", fontWeight: 700, letterSpacing: "-0.2px", marginBottom: "12px" }}>Trade History</div>
+            {txLoading ? (
+              <div style={{ padding: "12px 0", textAlign: "center", color: T.inkFaint, fontSize: "13px" }}>Loading...</div>
+            ) : transactions.length === 0 ? (
+              <div style={{ padding: "12px 0", textAlign: "center", color: T.inkFaint, fontSize: "13px" }}>No trades yet</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                {transactions.map((tx, i) => (
+                  <div key={tx.id ?? i} style={{
+                    display: "flex", alignItems: "center", gap: "12px",
+                    padding: "10px 4px", borderTop: i > 0 ? `1px solid ${T.line}` : "none",
+                  }}>
+                    <div style={{ color: T.inkSub, fontSize: "12px", minWidth: "120px" }}>{formatTxDate(tx.created_at)}</div>
+                    <span style={{
+                      fontSize: "11px", fontWeight: 700, letterSpacing: "0.03em",
+                      color: tx.action === "BUY" ? T.green : T.red,
+                      background: tx.action === "BUY" ? T.greenBg : T.redBg,
+                      padding: "2px 8px", borderRadius: "4px",
+                    }}>{tx.action}</span>
+                    <div style={{ flex: 1, color: T.ink, fontSize: "13px", fontVariantNumeric: "tabular-nums" }}>
+                      {tx.shares} share{Number(tx.shares) !== 1 ? "s" : ""} @ ${Number(tx.price).toFixed(2)}
+                    </div>
+                    <div style={{ color: T.ink, fontWeight: 600, fontSize: "13px", fontVariantNumeric: "tabular-nums" }}>
+                      ${(Number(tx.shares) * Number(tx.price)).toFixed(2)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
         </Reveal>
       )}
 

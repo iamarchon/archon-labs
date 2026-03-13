@@ -142,7 +142,9 @@ export default function Leaderboard({ userId }) {
             <div style={{ textAlign: "center", color: T.inkFaint, fontSize: "14px", padding: "40px 0" }}>Loading leagues...</div>
           ) : leagues.length === 0 ? (
             <Card style={{ padding: "40px", textAlign: "center" }}>
-              <div style={{ color: T.inkSub, fontSize: "15px" }}>Join or create a league from your Dashboard</div>
+              <div style={{ fontSize: "36px", marginBottom: "12px" }}>🏆</div>
+              <div style={{ color: T.ink, fontSize: "16px", fontWeight: 600, marginBottom: "6px" }}>You're not in any leagues yet</div>
+              <div style={{ color: T.inkSub, fontSize: "14px" }}>Join or create a league from your Dashboard to compete with friends</div>
             </Card>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>

@@ -26,3 +26,10 @@ input::placeholder { color: #86868b; }
 @keyframes pulse    { 0%, 100% { opacity: .4; } 50% { opacity: .8; } }
 @keyframes slideUp  { from { transform: translateY(16px); } to { transform: translateY(0); } }
 @keyframes slideInRight { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+
+/* Mobile bottom nav: visible only below 768px */
+.mobile-nav { display: none; }
+@media (max-width: 768px) {
+  .mobile-nav { display: flex !important; }
+  .desktop-nav-links { display: none !important; }
+}

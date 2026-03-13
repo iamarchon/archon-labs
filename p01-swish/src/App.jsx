@@ -24,6 +24,8 @@ import TeacherDashboard from "./pages/TeacherDashboard";
 import Scenarios from "./pages/Scenarios";
 import RoleSelect from "./components/RoleSelect";
 import useNotifications from "./hooks/useNotifications";
+import MobileNav from "./components/MobileNav";
+import TutorialOverlay from "./components/TutorialOverlay";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -231,6 +233,13 @@ function AppShell() {
     return <RoleSelect userId={dbUser.id} onSelect={handleRoleSelect} />;
   }
 
+  // Tutorial overlay for brand-new users
+  const [showTutorial, setShowTutorial] = useState(() => {
+    if (localStorage.getItem("swish_tutorial_done")) return false;
+    return true;
+  });
+  const shouldShowTutorial = showTutorial && dbUser && totalTrades === 0 && dbUser.role !== "teacher";
+
   const portfolioValue = holdings.reduce((sum, h) => {
     const price = livePrices[h.ticker] ?? stocks.find(x => x.ticker === h.ticker)?.price ?? Number(h.avg_cost);
     return sum + Number(h.shares) * price;
@@ -324,6 +333,12 @@ function AppShell() {
             +{challengeToast.xpReward} XP available
           </div>
         </div>
+      )}
+
+      <MobileNav role={dbUser?.role} />
+
+      {shouldShowTutorial && (
+        <TutorialOverlay onDone={() => setShowTutorial(false)} />
       )}
     </>
   );

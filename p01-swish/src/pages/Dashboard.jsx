@@ -556,8 +556,18 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
             )}
           </div>
           {holdings.length === 0 ? (
-            <div style={{ padding: "32px", textAlign: "center", color: T.inkSub, fontSize: "14px" }}>
-              No holdings yet. Head to Markets to make your first trade.
+            <div style={{ padding: "40px 20px", textAlign: "center" }}>
+              <div style={{ fontSize: "36px", marginBottom: "12px" }}>📈</div>
+              <div style={{ color: T.ink, fontSize: "16px", fontWeight: 600, marginBottom: "6px" }}>Your portfolio is empty</div>
+              <div style={{ color: T.inkSub, fontSize: "14px", marginBottom: "20px" }}>Make your first trade to start building!</div>
+              <button onClick={() => navigate("/markets")} style={{
+                background: T.accent, color: T.white, border: "none", borderRadius: "10px",
+                padding: "10px 24px", fontSize: "14px", fontWeight: 600, cursor: "pointer",
+                transition: "opacity .15s",
+              }}
+                onMouseEnter={e => e.currentTarget.style.opacity = ".88"}
+                onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+              >Go to Markets</button>
             </div>
           ) : (
             <div>
