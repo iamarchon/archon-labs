@@ -328,27 +328,8 @@ function AppShell() {
     if (role === "teacher") navigate("/teacher");
   }, [refreshUser, navigate]);
 
-  if (userLoading) {
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: T.bg }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "28px", fontWeight: 700, letterSpacing: "-0.8px", color: T.ink, marginBottom: "8px" }}>
-            swish<span style={{ color: T.accent }}>.</span>
-          </div>
-          <div style={{ color: T.inkFaint, fontSize: "14px" }}>Loading your portfolio...</div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show role selection if user has no role set yet
-  if (dbUser && (!dbUser.role || dbUser.role === "null")) {
-    return <RoleSelect userId={dbUser.id} onSelect={handleRoleSelect} />;
-  }
-
-  const shouldShowTutorial = showTutorial && dbUser && totalTrades === 0 && dbUser.role !== "teacher";
-
   // Only check held tickers (shares > 0) — ignore 0-share rows from past sells
+  // MUST be declared before any conditional returns (React rules of hooks)
   const activeHoldings = useMemo(() => holdings.filter(h => Number(h.shares) > 0), [holdings]);
 
   // Check that EVERY held ticker has a real quote from /api/quote — not seed or avg_cost fallback
@@ -368,6 +349,26 @@ function AppShell() {
   }, 0) : 0;
   const totalValue = allHeldPricesLoaded ? portfolioValue + cash : null;
   const portfolioGain = totalValue != null ? ((totalValue - 10000) / 10000) * 100 : null;
+
+  if (userLoading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: T.bg }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "28px", fontWeight: 700, letterSpacing: "-0.8px", color: T.ink, marginBottom: "8px" }}>
+            swish<span style={{ color: T.accent }}>.</span>
+          </div>
+          <div style={{ color: T.inkFaint, fontSize: "14px" }}>Loading your portfolio...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show role selection if user has no role set yet
+  if (dbUser && (!dbUser.role || dbUser.role === "null")) {
+    return <RoleSelect userId={dbUser.id} onSelect={handleRoleSelect} />;
+  }
+
+  const shouldShowTutorial = showTutorial && dbUser && totalTrades === 0 && dbUser.role !== "teacher";
 
   return (
     <>
