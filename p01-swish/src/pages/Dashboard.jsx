@@ -372,7 +372,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
     return [...stocks]
       .filter(s => s.price > 0 && s.changePct !== undefined && !s.isCrypto)
       .sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct))
-      .slice(0, 5);
+      .slice(0, 6);
   }, [stocks]);
 
   // Crypto movers: fetch from /api/crypto/top on mount (covers BTC, ETH, and all top coins)
@@ -402,7 +402,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
     return [...cryptoMoversData]
       .filter(s => s.price > 0 && s.changePct !== undefined)
       .sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct))
-      .slice(0, 5);
+      .slice(0, 6);
   }, [cryptoMoversData]);
 
   const activeMovers = moversTab === "Stocks" ? stockMovers : cryptoMovers;

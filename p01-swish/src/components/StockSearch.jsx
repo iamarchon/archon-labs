@@ -93,6 +93,7 @@ const StockRow = ({ stock, onOpenTrade, onWatch, watched }) => {
 
   return (
     <div
+      className="stock-row"
       onClick={() => navigate(`/stock/${stock.ticker}`)}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
@@ -100,7 +101,7 @@ const StockRow = ({ stock, onOpenTrade, onWatch, watched }) => {
         display: "flex", alignItems: "center", gap: "16px",
         padding: "14px 20px",
         background: hov ? T.bg : T.white,
-        transition: "background 0.14s ease",
+        transition: "background 0.14s ease, transform 0.1s ease",
         borderBottom: `1px solid ${T.line}`,
         cursor: "pointer",
       }}
@@ -462,22 +463,25 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
       </div>
 
       {!searchMode && (
-        <div style={{ display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "4px", marginBottom: "16px", scrollbarWidth: "none" }}>
-          {SECTORS.map(s => (
-            <button
-              key={s}
-              onClick={() => setSector(s)}
-              style={{
-                background: sector === s ? T.ink : T.white,
-                border: `1px solid ${sector === s ? T.ink : T.line}`,
-                borderRadius: "20px", cursor: "pointer",
-                padding: "6px 14px", fontSize: "12px", fontWeight: sector === s ? 600 : 400,
-                color: sector === s ? T.white : T.inkSub,
-                whiteSpace: "nowrap", flexShrink: 0,
-                transition: "all 0.18s ease",
-              }}
-            >{s}</button>
-          ))}
+        <div style={{ position: "relative", marginBottom: "16px" }}>
+          <div style={{ display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "4px", scrollbarWidth: "none" }}>
+            {SECTORS.map(s => (
+              <button
+                key={s}
+                onClick={() => setSector(s)}
+                style={{
+                  background: sector === s ? T.ink : T.white,
+                  border: `1px solid ${sector === s ? T.ink : T.line}`,
+                  borderRadius: "20px", cursor: "pointer",
+                  padding: "6px 14px", fontSize: "12px", fontWeight: sector === s ? 600 : 400,
+                  color: sector === s ? T.white : T.inkSub,
+                  whiteSpace: "nowrap", flexShrink: 0,
+                  transition: "all 0.18s ease",
+                }}
+              >{s}</button>
+            ))}
+          </div>
+          <div className="pills-fade" style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "32px", background: "linear-gradient(to right, transparent, #f5f5f7)", pointerEvents: "none" }} />
         </div>
       )}
 

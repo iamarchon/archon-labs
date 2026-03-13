@@ -4,7 +4,7 @@ export default function TickerStrip({ stocks }) {
   const doubled = [...stocks, ...stocks];
   return (
     <div style={{ overflow: "hidden", height: "33px", display: "flex", alignItems: "center", background: T.white, borderBottom: `1px solid ${T.line}` }}>
-      <div style={{ display: "flex", gap: "48px", whiteSpace: "nowrap", animation: "ticker 60s linear infinite" }}>
+      <div style={{ display: "flex", gap: "48px", whiteSpace: "nowrap", animation: "ticker 84s linear infinite" }}>
         {doubled.map((s, i) => (
           <span key={i} style={{ display: "inline-flex", gap: "10px", alignItems: "center", fontSize: "11.5px" }}>
             <span style={{ color: T.inkFaint, fontWeight: 500 }}>{s.ticker}</span>
