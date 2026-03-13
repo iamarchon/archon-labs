@@ -123,7 +123,9 @@ const StockRow = ({ stock, onOpenTrade, onWatch, watched }) => {
         </div>
       </div>
 
-      <Sparkline positive={pos} width={56} height={20} />
+      <div className="stock-sparkline">
+        <Sparkline positive={pos} width={56} height={20} />
+      </div>
 
       <div style={{ textAlign:"right", minWidth:"80px" }}>
         {stock.price != null ? (

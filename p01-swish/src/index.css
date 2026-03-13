@@ -59,16 +59,8 @@ input::placeholder { color: #86868b; }
     gap: 10px !important;
   }
 
-  /* Dashboard: Watchlist header — stack into 2 rows */
-  .watchlist-header {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 12px !important;
-  }
-  .watchlist-header-right {
-    width: 100% !important;
-    justify-content: space-between !important;
-  }
+  /* Markets: hide sparkline on mobile for cleaner stock rows */
+  .stock-sparkline { display: none !important; }
 
   /* Dashboard: Progress + Insights → 1 column */
   .dash-two-col { grid-template-columns: 1fr !important; }

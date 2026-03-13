@@ -443,11 +443,13 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       {watchlist.length > 0 && (
         <Reveal delay={0.06}>
           <Card style={{ padding: "28px 30px", marginBottom: "16px" }}>
-            <div className="watchlist-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-              <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Watchlist 👀</div>
-              <div className="watchlist-header-right" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <RangeTabs selected={wlRange} onChange={setWlRange} />
+            <div style={{ marginBottom: "20px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}>Watchlist 👀</div>
                 <button onClick={() => navigate("/markets")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>Browse Markets</button>
+              </div>
+              <div style={{ marginTop: "10px" }}>
+                <RangeTabs selected={wlRange} onChange={setWlRange} />
               </div>
             </div>
             {(() => {
