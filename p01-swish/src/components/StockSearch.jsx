@@ -191,6 +191,10 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
   const debounceRef                 = useRef(null);
   const inputRef                    = useRef(null);
   const searchCancelledRef          = useRef(false);
+  const mountedRef                  = useRef(true);
+
+  // Master unmount guard — blocks ALL stale setState after nav away
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   // Dynamic data from APIs
   const [etfPrices, setEtfPrices]     = useState({});   // ticker → { price, changePct }
@@ -200,15 +204,21 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
   // Fetch ETF prices on mount (Finnhub supports ETF quotes)
   useEffect(() => {
     let cancelled = false;
-    ETF_DEFAULTS.forEach(async (etf) => {
-      try {
-        const res = await fetch(`${baseUrl}/api/quote/${etf.ticker}`);
-        const data = await res.json();
-        if (!cancelled && data.c && data.c > 0) {
-          setEtfPrices(prev => ({ ...prev, [etf.ticker]: { price: data.c, changePct: data.dp ?? 0 } }));
-        }
-      } catch { /* ignore */ }
-    });
+    (async () => {
+      const batch = {};
+      await Promise.all(ETF_DEFAULTS.map(async (etf) => {
+        try {
+          const res = await fetch(`${baseUrl}/api/quote/${etf.ticker}`);
+          const data = await res.json();
+          if (data.c && data.c > 0) {
+            batch[etf.ticker] = { price: data.c, changePct: data.dp ?? 0 };
+          }
+        } catch { /* ignore */ }
+      }));
+      if (!cancelled && mountedRef.current) {
+        setEtfPrices(batch);
+      }
+    })();
     return () => { cancelled = true; };
   }, [baseUrl]);
 
@@ -219,7 +229,7 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
       try {
         const res = await fetch(`${baseUrl}/api/crypto/top`);
         const data = await res.json();
-        if (!cancelled && data.coins) {
+        if (!cancelled && mountedRef.current && data.coins) {
           setCryptoTop(data.coins.map(c => ({
             ticker: c.symbol, name: c.name, price: c.price,
             changePct: c.changePct, sector: "Crypto", isCrypto: true,
@@ -260,6 +270,7 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
 
   const doSearch = useCallback(async (q) => {
     if (!q || q.length < 1) { setSearchMode(false); setResults([]); return; }
+    if (!mountedRef.current) return;
     searchCancelledRef.current = false;
     setSearchMode(true);
     setSearching(true);
@@ -323,7 +334,7 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
       );
 
       const [cryptoResults, { stocks: finnhubStocks, etfs: finnhubEtfs }] = await Promise.all([cryptoPromise, finnhubPromise]);
-      if (searchCancelledRef.current) return;
+      if (searchCancelledRef.current || !mountedRef.current) return;
 
       // Merge: local ETF matches + Finnhub ETFs → deduplicate
       const etfMerged = [...localEtfMatches];
@@ -353,7 +364,7 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
       const needQuotes = combined.filter(s => s.price == null && !s.isCrypto);
       if (needQuotes.length > 0) {
         const quotes = await Promise.all(needQuotes.map(s => fetchQuote(s.ticker)));
-        if (searchCancelledRef.current) return;
+        if (searchCancelledRef.current || !mountedRef.current) return;
         setResults(prev => prev.map(s => {
           if (s.price != null || s.isCrypto) return s;
           const idx = needQuotes.findIndex(n => n.ticker === s.ticker);
@@ -372,7 +383,7 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
             return data.c > 0 ? { price: data.c, changePct: data.dp ?? 0 } : null;
           } catch { return null; }
         }));
-        if (searchCancelledRef.current) return;
+        if (searchCancelledRef.current || !mountedRef.current) return;
         setResults(prev => prev.map(s => {
           if (!s.isCrypto || s.price != null) return s;
           const idx = needCrypto.findIndex(n => n.ticker === s.ticker);
@@ -381,7 +392,7 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
         }));
       }
     } catch {
-      if (searchCancelledRef.current) return;
+      if (searchCancelledRef.current || !mountedRef.current) return;
       const q2 = q.toLowerCase();
       setResults(allFeatured.filter(s =>
         s.ticker.toLowerCase().includes(q2) || s.name.toLowerCase().includes(q2)

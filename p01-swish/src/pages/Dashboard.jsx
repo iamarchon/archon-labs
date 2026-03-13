@@ -50,6 +50,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
   const [snapshots, setSnapshots] = useState([]);
   const [perfRange, setPerfRange] = useState("1Y");
   const [sessionDelta, setSessionDelta] = useState(null);
+  const [lastSessionValue, setLastSessionValue] = useState(null);
 
   // Global leaderboard preview
   const [leaderboard, setLeaderboard] = useState([]);
@@ -60,6 +61,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
 
   useEffect(() => {
     if (!dbUser) return;
+    let cancelled = false;
     (async () => {
       try {
         // Fetch all snapshots for chart
@@ -68,6 +70,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
           .select("total_value, created_at")
           .eq("user_id", dbUser.id)
           .order("created_at", { ascending: true });
+        if (cancelled) return;
         if (data?.length) setSnapshots(data);
 
         // Fetch SECOND most recent snapshot (previous session, not the one just saved)
@@ -78,15 +81,17 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
           .order("created_at", { ascending: false })
           .range(1, 1)
           .maybeSingle();
+        if (cancelled) return;
         if (prev) {
           const lastVal = Number(prev.total_value);
-          if (lastVal > 0) {
-            const delta = total - lastVal;
-            setSessionDelta(delta);
+          if (lastVal > 0 && !isNaN(lastVal)) {
+            setLastSessionValue(lastVal);
+            setSessionDelta(total - lastVal);
           }
         }
       } catch { /* ignore */ }
     })();
+    return () => { cancelled = true; };
   }, [dbUser, total]);
 
   // Save snapshot on dashboard load
@@ -299,9 +304,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
   const rangeGainPct = rangeBaseline > 0 ? (rangeGain / rangeBaseline) * 100 : 0;
   const rangeLabelFinal = filteredSnapshots.length >= 2 ? rangeLabel : "all time";
 
-  const perfColor = filteredSnapshots.length >= 2
-    ? (filteredSnapshots[filteredSnapshots.length - 1].value ?? 0) >= (rangeBaseline ?? 0) ? "#22c55e" : "#ef4444"
-    : "#22c55e";
+  const perfColor = gainPct >= 0 ? "#22c55e" : "#ef4444";
 
   return (
     <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px 24px 100px" }}>
@@ -319,7 +322,7 @@ export default function Dashboard({ stocks, onTrade, holdings = [], cash = 10000
                 <span style={{ color: rangeGain >= 0 ? T.green : T.red, fontSize: "17px", fontWeight: 600 }}>{rangeGain >= 0 ? "▲" : "▼"} {rangeGain >= 0 ? "+" : ""}{(rangeGainPct ?? 0).toFixed(2)}%</span>
                 <span style={{ color: T.inkFaint, fontSize: "15px" }}>{rangeGain >= 0 ? "+" : "−"}${Math.abs(rangeGain ?? 0).toFixed(2)} {rangeLabelFinal}</span>
               </div>
-              {sessionDelta != null && (
+              {lastSessionValue > 0 && sessionDelta != null && !isNaN(sessionDelta) && (
                 <div style={{ color: sessionDelta >= 0 ? T.green : T.red, fontSize: "13px", fontWeight: 500, marginTop: "6px", animation: "fadeIn .4s ease" }}>
                   {sessionDelta >= 0 ? "↑" : "↓"} {sessionDelta >= 0 ? "+" : ""}${(sessionDelta ?? 0).toFixed(2)} since last session
                 </div>
