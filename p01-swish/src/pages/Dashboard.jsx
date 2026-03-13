@@ -33,18 +33,27 @@ const PerfTooltip = ({ active, payload }) => {
   );
 };
 
-export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, quotesLoaded = false, allHeldPricesLoaded = false, onClaimXp, fireConfetti, watchlist = [], watchlistItems = [], toggleWatch }) {
+export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, quotesLoaded = false, allHeldPricesLoaded: allHeldPricesLoadedProp = false, onClaimXp, fireConfetti, watchlist = [], watchlistItems = [], toggleWatch }) {
   const navigate = useNavigate();
 
-  // Portfolio value: ONLY compute when ALL held ticker prices are from /api/quote sim feed
+  // 4s timeout fallback: never leave user stuck on skeleton permanently
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    if (allHeldPricesLoadedProp) return; // already resolved, no timer needed
+    const timer = setTimeout(() => setTimedOut(true), 4000);
+    return () => clearTimeout(timer);
+  }, [allHeldPricesLoadedProp]);
+  const allHeldPricesLoaded = allHeldPricesLoadedProp || timedOut;
+
+  // Portfolio value: compute when prices are loaded (or after 4s timeout)
   const portfolioValue = allHeldPricesLoaded ? holdings.reduce((sum, h) => {
     const shares = Number(h.shares);
     const s = stocks.find(x => x.ticker === h.ticker);
-    // s.priceLoaded is guaranteed true here — no fallback needed
-    return sum + shares * (s?.price ?? 0);
+    const price = s?.price ?? livePrices[h.ticker] ?? Number(h.avg_cost);
+    return sum + shares * price;
   }, 0) : null;
-  // Use the prop totalValue (already gated by allHeldPricesLoaded in App.jsx) as the single source of truth
-  const total = totalValue;
+  // Use prop totalValue when available (quote-backed), fall back to local calc after timeout
+  const total = totalValue ?? (allHeldPricesLoaded ? (portfolioValue ?? 0) + cash : null);
   const gain = total != null ? total - 10000 : null;
   const gainPct = gain != null ? (gain / 10000) * 100 : null;
 
