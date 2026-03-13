@@ -128,8 +128,13 @@ function AppShell() {
           }
         } catch { /* ignore */ }
       }));
+      console.log("[skeleton] held quotes fetched:", Object.keys(results), "from held:", heldTickers);
       if (!cancelled && Object.keys(results).length > 0) {
         setDailyQuotes(results); // replace, not merge — held tickers are the only source
+        setQuotesLoaded(true);
+      } else if (!cancelled && heldTickers.length > 0) {
+        // Even if all returned 0, mark loaded to prevent infinite skeleton
+        console.warn("[skeleton] no valid quotes returned, forcing quotesLoaded");
         setQuotesLoaded(true);
       }
     };
@@ -177,6 +182,9 @@ function AppShell() {
   }, [dailyQuotes, allUniverseTickers, CRYPTO_SYMBOLS]);
 
   const cash = dbUser ? Number(dbUser.cash) : 10000;
+  useEffect(() => {
+    if (dbUser) console.log("[cash] dbUser.id:", dbUser.id, "dbUser.cash:", dbUser.cash, "parsed:", cash);
+  }, [dbUser, cash]);
   const xp = dbUser?.xp ?? 0;
   const level = xpToLevel(xp);
   const streak = dbUser?.streak ?? 0;
@@ -332,14 +340,38 @@ function AppShell() {
   // MUST be declared before any conditional returns (React rules of hooks)
   const activeHoldings = useMemo(() => holdings.filter(h => Number(h.shares) > 0), [holdings]);
 
+  // 8s hard timeout — if prices haven't loaded by then, force loaded to prevent infinite skeleton
+  const [priceTimedOut, setPriceTimedOut] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      console.warn("[skeleton] 8s timeout — forcing allHeldPricesLoaded");
+      setPriceTimedOut(true);
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Check that EVERY held ticker has a real quote from /api/quote — not seed or avg_cost fallback
-  const allHeldPricesLoaded = quotesLoaded && (activeHoldings.length > 0
+  const allHeldPricesLoadedReal = quotesLoaded && (activeHoldings.length > 0
     ? activeHoldings.every(h => {
         const s = stocks.find(x => x.ticker === h.ticker);
         return s?.priceLoaded === true;
       })
     : true // no holdings → just need quotes to have loaded
   );
+  const allHeldPricesLoaded = allHeldPricesLoadedReal || priceTimedOut;
+
+  // Debug: log skeleton blocking reason
+  useEffect(() => {
+    if (allHeldPricesLoaded) {
+      console.log("[skeleton] cleared — allHeldPricesLoaded:", allHeldPricesLoadedReal, "timedOut:", priceTimedOut);
+    } else {
+      const missing = activeHoldings.filter(h => {
+        const s = stocks.find(x => x.ticker === h.ticker);
+        return !s?.priceLoaded;
+      }).map(h => h.ticker);
+      console.log("[skeleton] BLOCKING — quotesLoaded:", quotesLoaded, "missing tickers:", missing, "activeHoldings:", activeHoldings.map(h => h.ticker));
+    }
+  }, [allHeldPricesLoaded, allHeldPricesLoadedReal, priceTimedOut, quotesLoaded, activeHoldings, stocks]);
 
   // Only compute portfolio value when ALL held tickers have sim-feed prices
   const portfolioValue = allHeldPricesLoaded ? activeHoldings.reduce((sum, h) => {

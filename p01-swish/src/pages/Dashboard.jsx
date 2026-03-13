@@ -56,17 +56,8 @@ const formatYAxis = (value) => {
 export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, quotesLoaded = false, allHeldPricesLoaded: allHeldPricesLoadedProp = false, onClaimXp, fireConfetti, watchlist = [], watchlistItems = [], toggleWatch }) {
   const navigate = useNavigate();
 
-  // Real signal: prices are confirmed loaded from /api/quote
+  // allHeldPricesLoaded now includes 8s timeout from App.jsx — safe for all uses
   const allHeldPricesLoaded = allHeldPricesLoadedProp;
-
-  // 4s timeout: unblocks chart/watchlist fetches, but NOT portfolio value display
-  const [timedOut, setTimedOut] = useState(false);
-  useEffect(() => {
-    if (allHeldPricesLoadedProp) return;
-    const timer = setTimeout(() => setTimedOut(true), 4000);
-    return () => clearTimeout(timer);
-  }, [allHeldPricesLoadedProp]);
-  const pricesOrTimedOut = allHeldPricesLoadedProp || timedOut;
 
   // Market hours check: Mon–Fri 9:30am–4:00pm US Eastern
   const isMarketOpen = useCallback(() => {
@@ -81,7 +72,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   // Live polling during market hours — 5s interval for held tickers
   const [liveQuotes, setLiveQuotes] = useState({});
   useEffect(() => {
-    if (!pricesOrTimedOut || holdings.length === 0) return;
+    if (!allHeldPricesLoaded || holdings.length === 0) return;
     if (!isMarketOpen()) return;
     let cancelled = false;
     const heldTickers = holdings.filter(h => Number(h.shares) > 0).map(h => h.ticker);
@@ -104,7 +95,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
     };
     const id = setInterval(poll, 5000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [pricesOrTimedOut, holdings, isMarketOpen]);
+  }, [allHeldPricesLoaded, holdings, isMarketOpen]);
 
   // Portfolio value: use live polled prices when available, else props
   const portfolioValue = allHeldPricesLoaded ? holdings.reduce((sum, h) => {
@@ -170,7 +161,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   // Build chart from current holdings × historical candle prices
   // Wait until sim prices are confirmed to avoid chart using seed/avg_cost fallback
   useEffect(() => {
-    if (!pricesOrTimedOut) return;
+    if (!allHeldPricesLoaded) return;
     const activeHoldings = holdings.filter(h => Number(h.shares) > 0);
     if (activeHoldings.length === 0) {
       // No holdings — show flat line at cash
@@ -279,7 +270,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       }
     })();
     return () => { cancelled = true; };
-  }, [holdings, perfRange, cash, total, stocks, livePrices, pricesOrTimedOut]);
+  }, [holdings, perfRange, cash, total, stocks, livePrices, allHeldPricesLoaded]);
 
   // Global leaderboard preview
   const [leaderboard, setLeaderboard] = useState([]);
@@ -419,7 +410,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
 
   // Fetch live quote for every watched symbol — DELAYED until sim prices loaded to avoid rate-limit contention
   useEffect(() => {
-    if (watchlist.length === 0 || !pricesOrTimedOut) return;
+    if (watchlist.length === 0 || !allHeldPricesLoaded) return;
     (async () => {
       const results = {};
       await Promise.all(watchlist.map(async (symbol) => {
@@ -433,7 +424,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       }));
       setWlQuotes(results);
     })();
-  }, [watchlist, pricesOrTimedOut]);
+  }, [watchlist, allHeldPricesLoaded]);
 
   // Fetch candle-based % change for selected range
   useEffect(() => {
@@ -460,7 +451,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   const [holdingsPerfChange, setHoldingsPerfChange] = useState({});
 
   useEffect(() => {
-    if (holdings.length === 0 || !pricesOrTimedOut) return;
+    if (holdings.length === 0 || !allHeldPricesLoaded) return;
     const tickers = holdings.filter(h => Number(h.shares) > 0).map(h => h.ticker);
     if (tickers.length === 0) return;
     setHoldingsPerfChange({});
@@ -490,7 +481,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       }
       setHoldingsPerfChange(results);
     })();
-  }, [holdings, perfRange, pricesOrTimedOut, stocks]);
+  }, [holdings, perfRange, allHeldPricesLoaded, stocks]);
 
   // Holdings time range + price history
   const [holdingsRange, setHoldingsRange] = useState("1D");
