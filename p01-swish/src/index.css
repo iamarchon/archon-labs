@@ -1,14 +1,14 @@
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
-  height: 100%;
+  min-height: 100%;
   background: #f5f5f7;
   color: #1d1d1f;
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-#root { height: 100%; }
+#root { min-height: 100%; }
 
 button, input { font-family: inherit; }
 input::placeholder { color: #86868b; }
@@ -44,6 +44,12 @@ input::placeholder { color: #86868b; }
 @keyframes sheetSlideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @keyframes chartPulse { 0% { r: 4; opacity: 0.4; } 100% { r: 10; opacity: 0; } }
+
+/* Learn grid: responsive columns */
+.learn-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+.learn-grid > * { min-width: 0; }
 
 /* Floating coach bubble + sheet: visible only below 768px */
 .floating-coach-bubble { display: none; }
