@@ -79,19 +79,18 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
     if (heldTickers.length === 0) return;
 
     const poll = async () => {
-      const results = {};
-      await Promise.all(heldTickers.map(async (ticker) => {
-        try {
-          const res = await fetch(`${baseUrl}/api/quote/${encodeURIComponent(ticker)}`);
-          const data = await res.json();
-          if (data.c && data.c > 0) {
-            results[ticker] = { price: data.c, dp: data.dp ?? 0, pc: data.pc ?? data.c };
-          }
-        } catch { /* ignore */ }
-      }));
-      if (!cancelled && Object.keys(results).length > 0) {
-        setLiveQuotes(results);
-      }
+      try {
+        const res = await fetch(`${baseUrl}/api/quotes/batch?symbols=${heldTickers.join(",")}`);
+        const data = await res.json();
+        const quotes = data.quotes || {};
+        const results = {};
+        for (const [ticker, q] of Object.entries(quotes)) {
+          results[ticker] = { price: q.c, dp: q.dp ?? 0, pc: q.pc ?? q.c };
+        }
+        if (!cancelled && Object.keys(results).length > 0) {
+          setLiveQuotes(results);
+        }
+      } catch { /* ignore */ }
     };
     // Always fetch once immediately for daily P&L
     poll();
@@ -418,21 +417,20 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   const [wlQuotes, setWlQuotes] = useState({});
   const [wlCollapsed, setWlCollapsed] = useState({});
 
-  // Fetch live quote for every watched symbol — DELAYED until sim prices loaded to avoid rate-limit contention
+  // Fetch live quote for every watched symbol via batch endpoint
   useEffect(() => {
     if (watchlist.length === 0 || !allHeldPricesLoaded) return;
     (async () => {
-      const results = {};
-      await Promise.all(watchlist.map(async (symbol) => {
-        try {
-          const res = await fetch(`${baseUrl}/api/quote/${encodeURIComponent(symbol)}`);
-          const data = await res.json();
-          if (data.c && data.c > 0) {
-            results[symbol] = { price: data.c, changePct: data.dp ?? 0 };
-          }
-        } catch { /* ignore */ }
-      }));
-      setWlQuotes(results);
+      try {
+        const res = await fetch(`${baseUrl}/api/quotes/batch?symbols=${watchlist.join(",")}`);
+        const data = await res.json();
+        const quotes = data.quotes || {};
+        const results = {};
+        for (const [symbol, q] of Object.entries(quotes)) {
+          results[symbol] = { price: q.c, changePct: q.dp ?? 0 };
+        }
+        setWlQuotes(results);
+      } catch { /* ignore */ }
     })();
   }, [watchlist, allHeldPricesLoaded]);
 

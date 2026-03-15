@@ -206,44 +206,30 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
   const [cryptoTop, setCryptoTop]     = useState([]);    // top 20 from /api/crypto/top
   const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
-  // Fetch real prices for featured stocks on mount
+  // Fetch real prices for all featured stocks + ETFs on mount via batch endpoint
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const batch = {};
-      await Promise.all(FEATURED_STOCKS.map(async (stock) => {
-        try {
-          const res = await fetch(`${baseUrl}/api/quote/${stock.ticker}`);
-          const data = await res.json();
-          if (data.c && data.c > 0) {
-            batch[stock.ticker] = { price: data.c, changePct: data.dp ?? 0 };
-          }
-        } catch { /* ignore */ }
-      }));
-      if (!cancelled && mountedRef.current) {
-        setStockPrices(batch);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [baseUrl]);
+      const allTickers = [
+        ...FEATURED_STOCKS.map(s => s.ticker),
+        ...ETF_DEFAULTS.map(e => e.ticker),
+      ];
+      try {
+        const res = await fetch(`${baseUrl}/api/quotes/batch?symbols=${allTickers.join(",")}`);
+        const data = await res.json();
+        const quotes = data.quotes || {};
+        if (cancelled || !mountedRef.current) return;
 
-  // Fetch ETF prices on mount (Finnhub supports ETF quotes)
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const batch = {};
-      await Promise.all(ETF_DEFAULTS.map(async (etf) => {
-        try {
-          const res = await fetch(`${baseUrl}/api/quote/${etf.ticker}`);
-          const data = await res.json();
-          if (data.c && data.c > 0) {
-            batch[etf.ticker] = { price: data.c, changePct: data.dp ?? 0 };
-          }
-        } catch { /* ignore */ }
-      }));
-      if (!cancelled && mountedRef.current) {
-        setEtfPrices(batch);
-      }
+        const stockBatch = {};
+        const etfBatch = {};
+        for (const [ticker, q] of Object.entries(quotes)) {
+          const entry = { price: q.c, changePct: q.dp ?? 0 };
+          if (FEATURED_STOCKS.some(s => s.ticker === ticker)) stockBatch[ticker] = entry;
+          if (ETF_DEFAULTS.some(e => e.ticker === ticker)) etfBatch[ticker] = entry;
+        }
+        setStockPrices(stockBatch);
+        setEtfPrices(etfBatch);
+      } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
   }, [baseUrl]);

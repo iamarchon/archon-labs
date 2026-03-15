@@ -70,6 +70,45 @@ app.post("/api/coach", async (req, res) => {
   }
 });
 
+/* ── GET /api/quotes/batch — fetch multiple Finnhub quotes in one request ── */
+// Server-side cache: ticker → { c, pc, dp, ts }
+const quoteCache = {};
+const QUOTE_CACHE_TTL = 60_000; // 1 min cache to avoid Finnhub rate limits
+
+async function fetchSingleQuote(ticker, apiKey) {
+  const cached = quoteCache[ticker];
+  if (cached && Date.now() - cached.ts < QUOTE_CACHE_TTL) {
+    return { ticker, c: cached.c, pc: cached.pc, dp: cached.dp, h: cached.h, l: cached.l, o: cached.o, source: "finnhub" };
+  }
+  try {
+    const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ticker)}&token=${apiKey}`);
+    const data = await response.json();
+    if (data.c && data.c > 0) {
+      quoteCache[ticker] = { c: data.c, pc: data.pc, dp: data.dp ?? 0, h: data.h, l: data.l, o: data.o, ts: Date.now() };
+      return { ticker, c: data.c, pc: data.pc, dp: data.dp ?? 0, h: data.h, l: data.l, o: data.o, source: "finnhub" };
+    }
+  } catch { /* ignore */ }
+  return { ticker, c: null };
+}
+
+app.get("/api/quotes/batch", async (req, res) => {
+  const apiKey = process.env.FINNHUB_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: "FINNHUB_API_KEY not set" });
+  const symbols = (req.query.symbols || "").split(",").filter(Boolean).map(s => s.toUpperCase()).slice(0, 30);
+  if (symbols.length === 0) return res.json({ quotes: {} });
+
+  // Fetch sequentially in small batches of 5 to avoid rate limits
+  const results = {};
+  for (let i = 0; i < symbols.length; i += 5) {
+    const batch = symbols.slice(i, i + 5);
+    const batchResults = await Promise.all(batch.map(t => fetchSingleQuote(t, apiKey)));
+    for (const q of batchResults) {
+      if (q.c != null) results[q.ticker] = q;
+    }
+  }
+  res.json({ quotes: results });
+});
+
 /* ── GET /api/quote/:symbol — Real Finnhub prices (no sim engine) ── */
 app.get("/api/quote/:symbol", async (req, res) => {
   const apiKey = process.env.FINNHUB_API_KEY;
@@ -80,11 +119,10 @@ app.get("/api/quote/:symbol", async (req, res) => {
   const ticker = req.params.symbol.toUpperCase();
 
   try {
-    // Try Finnhub first (stocks/ETFs)
-    const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ticker)}&token=${apiKey}`);
-    const data = await response.json();
-    if (data.c && data.c > 0) {
-      return res.json({ c: data.c, pc: data.pc, dp: data.dp ?? 0, h: data.h, l: data.l, o: data.o, source: "finnhub" });
+    // Try Finnhub first (stocks/ETFs) — with cache
+    const result = await fetchSingleQuote(ticker, apiKey);
+    if (result.c != null) {
+      return res.json({ c: result.c, pc: result.pc, dp: result.dp, h: result.h, l: result.l, o: result.o, source: "finnhub" });
     }
 
     // Finnhub returned 0 — try CoinGecko for crypto
