@@ -27,6 +27,7 @@ import RoleSelect from "./components/RoleSelect";
 import useNotifications from "./hooks/useNotifications";
 import MobileNav from "./components/MobileNav";
 import TutorialOverlay from "./components/TutorialOverlay";
+import OnboardingTour from "./components/OnboardingTour";
 import usePullToRefresh from "./hooks/usePullToRefresh";
 import PullToRefreshIndicator from "./components/PullToRefreshIndicator";
 import FloatingCoach from "./components/FloatingCoach";
@@ -48,6 +49,7 @@ function AppShell() {
   const [tradeFirstTrade, setTradeFirstTrade] = useState(false);
   const [detailStock, setDetailStock] = useState(null);
   const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem("swish_tutorial_done"));
+  const [showTour, setShowTour] = useState(() => localStorage.getItem("swish_tour_completed") !== "true");
   const { pathname } = useLocation();
 
   // Pull-to-refresh on mobile
@@ -505,6 +507,10 @@ function AppShell() {
 
       {shouldShowTutorial && (
         <TutorialOverlay onDone={() => setShowTutorial(false)} />
+      )}
+
+      {showTour && dbUser && totalTrades === 0 && dbUser.role !== "teacher" && (
+        <OnboardingTour onComplete={() => setShowTour(false)} />
       )}
     </>
   );

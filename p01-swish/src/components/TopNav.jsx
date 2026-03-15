@@ -5,13 +5,13 @@ import { T } from "../tokens";
 import NotificationBell from "./NotificationBell";
 
 const STUDENT_NAV = [
-  { to: "/",              label: "Dashboard"    },
-  { to: "/markets",       label: "Markets"      },
-  { to: "/auto-invest",   label: "Auto-Invest"  },
-  { to: "/learn",         label: "Learn"        },
-  { to: "/scenarios",     label: "Scenarios"    },
-  { to: "/leaderboard",   label: "Leaderboard"  },
-  { to: "/coach",         label: "Coach"        },
+  { to: "/",              label: "Dashboard",   id: "nav-home"      },
+  { to: "/markets",       label: "Markets",     id: "nav-markets"   },
+  { to: "/auto-invest",   label: "Auto-Invest", id: "nav-auto"      },
+  { to: "/learn",         label: "Learn",       id: "nav-learn"     },
+  { to: "/scenarios",     label: "Scenarios",   id: "nav-scenarios" },
+  { to: "/leaderboard",   label: "Leaderboard", id: "nav-leaderboard" },
+  { to: "/coach",         label: "Coach",       id: "nav-coach"     },
 ];
 
 const TEACHER_NAV = [
@@ -49,6 +49,7 @@ export default function TopNav({ notifications = [], unreadCount = 0, onMarkAllR
             <NavLink
               key={item.to}
               to={item.to}
+              id={item.id}
               end={item.to === "/" || item.to === "/teacher"}
               style={({ isActive }) => ({
                 background: "none", border: "none", cursor: "pointer",
