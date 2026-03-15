@@ -256,26 +256,22 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
   // Reset showAll when sector changes
   useEffect(() => setShowAll(false), [sector]);
 
-  // Fetch prices for the current sector's stocks when sector changes (lazy)
+  // For "All" and "ETFs" — lazy price fetch from Finnhub (unchanged path)
   useEffect(() => {
+    if (sector !== "All" && sector !== "ETFs") return;
     let cancelled = false;
     (async () => {
-      let tickers = [];
-      if (sector === "ETFs" || sector === "All") {
-        tickers.push(...ETF_DEFAULTS.map(e => e.ticker));
-      }
-      if (sector !== "Crypto" && sector !== "ETFs") {
-        const sectorStocks = sector === "All" ? FEATURED_STOCKS : FEATURED_STOCKS.filter(s => s.sector === sector);
-        tickers.push(...sectorStocks.map(s => s.ticker));
-      }
+      const tickers = [
+        ...(sector === "All" ? FEATURED_STOCKS.map(s => s.ticker) : []),
+        ...ETF_DEFAULTS.map(e => e.ticker),
+      ];
       if (tickers.length === 0) return;
       try {
         const res = await fetch(`${baseUrl}/api/quotes/batch?symbols=${tickers.join(",")}`);
         const data = await res.json();
         const quotes = data.quotes || {};
         if (cancelled || !mountedRef.current) return;
-        const stockBatch = {};
-        const etfBatch = {};
+        const stockBatch = {}, etfBatch = {};
         for (const [ticker, q] of Object.entries(quotes)) {
           const entry = { price: q.c, changePct: q.dp ?? 0 };
           if (FEATURED_STOCKS.some(s => s.ticker === ticker)) stockBatch[ticker] = entry;
@@ -284,6 +280,50 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
         if (Object.keys(stockBatch).length) setStockPrices(prev => ({ ...prev, ...stockBatch }));
         if (Object.keys(etfBatch).length) setEtfPrices(prev => ({ ...prev, ...etfBatch }));
       } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [sector, baseUrl]);
+
+  // For named sectors — fetch from /api/stocks/sector then batch-quote prices
+  const [sectorStocks, setSectorStocks]   = useState([]);
+  const [sectorLoading, setSectorLoading] = useState(false);
+  const [sectorError, setSectorError]     = useState(false);
+
+  useEffect(() => {
+    if (sector === "All" || sector === "Crypto" || sector === "ETFs") {
+      setSectorStocks([]); setSectorLoading(false); setSectorError(false);
+      return;
+    }
+    let cancelled = false;
+    setSectorLoading(true); setSectorError(false); setSectorStocks([]);
+    (async () => {
+      try {
+        const listRes = await fetch(`${baseUrl}/api/stocks/sector?sector=${encodeURIComponent(sector)}&limit=50`);
+        if (!listRes.ok) throw new Error("sector API failed");
+        const listData = await listRes.json();
+        const stockList = (listData.stocks || []).map(s => ({
+          ticker: s.ticker, name: s.name, sector, industry: s.industry,
+          price: null, changePct: null,
+        }));
+        if (cancelled || !mountedRef.current) return;
+        setSectorStocks(stockList);
+        setSectorLoading(false);
+        if (stockList.length === 0) return;
+        // Batch-fetch prices in background
+        const tickers = stockList.map(s => s.ticker).join(",");
+        const priceRes = await fetch(`${baseUrl}/api/quotes/batch?symbols=${tickers}`);
+        const priceData = await priceRes.json();
+        const quotes = priceData.quotes || {};
+        if (cancelled || !mountedRef.current) return;
+        setSectorStocks(prev => prev.map(s => {
+          const q = quotes[s.ticker];
+          return q ? { ...s, price: q.c, changePct: q.dp ?? 0 } : s;
+        }));
+      } catch {
+        if (cancelled || !mountedRef.current) return;
+        setSectorLoading(false); setSectorError(true);
+        setSectorStocks(FEATURED_STOCKS.filter(s => s.sector === sector));
+      }
     })();
     return () => { cancelled = true; };
   }, [sector, baseUrl]);
@@ -328,9 +368,9 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
       return [...all, ...etfList.slice(0, 4), ...cryptoTop.slice(0, 4)];
     }
     if (sector === "Crypto") return cryptoTop;
-    if (sector === "ETFs") return etfList;
-    return featuredStocks.filter(s => s.sector === sector);
-  }, [sector, featuredStocks, etfList, cryptoTop]);
+    if (sector === "ETFs")   return etfList;
+    return sectorStocks; // dynamically fetched from /api/stocks/sector
+  }, [sector, featuredStocks, etfList, cryptoTop, sectorStocks]);
 
   // Top 5 by default, all when showAll
   const DEFAULT_SHOW = 5;
@@ -569,7 +609,12 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
           ? searching
             ? "Searching…"
             : `${results.length} result${results.length !== 1 ? "s" : ""} for "${query}"`
-          : sector === "All" ? "Featured" : sector === "ETFs" ? "Popular ETFs" : sector === "Crypto" ? "Top Crypto by Market Cap" : sector
+          : sector === "All" ? "Featured"
+            : sector === "ETFs" ? "Popular ETFs"
+            : sector === "Crypto" ? "Top Crypto by Market Cap"
+            : sectorLoading ? `Loading ${sector}…`
+            : sectorError ? `${sector} (showing cached)`
+            : `${sector} — ${sectorStocks.length} companies`
         }
       </div>
 
@@ -579,6 +624,22 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
         boxShadow: "0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)",
         overflow: "hidden",
       }}>
+        {sectorLoading && !searching && (
+          [...Array(5)].map((_, i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:"16px", padding:"14px 20px", borderBottom:`1px solid ${T.line}`, opacity: 1 - i * 0.15 }}>
+              <div style={{ flex:1 }}>
+                <div style={{ width:"52px", height:"13px", borderRadius:"6px", background:T.line, marginBottom:"6px", animation:"pulse 1.4s ease infinite" }} />
+                <div style={{ width:"120px", height:"11px", borderRadius:"6px", background:T.bg }} />
+              </div>
+              <div style={{ width:"56px", height:"20px", borderRadius:"4px", background:T.bg }} />
+              <div style={{ width:"60px", textAlign:"right" }}>
+                <div style={{ width:"52px", height:"13px", borderRadius:"6px", background:T.line, marginBottom:"4px", marginLeft:"auto", animation:"pulse 1.4s .3s ease infinite" }} />
+                <div style={{ width:"36px", height:"11px", borderRadius:"6px", background:T.bg, marginLeft:"auto" }} />
+              </div>
+            </div>
+          ))
+        )}
+
         {searching && (
           <div style={{ padding: "32px", textAlign: "center", color: T.inkFaint, fontSize: "14px" }}>
             <div style={{ display: "inline-flex", gap: "5px", alignItems: "center" }}>
