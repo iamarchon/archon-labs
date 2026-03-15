@@ -310,36 +310,6 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, onOpenDe
               ))}
             </div>
 
-            {/* Trade History */}
-            <div style={{ color: T.ink, fontSize: "14px", fontWeight: 700, letterSpacing: "-0.2px", marginBottom: "12px" }}>Trade History</div>
-            {txLoading ? (
-              <div style={{ padding: "12px 0", textAlign: "center", color: T.inkFaint, fontSize: "13px" }}>Loading...</div>
-            ) : transactions.length === 0 ? (
-              <div style={{ padding: "12px 0", textAlign: "center", color: T.inkFaint, fontSize: "13px" }}>No trades yet</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                {transactions.map((tx, i) => (
-                  <div key={tx.id ?? i} style={{
-                    display: "flex", alignItems: "center", gap: "12px",
-                    padding: "10px 4px", borderTop: i > 0 ? `1px solid ${T.line}` : "none",
-                  }}>
-                    <div style={{ color: T.inkSub, fontSize: "12px", minWidth: "120px" }}>{formatTxDate(tx.created_at)}</div>
-                    <span style={{
-                      fontSize: "11px", fontWeight: 700, letterSpacing: "0.03em",
-                      color: tx.action === "BUY" ? T.green : T.red,
-                      background: tx.action === "BUY" ? T.greenBg : T.redBg,
-                      padding: "2px 8px", borderRadius: "4px",
-                    }}>{tx.action}</span>
-                    <div style={{ flex: 1, color: T.ink, fontSize: "13px", fontVariantNumeric: "tabular-nums" }}>
-                      {tx.shares} share{Number(tx.shares) !== 1 ? "s" : ""} @ ${Number(tx.price).toFixed(2)}
-                    </div>
-                    <div style={{ color: T.ink, fontWeight: 600, fontSize: "13px", fontVariantNumeric: "tabular-nums" }}>
-                      ${(Number(tx.shares) * Number(tx.price)).toFixed(2)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </Card>
         </Reveal>
       )}
@@ -360,6 +330,43 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, onOpenDe
           >Sell {symbol}</button>
         </div>
       </Reveal>
+
+      {/* Trade History — always visible if user has traded this stock */}
+      {!txLoading && transactions.length > 0 && (
+        <Reveal delay={0.16}>
+          <Card hover={false} style={{ padding: "28px 30px", marginTop: "20px" }}>
+            <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px", marginBottom: "16px" }}>Trade History</div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {transactions.map((tx, i) => (
+                <div key={tx.id ?? i} style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "12px 0", borderBottom: i < transactions.length - 1 ? `1px solid ${T.line}` : "none",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span style={{
+                      fontSize: "11px", fontWeight: 700, letterSpacing: "0.03em",
+                      color: tx.action === "BUY" ? T.green : T.red,
+                      background: tx.action === "BUY" ? T.greenBg : T.redBg,
+                      padding: "3px 10px", borderRadius: "20px",
+                    }}>{tx.action}</span>
+                    <span style={{ color: T.inkSub, fontSize: "13px", fontVariantNumeric: "tabular-nums" }}>
+                      {tx.shares} share{Number(tx.shares) !== 1 ? "s" : ""} @ ${Number(tx.price).toFixed(2)}
+                    </span>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ color: T.ink, fontSize: "13px", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                      ${(Number(tx.shares) * Number(tx.price)).toFixed(2)}
+                    </div>
+                    <div style={{ color: T.inkFaint, fontSize: "11px", marginTop: "2px" }}>
+                      {new Date(tx.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </Reveal>
+      )}
 
       {/* Latest News */}
       <Reveal delay={0.18}>
