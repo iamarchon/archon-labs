@@ -443,7 +443,7 @@ function AppShell() {
             } />
             <Route path="/teacher" element={<TeacherDashboard dbUser={dbUser} />} />
             <Route path="/leaderboard" element={<Leaderboard userId={dbUser?.id} />} />
-            <Route path="/coach" element={<Coach />} />
+            <Route path="/coach" element={<Coach userId={dbUser?.id} />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
           </Routes>
@@ -511,7 +511,7 @@ function AppShell() {
 
       <PullToRefreshIndicator state={pullState} pullDistance={pullDistance} />
       <MobileNav role={dbUser?.role} tourHighlight={showTour && totalTrades === 0 && dbUser?.role !== "teacher" ? OnboardingTour.STEPS[tourStep]?.mobileNavId : null} />
-      {dbUser?.role !== "teacher" && <FloatingCoach />}
+      {dbUser?.role !== "teacher" && <FloatingCoach userId={dbUser?.id} />}
 
       {shouldShowTutorial && (
         <TutorialOverlay onDone={() => setShowTutorial(false)} />

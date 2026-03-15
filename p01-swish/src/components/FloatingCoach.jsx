@@ -13,7 +13,7 @@ const STARTER_CHIPS = [
   "How does DCA work?",
 ];
 
-export default function FloatingCoach() {
+export default function FloatingCoach({ userId }) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
@@ -58,6 +58,7 @@ export default function FloatingCoach() {
         body: JSON.stringify({
           max_tokens: 150,
           messages: history,
+          userId,
         }),
       });
       const data = await res.json();

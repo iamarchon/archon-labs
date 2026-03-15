@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { T } from "../tokens";
-import { SEED_STOCKS } from "../data";
 import Card from "../components/Card";
 import Reveal from "../components/Reveal";
 
@@ -17,13 +16,62 @@ export default function AutoInvest({ dbUser, stocks, livePrices, refreshUser }) 
 
   // Form state
   const [symbol, setSymbol] = useState("");
+  const [selectedName, setSelectedName] = useState("");
   const [amount, setAmount] = useState("");
   const [frequency, setFrequency] = useState("weekly");
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  // Stock search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const debounceRef = useRef(null);
+  const dropdownRef = useRef(null);
+
   const base = import.meta.env.DEV ? "http://localhost:3001" : "";
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowDropdown(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Debounced stock search
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    if (!searchQuery.trim() || symbol) { setSearchResults([]); setShowDropdown(false); return; }
+    debounceRef.current = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const apiKey = import.meta.env.VITE_FINNHUB_API_KEY || "";
+        if (!apiKey) { setSearchResults([]); return; }
+        const res = await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(searchQuery)}&exchange=US&token=${apiKey}`);
+        const data = await res.json();
+        const results = (data.result || [])
+          .filter(r => r.type === "Common Stock" && !r.symbol.includes("."))
+          .slice(0, 8)
+          .map(r => ({ ticker: r.symbol, name: r.description }));
+        setSearchResults(results);
+        setShowDropdown(results.length > 0);
+      } catch { setSearchResults([]); }
+      finally { setSearching(false); }
+    }, 320);
+    return () => clearTimeout(debounceRef.current);
+  }, [searchQuery, symbol]);
+
+  const selectStock = (ticker, name) => {
+    setSymbol(ticker);
+    setSelectedName(name);
+    setSearchQuery("");
+    setSearchResults([]);
+    setShowDropdown(false);
+  };
+
+  const clearStock = () => { setSymbol(""); setSelectedName(""); setSearchQuery(""); };
 
   const fetchPlans = useCallback(async () => {
     if (!dbUser?.id) return;
@@ -67,6 +115,8 @@ export default function AutoInvest({ dbUser, stocks, livePrices, refreshUser }) 
       if (!res.ok) { setError(data.error || "Failed to create plan"); return; }
       setSuccess(`Auto-invest plan for ${symbol} created!`);
       setSymbol("");
+      setSelectedName("");
+      setSearchQuery("");
       setAmount("");
       fetchPlans();
     } catch {
@@ -91,13 +141,6 @@ export default function AutoInvest({ dbUser, stocks, livePrices, refreshUser }) 
   };
 
   const freqLabel = (f) => FREQUENCIES.find(x => x.value === f)?.label || f;
-
-  const getPrice = (ticker) => {
-    const live = livePrices?.[ticker];
-    if (live) return live;
-    const seed = (stocks || SEED_STOCKS).find(s => s.ticker === ticker);
-    return seed?.price ?? 0;
-  };
 
   return (
     <div style={{ maxWidth: "680px", margin: "0 auto", padding: "40px 28px 100px" }}>
@@ -159,28 +202,50 @@ export default function AutoInvest({ dbUser, stocks, livePrices, refreshUser }) 
           </h2>
 
           <form onSubmit={handleCreate}>
-            {/* Stock Picker */}
-            <div style={{ marginBottom: "16px" }}>
+            {/* Stock Search */}
+            <div style={{ marginBottom: "16px" }} ref={dropdownRef}>
               <label style={{ display: "block", fontSize: "12px", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: T.inkFaint, marginBottom: "6px" }}>
                 Stock
               </label>
-              <select
-                value={symbol}
-                onChange={(e) => setSymbol(e.target.value)}
-                style={{
-                  width: "100%", padding: "12px 14px", borderRadius: "10px",
-                  border: `1px solid ${T.line}`, fontSize: "14px", fontFamily: "inherit",
-                  background: T.white, color: T.ink, cursor: "pointer",
-                  appearance: "none", WebkitAppearance: "none",
-                }}
-              >
-                <option value="">Choose a stock...</option>
-                {SEED_STOCKS.map(s => (
-                  <option key={s.ticker} value={s.ticker}>
-                    {s.ticker} — {s.name} (${getPrice(s.ticker).toFixed(2)})
-                  </option>
-                ))}
-              </select>
+              {symbol ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 14px", borderRadius: "10px", border: `1px solid ${T.accent}40`, background: `${T.accent}08` }}>
+                  <span style={{ fontWeight: 700, fontSize: "14px", color: T.ink }}>{symbol}</span>
+                  <span style={{ fontSize: "13px", color: T.inkSub, flex: 1 }}>{selectedName}</span>
+                  <button type="button" onClick={clearStock} style={{ background: "none", border: "none", cursor: "pointer", color: T.inkFaint, fontSize: "18px", lineHeight: 1, padding: "0 2px" }}>×</button>
+                </div>
+              ) : (
+                <div style={{ position: "relative" }}>
+                  <input
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
+                    placeholder="Search any stock — AAPL, Tesla, NVDA…"
+                    style={{
+                      width: "100%", padding: "12px 14px", borderRadius: "10px",
+                      border: `1px solid ${T.line}`, fontSize: "14px", fontFamily: "inherit",
+                      background: T.white, color: T.ink, outline: "none",
+                    }}
+                    onFocus={e => e.target.style.borderColor = `${T.accent}60`}
+                    onBlur={e => e.target.style.borderColor = T.line}
+                  />
+                  {searching && (
+                    <div style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", fontSize: "12px", color: T.inkFaint }}>…</div>
+                  )}
+                  {showDropdown && searchResults.length > 0 && (
+                    <div style={{ position: "absolute", top: "100%", left: 0, right: 0, marginTop: "4px", background: T.white, borderRadius: "10px", boxShadow: "0 4px 24px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06)", zIndex: 100, overflow: "hidden" }}>
+                      {searchResults.map(r => (
+                        <div key={r.ticker} onMouseDown={() => selectStock(r.ticker, r.name)} style={{ padding: "10px 14px", cursor: "pointer", borderBottom: `1px solid ${T.line}`, display: "flex", gap: "10px", alignItems: "center" }}
+                          onMouseEnter={e => e.currentTarget.style.background = T.bg}
+                          onMouseLeave={e => e.currentTarget.style.background = T.white}
+                        >
+                          <span style={{ fontWeight: 700, fontSize: "13px", color: T.ink, minWidth: "52px" }}>{r.ticker}</span>
+                          <span style={{ fontSize: "13px", color: T.inkSub, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Amount */}

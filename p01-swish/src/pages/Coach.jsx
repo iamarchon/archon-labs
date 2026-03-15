@@ -16,7 +16,7 @@ const STARTER_CHIPS = [
   "How does DCA work?",
 ];
 
-export default function Coach() {
+export default function Coach({ userId }) {
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -54,6 +54,7 @@ export default function Coach() {
         body: JSON.stringify({
           max_tokens: 150,
           messages: history,
+          userId,
         }),
       });
       const data = await res.json();

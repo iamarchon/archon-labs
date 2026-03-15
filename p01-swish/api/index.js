@@ -47,7 +47,42 @@ app.post("/api/coach", async (req, res) => {
   }
 
   try {
-    const { messages, max_tokens } = req.body;
+    const { messages, max_tokens, userId } = req.body;
+
+    // Build portfolio context if userId provided
+    let portfolioContext = "";
+    if (userId && supabaseAdmin) {
+      try {
+        const [{ data: holdings }, { data: user }] = await Promise.all([
+          supabaseAdmin.from("holdings").select("ticker, shares, avg_cost").eq("user_id", userId),
+          supabaseAdmin.from("users").select("cash, xp").eq("id", userId).single(),
+        ]);
+
+        const activeHoldings = (holdings || []).filter(h => Number(h.shares) >= 0.001);
+        if (activeHoldings.length > 0) {
+          // Fetch live quotes for held tickers
+          const finnhubKey = process.env.FINNHUB_API_KEY;
+          const quoteLines = await Promise.all(activeHoldings.map(async h => {
+            try {
+              const q = await fetchSingleQuote(h.ticker, finnhubKey);
+              if (q.c) {
+                const currentVal = (Number(h.shares) * q.c).toFixed(2);
+                const totalPnlPct = (((q.c - Number(h.avg_cost)) / Number(h.avg_cost)) * 100).toFixed(2);
+                const sign = totalPnlPct >= 0 ? "+" : "";
+                const daySign = q.dp >= 0 ? "+" : "";
+                return `  ${h.ticker}: ${h.shares} share(s) @ avg $${Number(h.avg_cost).toFixed(2)}, now $${q.c.toFixed(2)} (${sign}${totalPnlPct}% total, ${daySign}${q.dp?.toFixed(2)}% today) = $${currentVal}`;
+              }
+            } catch { /* ignore */ }
+            return `  ${h.ticker}: ${h.shares} share(s) @ avg $${Number(h.avg_cost).toFixed(2)}`;
+          }));
+          const cash = Number(user?.cash ?? 10000).toFixed(2);
+          portfolioContext = `\n\nUSER PORTFOLIO (live data):\nCash: $${cash}\nHoldings:\n${quoteLines.join("\n")}\n\nUse this data to give personalised answers. Never ask the user what stocks they hold — you already know.`;
+        }
+      } catch { /* ignore — degrade gracefully */ }
+    }
+
+    const systemPrompt = COACH_SYSTEM_PROMPT + portfolioContext;
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -58,7 +93,7 @@ app.post("/api/coach", async (req, res) => {
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
         max_tokens: max_tokens || 150,
-        system: COACH_SYSTEM_PROMPT,
+        system: systemPrompt,
         messages: messages || [],
       }),
     });
