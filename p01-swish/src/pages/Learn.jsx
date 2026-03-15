@@ -69,8 +69,14 @@ export default function Learn({ dbUser, refreshUser, fireConfetti }) {
             <div style={{ fontSize: "18px", color: T.inkSub, marginBottom: "24px" }}>
               You scored {quizResult.score}/{quizResult.total}
             </div>
-            {quizResult.passed && !isCompleted && (
-              <div style={{ fontSize: "16px", fontWeight: 700, color: T.green, marginBottom: "24px" }}>
+            {quizResult.passed && (
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: "6px",
+                fontSize: "15px", fontWeight: 700, color: T.green,
+                background: T.greenBg, padding: "8px 18px", borderRadius: "10px",
+                marginBottom: "24px",
+              }}>
+                <span style={{ fontSize: "18px" }}>&#9733;</span>
                 +{activeLesson.xpReward} XP earned!
               </div>
             )}
