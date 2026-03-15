@@ -53,7 +53,7 @@ const formatYAxis = (value) => {
   return `$${value}`;
 };
 
-export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, quotesLoaded = false, allHeldPricesLoaded: allHeldPricesLoadedProp = false, onClaimXp, fireConfetti, watchlist = [], watchlistItems = [], toggleWatch }) {
+export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, quotesLoaded = false, allHeldPricesLoaded: allHeldPricesLoadedProp = false, onClaimXp, fireConfetti, watchlist = [], watchlistItems = [], toggleWatch, tourActive = false }) {
   const navigate = useNavigate();
   const [onboardingDismissed, setOnboardingDismissed] = useState(() => localStorage.getItem("swish_onboarding_dismissed") === "true");
 
@@ -547,7 +547,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
     <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px 24px 100px" }}>
 
       {/* Onboarding banner for first-time users */}
-      {totalTrades === 0 && !onboardingDismissed && (
+      {totalTrades === 0 && !onboardingDismissed && !tourActive && (
         <Reveal>
           <Card hover={false} style={{ padding: "32px 36px", marginBottom: "16px", background: "linear-gradient(135deg, #0071e3, #0055b3)", position: "relative", overflow: "hidden" }}>
             <button

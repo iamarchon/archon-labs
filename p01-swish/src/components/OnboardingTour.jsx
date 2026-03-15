@@ -2,45 +2,53 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { T } from "../tokens";
 
+// mobileNavId: which MobileNav item to highlight with glow ring
 const STEPS = [
   {
     target: "#nav-home",
+    mobileNavId: "mnav-home",
     route: "/",
     title: "Your Home Base",
     text: "Track your portfolio value, holdings, and daily performance here.",
   },
   {
     target: "#nav-markets",
+    mobileNavId: "mnav-markets",
     route: "/markets",
     title: "Browse Stocks & Crypto",
     text: "Search 8,000+ stocks and crypto. Filter by category to find ideas.",
   },
   {
     target: ".stock-row",
+    mobileNavId: null,
     route: "/markets",
     title: "Buy Your First Stock",
     text: "Tap any stock to see its chart and buy shares with your $10,000.",
   },
   {
     target: "#nav-auto",
+    mobileNavId: "mnav-auto",
     route: "/auto-invest",
     title: "Auto-Invest",
     text: "Set up automatic weekly buys \u2014 even $5/week builds real habits.",
   },
   {
     target: "#nav-learn",
+    mobileNavId: "mnav-learn",
     route: "/learn",
     title: "Learn & Earn XP",
     text: "Complete bite-sized lessons to level up and unlock scenarios.",
   },
   {
     target: "#nav-scenarios",
+    mobileNavId: "mnav-scenarios",
     route: "/scenarios",
     title: "Test Your Instincts",
     text: "Real-world investing challenges. Make decisions, see outcomes.",
   },
   {
     target: null,
+    mobileNavId: null,
     route: null,
     title: "You're ready!",
     text: "Start by browsing Markets and making your first trade.",
@@ -55,7 +63,7 @@ function getRect(selector) {
   return el.getBoundingClientRect();
 }
 
-export default function OnboardingTour({ onComplete }) {
+export default function OnboardingTour({ onComplete, onStepChange }) {
   const [step, setStep] = useState(0);
   const [targetRect, setTargetRect] = useState(null);
   const navigate = useNavigate();
@@ -74,7 +82,6 @@ export default function OnboardingTour({ onComplete }) {
     if (current.route && location.pathname !== current.route) {
       navigate(current.route);
     }
-    // Delay measurement to let the page render
     const timer = setTimeout(measureTarget, 350);
     return () => clearTimeout(timer);
   }, [step, current.route, location.pathname, navigate, measureTarget]);
@@ -100,10 +107,14 @@ export default function OnboardingTour({ onComplete }) {
       navigate("/markets");
       return;
     }
-    setStep(s => s + 1);
+    setStep(s => {
+      const next = s + 1;
+      if (onStepChange) onStepChange(next);
+      return next;
+    });
   };
 
-  // Spotlight + tooltip positioning
+  // Desktop spotlight
   const pad = 8;
   const hasTarget = targetRect && current.target;
 
@@ -122,54 +133,37 @@ export default function OnboardingTour({ onComplete }) {
       }
     : null;
 
-  // Tooltip position: below target if room, else above
-  let tooltipTop = 0;
-  let tooltipLeft = 0;
-  if (hasTarget) {
-    const below = targetRect.bottom + pad + 12;
-    const above = targetRect.top - pad - 12;
-    if (below + 200 < window.innerHeight) {
-      tooltipTop = below;
-    } else {
-      tooltipTop = Math.max(12, above - 200);
-    }
-    tooltipLeft = Math.max(12, Math.min(targetRect.left, window.innerWidth - 320));
-  } else {
-    // Centered modal for final step
-    tooltipTop = window.innerHeight / 2 - 100;
-    tooltipLeft = window.innerWidth / 2 - 152;
-  }
-
   return (
     <>
-      {/* Backdrop — only when no spotlight target (final step) */}
-      {!hasTarget && (
-        <div
-          style={{
-            position: "fixed", inset: 0, zIndex: 10000,
-            background: "rgba(0,0,0,0.6)",
-          }}
-        />
-      )}
+      {/* Full-screen dark backdrop — always visible */}
+      <div
+        style={{
+          position: "fixed", inset: 0, zIndex: 10000,
+          background: "rgba(0,0,0,0.6)",
+        }}
+      />
 
-      {/* Spotlight cutout */}
-      {spotStyle && <div style={spotStyle} />}
+      {/* Desktop spotlight cutout (hidden on mobile via the backdrop covering it) */}
+      {spotStyle && <div className="tour-spotlight" style={spotStyle} />}
 
-      {/* Invisible click blocker behind tooltip */}
+      {/* Invisible click blocker */}
       <div
         style={{ position: "fixed", inset: 0, zIndex: 10002 }}
         onClick={(e) => e.stopPropagation()}
       />
 
-      {/* Tooltip card */}
+      {/* Tooltip card — centered bottom on mobile, positioned near target on desktop */}
       <div
         ref={tooltipRef}
+        className="tour-tooltip"
         style={{
           position: "fixed",
-          top: tooltipTop,
-          left: tooltipLeft,
+          bottom: "100px",
+          left: "50%",
+          transform: "translateX(-50%)",
           zIndex: 10003,
-          width: "304px",
+          width: "calc(100% - 32px)",
+          maxWidth: "360px",
           background: T.white,
           borderRadius: "16px",
           padding: "24px",
@@ -177,14 +171,14 @@ export default function OnboardingTour({ onComplete }) {
           animation: "fadeIn .2s ease, slideUp .2s ease",
         }}
       >
-        {/* Step indicator */}
+        {/* Step progress bar */}
         <div style={{ display: "flex", gap: "4px", marginBottom: "16px" }}>
           {STEPS.map((_, i) => (
             <div
               key={i}
               style={{
-                flex: 1, height: "3px", borderRadius: "2px",
-                background: i <= step ? T.accent : T.line,
+                flex: 1, height: "4px", borderRadius: "2px",
+                background: i <= step ? "#0071e3" : "#e5e7eb",
                 transition: "background .2s ease",
               }}
             />
@@ -233,3 +227,6 @@ export default function OnboardingTour({ onComplete }) {
     </>
   );
 }
+
+// Export STEPS so App.jsx can read the current step's mobileNavId
+OnboardingTour.STEPS = STEPS;

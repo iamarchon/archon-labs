@@ -50,6 +50,7 @@ function AppShell() {
   const [detailStock, setDetailStock] = useState(null);
   const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem("swish_tutorial_done"));
   const [showTour, setShowTour] = useState(() => localStorage.getItem("swish_tour_completed") !== "true");
+  const [tourStep, setTourStep] = useState(0);
   const { pathname } = useLocation();
 
   // Pull-to-refresh on mobile
@@ -415,7 +416,8 @@ function AppShell() {
                 allHeldPricesLoaded={allHeldPricesLoaded}
                 onClaimXp={onClaimXp} fireConfetti={fireConfetti}
                 watchlist={watchlist} watchlistItems={watchlistItems}
-                toggleWatch={toggleWatch} />
+                toggleWatch={toggleWatch}
+                tourActive={showTour && totalTrades === 0 && dbUser?.role !== "teacher"} />
             } />
             <Route path="/markets" element={
               <Markets onOpenTrade={setTradeStock} watchlist={watchlist} onWatch={toggleWatch} />
@@ -502,7 +504,7 @@ function AppShell() {
       )}
 
       <PullToRefreshIndicator state={pullState} pullDistance={pullDistance} />
-      <MobileNav role={dbUser?.role} />
+      <MobileNav role={dbUser?.role} tourHighlight={showTour && totalTrades === 0 && dbUser?.role !== "teacher" ? OnboardingTour.STEPS[tourStep]?.mobileNavId : null} />
       {dbUser?.role !== "teacher" && <FloatingCoach />}
 
       {shouldShowTutorial && (
@@ -510,7 +512,7 @@ function AppShell() {
       )}
 
       {showTour && dbUser && totalTrades === 0 && dbUser.role !== "teacher" && (
-        <OnboardingTour onComplete={() => setShowTour(false)} />
+        <OnboardingTour onComplete={() => setShowTour(false)} onStepChange={setTourStep} />
       )}
     </>
   );
