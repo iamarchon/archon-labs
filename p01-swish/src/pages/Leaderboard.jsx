@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { ChevronLeft, Users } from "lucide-react";
 import { T } from "../tokens";
 import Reveal from "../components/Reveal";
 import Card from "../components/Card";
@@ -46,6 +48,7 @@ function RankRow({ entry, rank, isUser }) {
 }
 
 export default function Leaderboard({ userId }) {
+  const navigate = useNavigate();
   const [tab, setTab] = useState("global");
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +104,10 @@ export default function Leaderboard({ userId }) {
 
   return (
     <div style={{ maxWidth: "700px", margin: "0 auto", padding: "40px 28px 100px" }}>
+      <div className="mobile-back-btn" onClick={() => navigate(-1)}
+        style={{ display: "none", alignItems: "center", gap: "4px", color: T.accent, fontSize: "14px", fontWeight: 500, marginBottom: "16px", cursor: "pointer" }}>
+        <ChevronLeft size={16} /> Back
+      </div>
       <Reveal>
         <div style={{ marginBottom: "28px" }}>
           <h1 style={{ fontSize: "32px", fontWeight: 700, letterSpacing: "-0.8px", color: T.ink }}>Leaderboard</h1>
@@ -111,7 +118,7 @@ export default function Leaderboard({ userId }) {
       {/* Tabs */}
       <div style={{ display: "flex", gap: "4px", background: T.bg, borderRadius: "12px", padding: "3px", marginBottom: "24px" }}>
         <button onClick={() => setTab("global")} style={tabStyle(tab === "global")}>Global 🌍</button>
-        <button onClick={() => setTab("leagues")} style={tabStyle(tab === "leagues")}>My Leagues 🏆</button>
+        <button onClick={() => setTab("leagues")} style={{ ...tabStyle(tab === "leagues"), display: "inline-flex", alignItems: "center", gap: "6px" }}><Users size={16} /> My Leagues</button>
       </div>
 
       {/* Global tab */}

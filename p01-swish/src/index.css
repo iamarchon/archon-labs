@@ -53,6 +53,7 @@ input::placeholder { color: #86868b; }
 .mobile-nav { display: none; }
 @media (max-width: 768px) {
   .pills-fade { display: block !important; }
+  .mobile-back-btn { display: flex !important; }
   .floating-coach-bubble { display: flex !important; }
   .floating-coach-sheet { display: block !important; }
   .mobile-nav { display: flex !important; }

@@ -112,6 +112,45 @@ export default function AutoInvest({ dbUser, stocks, livePrices, refreshUser }) 
         </div>
       </Reveal>
 
+      {/* Active Plans — shown above form */}
+      {!loading && plans.length > 0 && (
+        <Reveal delay={0.05}>
+          <h2 style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.5px", color: T.ink, marginBottom: "16px" }}>
+            Your Active Plans
+          </h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "0" }}>
+            {plans.map(plan => {
+              const nextDate = plan.next_run_date ? new Date(plan.next_run_date).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—";
+              return (
+                <Card key={plan.id} style={{ padding: "20px 24px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+                        <span style={{ fontSize: "16px", fontWeight: 700, color: T.ink }}>{plan.stock_symbol}</span>
+                        <span style={{ fontSize: "13px", fontWeight: 600, color: T.ink }}>${plan.amount}</span>
+                        <span style={{ fontSize: "12px", color: T.inkFaint }}>{freqLabel(plan.frequency)}</span>
+                      </div>
+                      <div style={{ fontSize: "12px", color: T.inkFaint }}>Next: {nextDate}</div>
+                    </div>
+                    <button
+                      onClick={() => handleCancel(plan.id)}
+                      style={{
+                        padding: "5px 12px", borderRadius: "20px",
+                        border: `1px solid #fecaca`, background: "transparent",
+                        fontSize: "12px", fontWeight: 500, color: T.red,
+                        cursor: "pointer", fontFamily: "inherit",
+                        transition: "opacity .15s ease",
+                      }}
+                    >Cancel</button>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+          <hr style={{ border: "none", borderTop: `1px solid ${T.line}`, margin: "24px 0" }} />
+        </Reveal>
+      )}
+
       {/* Create Plan Form */}
       <Reveal delay={0.07}>
         <Card style={{ padding: "32px", marginBottom: "24px" }}>
@@ -149,19 +188,22 @@ export default function AutoInvest({ dbUser, stocks, livePrices, refreshUser }) 
               <label style={{ display: "block", fontSize: "12px", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: T.inkFaint, marginBottom: "6px" }}>
                 Amount per purchase ($5 minimum)
               </label>
-              <input
-                type="number"
-                min="5"
-                step="1"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="e.g. 25"
-                style={{
-                  width: "100%", padding: "12px 14px", borderRadius: "10px",
-                  border: `1px solid ${T.line}`, fontSize: "14px", fontFamily: "inherit",
-                  background: T.white, color: T.ink,
-                }}
-              />
+              <div style={{ position: "relative" }}>
+                <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: T.inkFaint, fontSize: "14px", pointerEvents: "none" }}>$</span>
+                <input
+                  type="number"
+                  min="5"
+                  step="1"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="25"
+                  style={{
+                    width: "100%", padding: "12px 14px 12px 28px", borderRadius: "10px",
+                    border: `1px solid ${T.line}`, fontSize: "14px", fontFamily: "inherit",
+                    background: T.white, color: T.ink,
+                  }}
+                />
+              </div>
             </div>
 
             {/* Frequency */}
@@ -235,92 +277,6 @@ export default function AutoInvest({ dbUser, stocks, livePrices, refreshUser }) 
         </Card>
       </Reveal>
 
-      {/* Active Plans */}
-      <Reveal delay={0.14}>
-        <h2 style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.5px", color: T.ink, marginBottom: "16px" }}>
-          Your Plans
-        </h2>
-
-        {loading ? (
-          <Card style={{ padding: "32px", textAlign: "center" }}>
-            <div style={{ color: T.inkFaint, fontSize: "14px" }}>Loading plans...</div>
-          </Card>
-        ) : plans.length === 0 ? (
-          <Card style={{ padding: "40px 28px", textAlign: "center" }}>
-            <div style={{ fontSize: "36px", marginBottom: "12px" }}>🔄</div>
-            <div style={{ fontSize: "16px", fontWeight: 600, color: T.ink, marginBottom: "6px" }}>
-              No auto-invest plans yet
-            </div>
-            <div style={{ color: T.inkSub, fontSize: "14px", lineHeight: 1.5 }}>
-              Create your first plan above to start investing on autopilot!
-            </div>
-          </Card>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {plans.map(plan => {
-              const price = getPrice(plan.stock_symbol);
-              const sharesPerBuy = price > 0 ? (plan.amount / price).toFixed(4) : "—";
-              const isActive = plan.status === "active";
-              const isPaused = plan.status === "paused";
-
-              return (
-                <Card key={plan.id} style={{ padding: "20px 24px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-                        <span style={{ fontSize: "16px", fontWeight: 700, color: T.ink }}>
-                          {plan.stock_symbol}
-                        </span>
-                        <span style={{
-                          fontSize: "11px", fontWeight: 600, letterSpacing: "0.04em",
-                          padding: "3px 8px", borderRadius: "6px",
-                          background: isActive ? T.greenBg : isPaused ? "#fff7ed" : T.redBg,
-                          color: isActive ? T.green : isPaused ? T.amber : T.red,
-                        }}>
-                          {plan.status.toUpperCase()}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: "13px", color: T.inkSub, lineHeight: 1.5 }}>
-                        <strong>${plan.amount}</strong> {freqLabel(plan.frequency).toLowerCase()} (~{sharesPerBuy} shares)
-                      </div>
-                      <div style={{ fontSize: "12px", color: T.inkFaint, marginTop: "4px" }}>
-                        Next: {plan.next_run_date}
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", gap: "8px" }}>
-                      <button
-                        onClick={() => handlePause(plan.id)}
-                        style={{
-                          padding: "8px 14px", borderRadius: "8px", border: "none",
-                          fontSize: "12px", fontWeight: 600, cursor: "pointer",
-                          fontFamily: "inherit",
-                          background: T.bg, color: T.inkSub,
-                          transition: "opacity .15s ease",
-                        }}
-                      >
-                        {isPaused ? "Resume" : "Pause"}
-                      </button>
-                      <button
-                        onClick={() => handleCancel(plan.id)}
-                        style={{
-                          padding: "8px 14px", borderRadius: "8px", border: "none",
-                          fontSize: "12px", fontWeight: 600, cursor: "pointer",
-                          fontFamily: "inherit",
-                          background: T.redBg, color: T.red,
-                          transition: "opacity .15s ease",
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </Reveal>
 
       {/* DCA Explainer */}
       <Reveal delay={0.21}>
