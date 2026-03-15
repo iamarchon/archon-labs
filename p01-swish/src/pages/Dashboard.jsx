@@ -86,7 +86,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
           const res = await fetch(`${baseUrl}/api/quote/${encodeURIComponent(ticker)}`);
           const data = await res.json();
           if (data.c && data.c > 0) {
-            results[ticker] = { price: data.c, dp: data.dp ?? 0 };
+            results[ticker] = { price: data.c, dp: data.dp ?? 0, pc: data.pc ?? data.c };
           }
         } catch { /* ignore */ }
       }));
@@ -531,8 +531,12 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   const hasRangeData = chartPoints.length >= 2;
   const rangeBaseline = hasRangeData ? chartPoints[0].value : 10000;
   const rangeLast = hasRangeData ? chartPoints[chartPoints.length - 1].value : total;
-  const rangeGain = rangeLast - rangeBaseline;
-  const rangeGainPct = rangeBaseline > 0 ? (rangeGain / rangeBaseline) * 100 : 0;
+  const rawRangeGain = rangeLast - rangeBaseline;
+  // For 1D range, use real daily P&L from previous close prices when available
+  const rangeGain = perfRange === "1D" && dailyPL != null ? dailyPL : rawRangeGain;
+  const rangeGainPct = perfRange === "1D" && dailyPL != null && total > cash
+    ? (dailyPL / (total - cash - dailyPL)) * 100
+    : rangeBaseline > 0 ? (rawRangeGain / rangeBaseline) * 100 : 0;
   const chartColor = useMemo(() => {
     if (!chartPoints || chartPoints.length < 2) return "#22c55e";
     const delta = chartPoints[chartPoints.length - 1].value - chartPoints[0].value;
@@ -540,8 +544,22 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   }, [chartPoints]);
   // chartFill removed — chart now renders as unfilled line
 
-  // Compute sessionDelta from stored lastSessionValue (live, updates with total)
-  const computedSessionDelta = lastSessionValue > 0 ? total - lastSessionValue : null;
+  // Compute daily P&L from real previous close prices: sum(shares × (currentPrice - prevClose))
+  const dailyPL = useMemo(() => {
+    if (!allHeldPricesLoaded || holdings.length === 0) return null;
+    const quoteKeys = Object.keys(liveQuotes);
+    if (quoteKeys.length === 0) return null;
+    let sum = 0;
+    for (const h of holdings) {
+      const shares = Number(h.shares);
+      if (shares < 0.001) continue;
+      const lq = liveQuotes[h.ticker];
+      if (lq && lq.pc > 0) {
+        sum += shares * (lq.price - lq.pc);
+      }
+    }
+    return sum;
+  }, [holdings, liveQuotes, allHeldPricesLoaded]);
 
   return (
     <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px 24px 100px" }}>

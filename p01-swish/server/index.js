@@ -140,14 +140,16 @@ app.get("/api/crypto/top", async (req, res) => {
     const url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=false&price_change_percentage=24h";
     const response = await fetch(url);
     const data = await response.json();
-    const coins = (data || []).map(c => ({
-      id: c.id,
-      symbol: (c.symbol || "").toUpperCase(),
-      name: c.name,
-      price: c.current_price,
-      changePct: c.price_change_percentage_24h ?? 0,
-      image: c.image,
-    }));
+    const coins = (data || [])
+      .map(c => ({
+        id: c.id,
+        symbol: (c.symbol || "").toUpperCase(),
+        name: c.name,
+        price: c.current_price,
+        changePct: c.price_change_percentage_24h ?? 0,
+        image: c.image,
+      }))
+      .filter(c => /^[A-Z0-9]{2,10}$/.test(c.symbol) && c.price > 0);
     cryptoTopCache = { ts: Date.now(), data: { coins } };
     res.json({ coins });
   } catch (err) {
