@@ -81,7 +81,7 @@ export default function TickerStrip({ stocks }) {
       <div style={{ overflow: "hidden", height: "33px", display: "flex", alignItems: "center", background: T.white, borderBottom: `1px solid ${T.line}` }}>
         <div style={{ display: "flex", gap: "48px", whiteSpace: "nowrap", animation: "ticker 84s linear infinite" }}>
           {doubled.map((m, i) => (
-            <span key={i} style={{ color: T.inkFaint, fontSize: "11.5px", fontWeight: 500 }}>{m}</span>
+            <span key={i} style={{ color: "#ff3b30", fontSize: "11.5px", fontWeight: 500 }}>{m}</span>
           ))}
         </div>
       </div>

@@ -47,11 +47,18 @@ const STEPS = [
     text: "Real-world investing challenges. Make decisions, see outcomes.",
   },
   {
+    target: "#nav-coach",
+    mobileNavId: null,
+    route: "/coach",
+    title: "Meet Your AI Coach",
+    text: "Ask any investing question \u2014 your personal AI explains it in plain English, just for you.",
+  },
+  {
     target: null,
     mobileNavId: null,
     route: null,
-    title: "You're ready!",
-    text: "Start by browsing Markets and making your first trade.",
+    title: "You're all set!",
+    text: "Start by browsing Markets and making your first trade. Your coach is always here if you have questions.",
     isFinal: true,
   },
 ];
