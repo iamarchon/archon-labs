@@ -19,7 +19,8 @@
       "Bash(rm:*)",
       "Bash(npx vercel:*)",
       "Bash(node:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(python3:*)"
     ]
   }
 }

@@ -1353,6 +1353,82 @@ app.delete("/api/dca/cancel/:id", async (req, res) => {
   }
 });
 
+/* ── POST /api/feedback — send bug report / feedback via Resend ── */
+app.post("/api/feedback", async (req, res) => {
+  const { type = "Feedback", message, email, debugContext = {} } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: "message required" });
+
+  const resendKey = process.env.RESEND_API_KEY;
+  if (!resendKey) return res.status(500).json({ error: "RESEND_API_KEY not set" });
+
+  const subjects = { Bug: "[BUG] Swish Bug Report", Feedback: "[FEEDBACK] Swish Feedback", Question: "[QUESTION] Swish Question" };
+  const subject = subjects[type] || "[FEEDBACK] Swish Feedback";
+
+  const errList = (debugContext.recentErrors || []).length > 0
+    ? debugContext.recentErrors.map(e => `  ${e.time}: ${e.message} (${e.filename || ""}:${e.line || ""})`).join("\n")
+    : "  None";
+  const failList = (debugContext.recentFailedRequests || []).length > 0
+    ? debugContext.recentFailedRequests.map(r => `  ${r.time}: ${r.url} → ${r.status || r.error}`).join("\n")
+    : "  None";
+
+  const text = `
+━━━━ USER MESSAGE ━━━━
+Type:         ${type}
+Message:      ${message}
+User email:   ${email || "not provided"}
+
+━━━━ DEBUG CONTEXT ━━━━
+User ID:      ${debugContext.userId || "n/a"}
+User name:    ${debugContext.userName || "n/a"}
+User email:   ${debugContext.userEmail || "n/a"}
+Session ID:   ${debugContext.sessionId || "n/a"}
+Session:      ${debugContext.sessionStatus || "n/a"}
+
+━━━━ PAGE ━━━━
+URL:          ${debugContext.url || "n/a"}
+Page:         ${debugContext.page || "n/a"}
+Timestamp:    ${debugContext.timestamp || "n/a"}
+App version:  ${debugContext.appVersion || "n/a"}
+Page load:    ${debugContext.pageLoadTime || "n/a"}ms
+
+━━━━ DEVICE ━━━━
+Viewport:     ${debugContext.viewport || "n/a"}
+Platform:     ${debugContext.platform || "n/a"}
+DPR:          ${debugContext.devicePixelRatio || "n/a"}
+Language:     ${debugContext.language || "n/a"}
+User agent:   ${debugContext.userAgent || "n/a"}
+
+━━━━ RECENT ERRORS ━━━━
+${errList}
+
+━━━━ FAILED API CALLS ━━━━
+${failList}
+`.trim();
+
+  try {
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${resendKey}` },
+      body: JSON.stringify({
+        from: "Swish Feedback <onboarding@resend.dev>",
+        to: ["iamarchon@proton.me"],
+        subject,
+        text,
+        ...(email ? { reply_to: email } : {}),
+      }),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      console.error("Resend error:", err);
+      return res.status(502).json({ error: "Email delivery failed" });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Feedback send error:", err);
+    res.status(502).json({ error: "Email delivery failed" });
+  }
+});
+
 /* ── GET /api/stocks/sector — dynamic stock list by sector, sorted by market cap ── */
 const SECTOR_MAP = {
   "Tech":     ["Technology","Semiconductors","Software—Application","Software—Infrastructure","Computer Hardware","Consumer Electronics","Information Technology Services","Communication Equipment","Semiconductor Equipment & Materials","Electronic Components"],

@@ -6,6 +6,36 @@ import App from "./App";
 
 const clerkKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
+/* ── Global error + failed-request tracking for feedback reports ── */
+window.__recentErrors = [];
+window.__failedRequests = [];
+
+window.addEventListener("error", (e) => {
+  window.__recentErrors.push({ message: e.message, filename: e.filename, line: e.lineno, time: new Date().toISOString() });
+  if (window.__recentErrors.length > 10) window.__recentErrors.shift();
+});
+
+window.addEventListener("unhandledrejection", (e) => {
+  window.__recentErrors.push({ message: e.reason?.message || String(e.reason), type: "unhandledrejection", time: new Date().toISOString() });
+  if (window.__recentErrors.length > 10) window.__recentErrors.shift();
+});
+
+const _origFetch = window.fetch;
+window.fetch = async (...args) => {
+  try {
+    const res = await _origFetch(...args);
+    if (!res.ok && typeof args[0] === "string" && args[0].includes("/api/")) {
+      window.__failedRequests.push({ url: args[0], status: res.status, time: new Date().toISOString() });
+      if (window.__failedRequests.length > 5) window.__failedRequests.shift();
+    }
+    return res;
+  } catch (e) {
+    window.__failedRequests.push({ url: args[0], error: e.message, time: new Date().toISOString() });
+    if (window.__failedRequests.length > 5) window.__failedRequests.shift();
+    throw e;
+  }
+};
+
 class ErrorBoundary extends Component {
   state = { error: null };
   static getDerivedStateFromError(error) { return { error }; }

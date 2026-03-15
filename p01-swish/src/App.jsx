@@ -32,6 +32,7 @@ import usePullToRefresh from "./hooks/usePullToRefresh";
 import PullToRefreshIndicator from "./components/PullToRefreshIndicator";
 import FloatingCoach from "./components/FloatingCoach";
 import Footer from "./components/Footer";
+import FeedbackModal from "./components/FeedbackModal";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 
@@ -54,6 +55,7 @@ function AppShell() {
   const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem("swish_tutorial_done"));
   const [showTour, setShowTour] = useState(() => localStorage.getItem("swish_tour_completed") !== "true");
   const [tourStep, setTourStep] = useState(0);
+  const [showFeedback, setShowFeedback] = useState(false);
   const { pathname } = useLocation();
 
   // Pull-to-refresh on mobile
@@ -448,8 +450,29 @@ function AppShell() {
             <Route path="/privacy" element={<Privacy />} />
           </Routes>
         </main>
-        <Footer />
+        <Footer onFeedback={() => setShowFeedback(true)} />
       </div>
+
+      {/* Floating feedback button — desktop only */}
+      <button
+        onClick={() => setShowFeedback(true)}
+        className="feedback-float"
+        style={{
+          position: "fixed", bottom: "24px", left: "24px", zIndex: 999,
+          background: "#f5f5f5", border: "1px solid #ddd", borderRadius: "20px",
+          padding: "7px 14px", fontSize: "12px", color: "#555",
+          cursor: "pointer", fontFamily: "inherit", fontWeight: 500,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+          transition: "box-shadow .15s ease, background .15s ease",
+          display: "none", // shown via CSS media query on desktop
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = "#ebebeb"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(0,0,0,0.12)"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "#f5f5f5"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.08)"; }}
+      >
+        🐛 Feedback
+      </button>
+
+      {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
 
       {detailStock && !tradeStock && (
         <StockDetailModal
