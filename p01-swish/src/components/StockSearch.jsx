@@ -129,7 +129,7 @@ const StockRow = ({ stock, onOpenTrade, onWatch, watched }) => {
         <Sparkline positive={pos} width={56} height={20} />
       </div>
 
-      <div style={{ width: "90px", textAlign:"right", flexShrink: 0 }}>
+      <div className="stock-row-price" style={{ width: "90px", textAlign:"right", flexShrink: 0 }}>
         {stock.price != null ? (
           <>
             <div style={{ color:T.ink, fontWeight:600, fontSize:"14px", fontVariantNumeric:"tabular-nums" }}>

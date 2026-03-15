@@ -58,9 +58,11 @@ input::placeholder { color: #86868b; }
 /* Mobile bottom nav: visible only below 768px */
 .mobile-nav { display: none; }
 @media (max-width: 640px) {
-  /* Markets row: hide sparkline + actions on narrow mobile — show name + price only */
-  .stock-row-chart { display: none !important; }
+  /* Markets row: smaller chart, tighter price, hide actions */
+  .stock-row-chart { display: flex !important; width: 40px !important; }
+  .stock-row-chart svg { width: 40px !important; height: 16px !important; }
   .stock-row-actions { display: none !important; }
+  .stock-row-price { width: 80px !important; font-size: 13px !important; }
 }
 
 @media (max-width: 768px) {
