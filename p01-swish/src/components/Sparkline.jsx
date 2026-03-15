@@ -3,7 +3,7 @@ import { T } from "../tokens";
 export default function Sparkline({ positive, width = 72, height = 28, data }) {
   const pts = data?.length >= 2
     ? data
-    : positive ? [22,19,23,16,11,13,9,6,8,2] : [4,7,5,11,14,10,17,13,19,22];
+    : positive ? [4,7,5,11,14,10,17,13,19,22] : [22,19,23,16,11,13,9,6,8,2];
   const max = Math.max(...pts), min = Math.min(...pts), range = max - min || 1;
   const coords = pts.map((p, i) => `${(i/(pts.length-1))*width},${height-((p-min)/range)*(height-6)-3}`);
   const resolvedPositive = data?.length >= 2 ? pts[pts.length - 1] >= pts[0] : positive;

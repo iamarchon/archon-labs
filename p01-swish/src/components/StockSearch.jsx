@@ -56,8 +56,8 @@ const SECTORS = ["All", "Tech", "Media", "Gaming", "Social", "Fintech", "Consume
 /* ── Sparkline ── */
 const Sparkline = ({ positive, width = 56, height = 20 }) => {
   const pts = positive
-    ? [22, 19, 23, 16, 11, 13, 9, 6, 8, 2]
-    : [4,  7,  5,  11, 14, 10, 17, 13, 19, 22];
+    ? [4,  7,  5,  11, 14, 10, 17, 13, 19, 22]
+    : [22, 19, 23, 16, 11, 13, 9, 6, 8, 2];
   const max = Math.max(...pts), min = Math.min(...pts), range = max - min || 1;
   const coords = pts.map((p, i) =>
     `${(i / (pts.length - 1)) * width},${height - ((p - min) / range) * (height - 4) - 2}`
