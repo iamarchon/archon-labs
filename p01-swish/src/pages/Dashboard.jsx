@@ -55,6 +55,7 @@ const formatYAxis = (value) => {
 
 export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = [], cash = 10000, xp = 0, level = "Bronze", streak = 0, username = "trader", livePrices = {}, dbUser, saveSnapshot, totalTrades = 0, totalValue = 10000, portfolioGain = 0, quotesLoaded = false, allHeldPricesLoaded: allHeldPricesLoadedProp = false, onClaimXp, fireConfetti, watchlist = [], watchlistItems = [], toggleWatch }) {
   const navigate = useNavigate();
+  const [onboardingDismissed, setOnboardingDismissed] = useState(() => localStorage.getItem("swish_onboarding_dismissed") === "true");
 
   // allHeldPricesLoaded now includes 8s timeout from App.jsx — safe for all uses
   const allHeldPricesLoaded = allHeldPricesLoadedProp;
@@ -545,6 +546,26 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   return (
     <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px 24px 100px" }}>
 
+      {/* Onboarding banner for first-time users */}
+      {totalTrades === 0 && !onboardingDismissed && (
+        <Reveal>
+          <Card hover={false} style={{ padding: "32px 36px", marginBottom: "16px", background: "linear-gradient(135deg, #0071e3, #0055b3)", position: "relative", overflow: "hidden" }}>
+            <button
+              onClick={() => { localStorage.setItem("swish_onboarding_dismissed", "true"); setOnboardingDismissed(true); }}
+              style={{ position: "absolute", top: "12px", right: "16px", background: "none", border: "none", color: "rgba(255,255,255,0.7)", fontSize: "18px", cursor: "pointer", padding: "4px", lineHeight: 1 }}
+            >&times;</button>
+            <div style={{ color: T.white, fontSize: "22px", fontWeight: 700, letterSpacing: "-0.5px", marginBottom: "8px" }}>Welcome to Swish! 👋</div>
+            <div style={{ color: "rgba(255,255,255,0.85)", fontSize: "15px", marginBottom: "20px", lineHeight: 1.5 }}>Make your first trade to start building your portfolio</div>
+            <button
+              onClick={() => navigate("/markets")}
+              style={{ background: T.white, color: "#0071e3", border: "none", borderRadius: "20px", padding: "10px 20px", fontSize: "14px", fontWeight: 600, cursor: "pointer", transition: "opacity .15s" }}
+              onMouseEnter={e => e.currentTarget.style.opacity = ".88"}
+              onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+            >Browse stocks &rarr;</button>
+          </Card>
+        </Reveal>
+      )}
+
       {/* Hero */}
       <Reveal>
         <Card hover={false} className="dash-hero" style={{ padding: "48px 52px", marginBottom: "16px", background: "linear-gradient(160deg,#ffffff 60%,#f0f7ff 100%)" }}>
@@ -684,19 +705,28 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
       </Reveal>
 
       {/* Row 3: Watchlist — grouped by category */}
-      {watchlist.length > 0 && (
         <Reveal delay={0.06}>
           <Card style={{ padding: "28px 30px", marginBottom: "16px" }}>
-            <div style={{ marginBottom: "20px" }}>
+            <div style={{ marginBottom: watchlist.length > 0 ? "20px" : "0" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px" }}><Star size={16} strokeWidth={1.5} color={T.inkFaint} />Watchlist</div>
                 <button onClick={() => navigate("/markets")} style={{ background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: "13px", fontWeight: 500 }}>Browse Markets</button>
               </div>
-              <div style={{ marginTop: "10px" }}>
-                <RangeTabs selected={wlRange} onChange={setWlRange} />
-              </div>
+              {watchlist.length > 0 && (
+                <div style={{ marginTop: "10px" }}>
+                  <RangeTabs selected={wlRange} onChange={setWlRange} />
+                </div>
+              )}
             </div>
-            {(() => {
+            {watchlist.length === 0 ? (
+              <div style={{ padding: "40px 20px", textAlign: "center" }}>
+                <div style={{ marginBottom: "12px" }}><Star size={32} strokeWidth={1.5} color={T.inkFaint} /></div>
+                <div style={{ color: T.ink, fontSize: "16px", fontWeight: 600, marginBottom: "6px" }}>Your watchlist is empty</div>
+                <div style={{ color: T.inkSub, fontSize: "14px", marginBottom: "16px" }}>Star any stock to track it here</div>
+                <button onClick={() => navigate("/markets")} style={{ background: "none", border: "none", color: T.accent, fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>Browse Markets &rarr;</button>
+              </div>
+            ) : (
+            (() => {
               const enriched = watchlist.map(symbol => {
                 const s = stocks.find(x => x.ticker === symbol);
                 const q = wlQuotes[symbol];
@@ -787,10 +817,11 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
                   })}
                 </div>
               );
-            })()}
+            })()
+            )}
           </Card>
         </Reveal>
-      )}
+
 
       {/* Row 4: Your Holdings — full width list */}
       <Reveal delay={0.08}>

@@ -81,7 +81,7 @@ export default function InsightsTile({ holdings = [], cash = 10000, totalValue =
         <button
           onClick={fetchInsights}
           disabled={loading}
-          style={{ background: "none", border: "none", cursor: loading ? "default" : "pointer", color: T.accent, fontSize: "16px", padding: "4px 8px", borderRadius: "6px", transition: "background .15s" }}
+          style={{ background: "none", border: "none", cursor: loading ? "default" : "pointer", color: T.accent, fontSize: "16px", padding: "4px 8px", borderRadius: "6px", transition: "background .15s", display: "inline-flex", alignItems: "center", justifyContent: "center", ...(loading ? { animation: "pullSpin 1s linear infinite" } : {}) }}
           onMouseEnter={e => { if (!loading) e.currentTarget.style.background = `${T.accent}10`; }}
           onMouseLeave={e => e.currentTarget.style.background = "none"}
         >↻</button>
@@ -101,14 +101,19 @@ export default function InsightsTile({ holdings = [], cash = 10000, totalValue =
         </div>
       )}
 
-      {insights && !loading && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-          {insights.map((tip, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
-              <span style={{ color: T.amber, fontSize: "14px", flexShrink: 0, marginTop: "1px" }}>⚡</span>
-              <span style={{ color: T.inkSub, fontSize: "14px", lineHeight: "1.5" }}>{tip}</span>
-            </div>
-          ))}
+      {insights && (
+        <div style={{ opacity: loading ? 0.4 : 1, transition: "opacity .2s ease" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            {insights.map((tip, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                <span style={{ color: T.amber, fontSize: "14px", flexShrink: 0, marginTop: "1px" }}>⚡</span>
+                <span style={{ color: T.inkSub, fontSize: "14px", lineHeight: "1.5" }}>{tip}</span>
+              </div>
+            ))}
+          </div>
+          {loading && (
+            <div style={{ color: T.inkFaint, fontSize: "12px", marginTop: "12px" }}>Analyzing your portfolio...</div>
+          )}
         </div>
       )}
     </Card>
