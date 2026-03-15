@@ -57,7 +57,7 @@ const STEPS = [
 ];
 
 // Saved original styles so we can restore them
-const ELEVATED_PROPS = ["position", "zIndex", "borderRadius", "boxShadow"];
+const ELEVATED_PROPS = ["position", "zIndex", "borderRadius", "boxShadow", "isolation"];
 
 function elevateElement(el) {
   if (!el) return null;
@@ -65,8 +65,9 @@ function elevateElement(el) {
   for (const prop of ELEVATED_PROPS) saved[prop] = el.style[prop];
   el.style.position = "relative";
   el.style.zIndex = "10001";
+  el.style.isolation = "isolate";
   el.style.borderRadius = "8px";
-  el.style.boxShadow = "0 0 0 4px rgba(0,113,227,0.5), 0 0 20px rgba(0,113,227,0.3)";
+  el.style.boxShadow = "0 0 0 4px rgba(0,113,227,0.6), 0 0 20px rgba(0,113,227,0.3)";
   return saved;
 }
 
@@ -172,8 +173,11 @@ export default function OnboardingTour({ onComplete, onStepChange }) {
       maxWidth: "360px",
     };
 
-    // No target → centered bottom
-    if (!hasTarget) return { ...base, bottom: "100px", top: "auto" };
+    // No target → centered on screen
+    if (!hasTarget) {
+      if (isMobile()) return { ...base, bottom: "100px", top: "auto" };
+      return { ...base, top: "30%", bottom: "auto" };
+    }
 
     // Mobile: smart top/bottom based on element position
     if (isMobile()) {
@@ -186,17 +190,16 @@ export default function OnboardingTour({ onComplete, onStepChange }) {
 
     // Desktop: position near the highlighted element
     const gap = 12;
-    const tooltipHeight = 240; // approximate
+    const tooltipHeight = 240;
+    const tooltipWidth = 320;
     const belowY = targetRect.bottom + gap;
     const aboveY = targetRect.top - gap - tooltipHeight;
-    const tooltipLeft = Math.max(16, Math.min(targetRect.left, window.innerWidth - 376));
+    const tooltipLeft = Math.max(16, Math.min(targetRect.left, window.innerWidth - tooltipWidth - 20));
 
     if (belowY + tooltipHeight < window.innerHeight) {
-      // Place below
-      return { ...base, top: belowY, bottom: "auto", left: tooltipLeft, transform: "none" };
+      return { ...base, top: belowY, bottom: "auto", left: tooltipLeft, transform: "none", width: tooltipWidth };
     }
-    // Place above
-    return { ...base, top: Math.max(16, aboveY), bottom: "auto", left: tooltipLeft, transform: "none" };
+    return { ...base, top: Math.max(10, aboveY), bottom: "auto", left: tooltipLeft, transform: "none", width: tooltipWidth };
   };
 
   return (

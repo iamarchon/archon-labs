@@ -74,11 +74,16 @@ export default function TickerStrip({ stocks }) {
   const open = isMarketOpen() && !getHoliday();
 
   if (!open) {
+    const msg = getClosedMessage();
+    const repeated = Array(8).fill(msg);
+    const doubled = [...repeated, ...repeated];
     return (
-      <div style={{ height: "33px", display: "flex", alignItems: "center", justifyContent: "center", background: T.white, borderBottom: `1px solid ${T.line}` }}>
-        <span style={{ color: T.inkFaint, fontSize: "12px", fontWeight: 500 }}>
-          {getClosedMessage()}
-        </span>
+      <div style={{ overflow: "hidden", height: "33px", display: "flex", alignItems: "center", background: T.white, borderBottom: `1px solid ${T.line}` }}>
+        <div style={{ display: "flex", gap: "48px", whiteSpace: "nowrap", animation: "ticker 84s linear infinite" }}>
+          {doubled.map((m, i) => (
+            <span key={i} style={{ color: T.inkFaint, fontSize: "11.5px", fontWeight: 500 }}>{m}</span>
+          ))}
+        </div>
       </div>
     );
   }
