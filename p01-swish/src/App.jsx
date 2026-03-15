@@ -31,6 +31,9 @@ import OnboardingTour from "./components/OnboardingTour";
 import usePullToRefresh from "./hooks/usePullToRefresh";
 import PullToRefreshIndicator from "./components/PullToRefreshIndicator";
 import FloatingCoach from "./components/FloatingCoach";
+import Footer from "./components/Footer";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -441,8 +444,11 @@ function AppShell() {
             <Route path="/teacher" element={<TeacherDashboard dbUser={dbUser} />} />
             <Route path="/leaderboard" element={<Leaderboard userId={dbUser?.id} />} />
             <Route path="/coach" element={<Coach />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
           </Routes>
         </main>
+        <Footer />
       </div>
 
       {detailStock && !tradeStock && (
