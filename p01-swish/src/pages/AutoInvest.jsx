@@ -3,6 +3,17 @@ import { T } from "../tokens";
 import Card from "../components/Card";
 import Reveal from "../components/Reveal";
 
+const CRYPTO_LIST = [
+  { ticker: "BTC-USD", name: "Bitcoin" },
+  { ticker: "ETH-USD", name: "Ethereum" },
+  { ticker: "SOL-USD", name: "Solana" },
+  { ticker: "DOGE-USD", name: "Dogecoin" },
+  { ticker: "ADA-USD", name: "Cardano" },
+  { ticker: "XRP-USD", name: "XRP" },
+  { ticker: "AVAX-USD", name: "Avalanche" },
+  { ticker: "MATIC-USD", name: "Polygon" },
+];
+
 const FREQUENCIES = [
   { value: "weekly", label: "Weekly" },
   { value: "biweekly", label: "Bi-weekly" },
@@ -47,14 +58,25 @@ export default function AutoInvest({ dbUser, stocks, livePrices, refreshUser }) 
     debounceRef.current = setTimeout(async () => {
       setSearching(true);
       try {
+        const q = searchQuery.toLowerCase();
+
+        // Crypto local match first
+        const cryptoMatches = CRYPTO_LIST.filter(c =>
+          c.ticker.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)
+        ).map(c => ({ ticker: c.ticker, name: c.name, isCrypto: true }));
+
         const apiKey = import.meta.env.VITE_FINNHUB_API_KEY || "";
-        if (!apiKey) { setSearchResults([]); return; }
-        const res = await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(searchQuery)}&exchange=US&token=${apiKey}`);
-        const data = await res.json();
-        const results = (data.result || [])
-          .filter(r => r.type === "Common Stock" && !r.symbol.includes("."))
-          .slice(0, 8)
-          .map(r => ({ ticker: r.symbol, name: r.description }));
+        let stockResults = [];
+        if (apiKey) {
+          const res = await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(searchQuery)}&exchange=US&token=${apiKey}`);
+          const data = await res.json();
+          stockResults = (data.result || [])
+            .filter(r => r.type === "Common Stock" && !r.symbol.includes("."))
+            .slice(0, 6)
+            .map(r => ({ ticker: r.symbol, name: r.description }));
+        }
+
+        const results = [...cryptoMatches.slice(0, 3), ...stockResults].slice(0, 8);
         setSearchResults(results);
         setShowDropdown(results.length > 0);
       } catch { setSearchResults([]); }
@@ -219,7 +241,7 @@ export default function AutoInvest({ dbUser, stocks, livePrices, refreshUser }) 
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
-                    placeholder="Search any stock — AAPL, Tesla, NVDA…"
+                    placeholder="Search stocks or crypto — AAPL, Tesla, Bitcoin…"
                     style={{
                       width: "100%", padding: "12px 14px", borderRadius: "10px",
                       border: `1px solid ${T.line}`, fontSize: "14px", fontFamily: "inherit",
@@ -238,8 +260,9 @@ export default function AutoInvest({ dbUser, stocks, livePrices, refreshUser }) 
                           onMouseEnter={e => e.currentTarget.style.background = T.bg}
                           onMouseLeave={e => e.currentTarget.style.background = T.white}
                         >
-                          <span style={{ fontWeight: 700, fontSize: "13px", color: T.ink, minWidth: "52px" }}>{r.ticker}</span>
-                          <span style={{ fontSize: "13px", color: T.inkSub, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                          <span style={{ fontWeight: 700, fontSize: "13px", color: T.ink, minWidth: "52px" }}>{r.ticker.replace("-USD", "")}</span>
+                          <span style={{ fontSize: "13px", color: T.inkSub, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{r.name}</span>
+                          {r.isCrypto && <span style={{ fontSize: "10px", fontWeight: 600, color: T.accent, background: `${T.accent}12`, padding: "2px 6px", borderRadius: "4px", flexShrink: 0 }}>CRYPTO</span>}
                         </div>
                       ))}
                     </div>
