@@ -107,7 +107,7 @@ const StockRow = ({ stock, onOpenTrade, onWatch, watched }) => {
         cursor: "pointer",
       }}
     >
-      <div style={{ flex: 1, minWidth: "110px" }}>
+      <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
         <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
           <span style={{ color:T.ink, fontWeight:700, fontSize:"14px", letterSpacing:"-0.2px", flexShrink: 0 }}>{stock.ticker}</span>
           {badgeStyle ? (
@@ -125,11 +125,11 @@ const StockRow = ({ stock, onOpenTrade, onWatch, watched }) => {
         </div>
       </div>
 
-      <div style={{ flexShrink: 0, margin: "0 8px" }}>
+      <div style={{ width: "56px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Sparkline positive={pos} width={56} height={20} />
       </div>
 
-      <div style={{ textAlign:"right", minWidth:"80px", marginLeft: "auto", flexShrink: 0 }}>
+      <div style={{ width: "90px", textAlign:"right", flexShrink: 0 }}>
         {stock.price != null ? (
           <>
             <div style={{ color:T.ink, fontWeight:600, fontSize:"14px", fontVariantNumeric:"tabular-nums" }}>
@@ -163,6 +163,7 @@ const StockRow = ({ stock, onOpenTrade, onWatch, watched }) => {
             padding: "6px 12px", fontSize: "12px", fontWeight: 500,
             color: watched ? T.accent : T.inkSub,
             transition: "all 0.15s ease",
+            minWidth: "82px", textAlign: "center",
           }}
         >
           {watched ? "★ Watching" : "☆ Watch"}
