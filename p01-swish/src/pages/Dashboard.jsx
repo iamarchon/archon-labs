@@ -85,7 +85,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
         try {
           const res = await fetch(`${baseUrl}/api/quote/${encodeURIComponent(ticker)}`);
           const data = await res.json();
-          if (data.source === "swish" && data.c && data.c > 0) {
+          if (data.c && data.c > 0) {
             results[ticker] = { price: data.c, dp: data.dp ?? 0 };
           }
         } catch { /* ignore */ }

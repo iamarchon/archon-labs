@@ -4,7 +4,7 @@ import { T } from "../tokens";
 export default function TradeModal({ stock, onClose, onTrade, cash = 10000, holdings = [], success, isFirstTrade }) {
   const price = Number(stock.price) || 0;
   const [action, setAction] = useState(stock.defaultAction || "BUY");
-  const [mode, setMode] = useState(price > 50 ? "dollars" : "shares");
+  const [mode, setMode] = useState("shares");
   const [shares, setShares] = useState(1);
   const [dollarAmt, setDollarAmt] = useState("");
 

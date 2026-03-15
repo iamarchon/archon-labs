@@ -126,7 +126,7 @@ function AppShell() {
             : `${baseUrl}/api/quote/${encodeURIComponent(ticker)}`;
           const res = await fetch(url);
           const data = await res.json();
-          if (data.source === "swish" && data.c && data.c > 0) {
+          if (data.c && data.c > 0) {
             results[ticker] = { dp: data.dp ?? 0, price: data.c };
           }
         } catch { /* ignore */ }
