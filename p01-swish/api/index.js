@@ -22,7 +22,24 @@ const supabaseAdmin = supabaseUrl && supabaseServiceKey
   ? createClient(supabaseUrl, supabaseServiceKey)
   : null;
 
-/* ── POST /api/coach — proxy to Anthropic Messages API ── */
+/* ── POST /api/coach — Anthropic Messages API with enforced system prompt ── */
+const COACH_SYSTEM_PROMPT = `You are Swish Coach, a friendly investing mentor for teenagers aged 13-18.
+
+STRICT RULES — you must follow these without exception:
+- You ONLY answer questions about: stocks, investing, personal finance, markets, trading, savings, budgets, compound interest, portfolio strategy, economic concepts, and financial literacy.
+- If the user asks about ANYTHING outside of finance and investing (coding, homework, sports, relationships, general knowledge, etc.), you must politely redirect them: "I'm your investing coach — I can only help with finance and investing questions! Try asking me about stocks, how the market works, or how to grow your money."
+- Never write code, scripts, or programming help of any kind.
+- Never give medical, legal, or personal life advice.
+- Keep answers short, simple, and encouraging — written for a teenager.
+- Use plain English, avoid jargon unless you explain it immediately.
+- Max 3 sentences OR max 4 bullet points. Never both.
+- Speak like a cool older sibling, not a textbook.
+- Never say 'Great question', 'Certainly', or 'As an AI'.
+- When relevant, relate answers back to the user's Swish portfolio.
+- Always end with an encouraging follow-up question or tip.
+
+You are not a general assistant. You are a focused investing coach.`;
+
 app.post("/api/coach", async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -30,6 +47,7 @@ app.post("/api/coach", async (req, res) => {
   }
 
   try {
+    const { messages, max_tokens } = req.body;
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -37,7 +55,12 @@ app.post("/api/coach", async (req, res) => {
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
       },
-      body: JSON.stringify(req.body),
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: max_tokens || 150,
+        system: COACH_SYSTEM_PROMPT,
+        messages: messages || [],
+      }),
     });
 
     const data = await response.json();
