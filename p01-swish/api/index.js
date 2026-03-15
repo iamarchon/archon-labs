@@ -61,7 +61,7 @@ app.get("/api/quote/:symbol", async (req, res) => {
     const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(ticker)}&token=${apiKey}`);
     const data = await response.json();
     if (data.c && data.c > 0) {
-      return res.json({ c: data.c, pc: data.pc, dp: data.dp ?? 0, source: "finnhub" });
+      return res.json({ c: data.c, pc: data.pc, dp: data.dp ?? 0, h: data.h, l: data.l, o: data.o, source: "finnhub" });
     }
 
     // Finnhub returned 0 — try CoinGecko for crypto
