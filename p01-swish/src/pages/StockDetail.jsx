@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { Clock } from "lucide-react";
 import { T } from "../tokens";
 import Reveal from "../components/Reveal";
 import Card from "../components/Card";
@@ -169,7 +170,7 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, onOpenDe
       if (!cancelled) setTxLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [userId, symbol]);
+  }, [userId, symbol, holdings]);
 
   const formatTxDate = (dateStr) => {
     const d = new Date(dateStr);
@@ -331,16 +332,23 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, onOpenDe
         </div>
       </Reveal>
 
-      {/* Trade History — always visible if user has traded this stock */}
-      {!txLoading && transactions.length > 0 && (
-        <Reveal delay={0.16}>
-          <Card hover={false} style={{ padding: "28px 30px", marginTop: "20px" }}>
-            <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px", marginBottom: "16px" }}>Trade History</div>
+      {/* Trade History — always visible */}
+      <Reveal delay={0.16}>
+        <Card hover={false} style={{ padding: "28px 30px", marginTop: "20px" }}>
+          <div style={{ color: T.ink, fontSize: "16px", fontWeight: 700, letterSpacing: "-0.3px", marginBottom: "16px" }}>Trade History</div>
+          {txLoading ? (
+            <div style={{ padding: "20px 0", textAlign: "center", color: T.inkFaint, fontSize: "13px" }}>Loading...</div>
+          ) : transactions.length === 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", padding: "28px 0" }}>
+              <Clock size={24} color={T.inkFaint} />
+              <div style={{ color: T.inkFaint, fontSize: "13px", fontWeight: 500 }}>No trades yet</div>
+            </div>
+          ) : (
             <div style={{ display: "flex", flexDirection: "column" }}>
-              {transactions.map((tx, i) => (
+              {transactions.slice(0, 10).map((tx, i) => (
                 <div key={tx.id ?? i} style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "12px 0", borderBottom: i < transactions.length - 1 ? `1px solid ${T.line}` : "none",
+                  padding: "12px 0", borderBottom: i < Math.min(transactions.length, 10) - 1 ? `1px solid ${T.line}` : "none",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <span style={{
@@ -358,15 +366,15 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, onOpenDe
                       ${(Number(tx.shares) * Number(tx.price)).toFixed(2)}
                     </div>
                     <div style={{ color: T.inkFaint, fontSize: "11px", marginTop: "2px" }}>
-                      {new Date(tx.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      {formatTxDate(tx.created_at)}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-          </Card>
-        </Reveal>
-      )}
+          )}
+        </Card>
+      </Reveal>
 
       {/* Latest News */}
       <Reveal delay={0.18}>
