@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { T } from "../tokens";
+import { CategoryIcon } from "../data/stockCategories";
 
 /* ── Stock defaults (hardcoded seed prices, replaced by live on mount) ── */
 const FEATURED_STOCKS = [
@@ -477,8 +478,9 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
                   color: sector === s ? T.white : T.inkSub,
                   whiteSpace: "nowrap", flexShrink: 0,
                   transition: "all 0.18s ease",
+                  display: "inline-flex", alignItems: "center", gap: "5px",
                 }}
-              >{s}</button>
+              >{s !== "All" && <CategoryIcon category={s === "ETFs" ? "ETF" : s} size={18} iconSize={11} />}{s}</button>
             ))}
           </div>
           <div className="pills-fade" style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "32px", background: "linear-gradient(to right, transparent, #f5f5f7)", pointerEvents: "none" }} />

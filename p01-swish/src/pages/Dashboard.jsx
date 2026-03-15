@@ -10,7 +10,7 @@ import ProgressBar from "../components/ProgressBar";
 import InsightsTile from "../components/InsightsTile";
 import LeaguesTile from "../components/LeaguesTile";
 import RangeTabs from "../components/RangeTabs";
-import { STOCK_CATEGORIES, CATEGORY_ICONS } from "../data/stockCategories";
+import { STOCK_CATEGORIES, CategoryIcon } from "../data/stockCategories";
 
 const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
@@ -792,7 +792,6 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                   {categories.map(cat => {
                     const items = grouped[cat];
-                    const icon = CATEGORY_ICONS[cat] || CATEGORY_ICONS.Other;
                     const collapsed = wlCollapsed[cat] || false;
                     return (
                       <div key={cat}>
@@ -802,7 +801,7 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
                           onMouseEnter={e => e.currentTarget.style.background = T.bg}
                           onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                         >
-                          <span style={{ fontSize: "14px" }}>{icon}</span>
+                          <CategoryIcon category={cat} />
                           <span style={{ color: T.ink, fontSize: "13px", fontWeight: 700, letterSpacing: "-0.2px" }}>{cat}</span>
                           <span style={{ color: T.inkFaint, fontSize: "12px", fontWeight: 500 }}>({items.length})</span>
                           <span style={{ color: T.inkFaint, fontSize: "10px", marginLeft: "auto", transform: collapsed ? "rotate(-90deg)" : "none", transition: "transform .2s" }}>▼</span>
