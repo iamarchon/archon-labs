@@ -56,11 +56,27 @@ const STEPS = [
   },
 ];
 
-function getRect(selector) {
-  if (!selector) return null;
-  const el = document.querySelector(selector);
+// Saved original styles so we can restore them
+const ELEVATED_PROPS = ["position", "zIndex", "borderRadius", "boxShadow"];
+
+function elevateElement(el) {
   if (!el) return null;
-  return el.getBoundingClientRect();
+  const saved = {};
+  for (const prop of ELEVATED_PROPS) saved[prop] = el.style[prop];
+  el.style.position = "relative";
+  el.style.zIndex = "10001";
+  el.style.borderRadius = "8px";
+  el.style.boxShadow = "0 0 0 4px rgba(0,113,227,0.5), 0 0 20px rgba(0,113,227,0.3)";
+  return saved;
+}
+
+function restoreElement(el, saved) {
+  if (!el || !saved) return;
+  for (const prop of ELEVATED_PROPS) el.style[prop] = saved[prop] || "";
+}
+
+function isMobile() {
+  return window.innerWidth < 768;
 }
 
 export default function OnboardingTour({ onComplete, onStepChange }) {
@@ -69,24 +85,44 @@ export default function OnboardingTour({ onComplete, onStepChange }) {
   const navigate = useNavigate();
   const location = useLocation();
   const tooltipRef = useRef(null);
+  const elevatedRef = useRef({ el: null, saved: null });
 
   const current = STEPS[step];
 
-  const measureTarget = useCallback(() => {
-    const rect = getRect(current.target);
-    setTargetRect(rect);
-  }, [current.target]);
-
-  // Navigate to the step's route if needed, then measure
+  // Elevate target element above backdrop
   useEffect(() => {
-    if (current.route && location.pathname !== current.route) {
-      navigate(current.route);
-    }
-    const timer = setTimeout(measureTarget, 350);
+    // Restore previous
+    restoreElement(elevatedRef.current.el, elevatedRef.current.saved);
+    elevatedRef.current = { el: null, saved: null };
+
+    if (!current.target) return;
+
+    const timer = setTimeout(() => {
+      const el = document.querySelector(current.target);
+      if (el) {
+        const saved = elevateElement(el);
+        elevatedRef.current = { el, saved };
+        setTargetRect(el.getBoundingClientRect());
+      }
+    }, 400);
+
     return () => clearTimeout(timer);
-  }, [step, current.route, location.pathname, navigate, measureTarget]);
+  }, [step, current.target]);
+
+  // Restore on unmount (tour end / skip)
+  useEffect(() => {
+    return () => {
+      restoreElement(elevatedRef.current.el, elevatedRef.current.saved);
+    };
+  }, []);
 
   // Re-measure on scroll/resize
+  const measureTarget = useCallback(() => {
+    if (!current.target) { setTargetRect(null); return; }
+    const el = document.querySelector(current.target);
+    if (el) setTargetRect(el.getBoundingClientRect());
+  }, [current.target]);
+
   useEffect(() => {
     window.addEventListener("scroll", measureTarget, true);
     window.addEventListener("resize", measureTarget);
@@ -96,7 +132,16 @@ export default function OnboardingTour({ onComplete, onStepChange }) {
     };
   }, [measureTarget]);
 
+  // Navigate to the step's route if needed
+  useEffect(() => {
+    if (current.route && location.pathname !== current.route) {
+      navigate(current.route);
+    }
+  }, [step, current.route, location.pathname, navigate]);
+
   const finish = useCallback(() => {
+    restoreElement(elevatedRef.current.el, elevatedRef.current.saved);
+    elevatedRef.current = { el: null, saved: null };
     localStorage.setItem("swish_tour_completed", "true");
     onComplete();
   }, [onComplete]);
@@ -114,28 +159,49 @@ export default function OnboardingTour({ onComplete, onStepChange }) {
     });
   };
 
-  // Desktop spotlight
-  const pad = 8;
   const hasTarget = targetRect && current.target;
 
-  const spotStyle = hasTarget
-    ? {
-        position: "fixed",
-        top: targetRect.top - pad,
-        left: targetRect.left - pad,
-        width: targetRect.width + pad * 2,
-        height: targetRect.height + pad * 2,
-        borderRadius: "10px",
-        boxShadow: "0 0 0 9999px rgba(0,0,0,0.6)",
-        zIndex: 10001,
-        pointerEvents: "none",
-        transition: "top .3s ease, left .3s ease, width .3s ease, height .3s ease",
+  // Tooltip positioning
+  const getTooltipStyle = () => {
+    const base = {
+      position: "fixed",
+      left: "50%",
+      transform: "translateX(-50%)",
+      zIndex: 10003,
+      width: "calc(100% - 32px)",
+      maxWidth: "360px",
+    };
+
+    // No target → centered bottom
+    if (!hasTarget) return { ...base, bottom: "100px", top: "auto" };
+
+    // Mobile: smart top/bottom based on element position
+    if (isMobile()) {
+      const elementMidY = targetRect.top + targetRect.height / 2;
+      if (elementMidY < window.innerHeight / 2) {
+        return { ...base, bottom: "100px", top: "auto" };
       }
-    : null;
+      return { ...base, top: "90px", bottom: "auto" };
+    }
+
+    // Desktop: position near the highlighted element
+    const gap = 12;
+    const tooltipHeight = 240; // approximate
+    const belowY = targetRect.bottom + gap;
+    const aboveY = targetRect.top - gap - tooltipHeight;
+    const tooltipLeft = Math.max(16, Math.min(targetRect.left, window.innerWidth - 376));
+
+    if (belowY + tooltipHeight < window.innerHeight) {
+      // Place below
+      return { ...base, top: belowY, bottom: "auto", left: tooltipLeft, transform: "none" };
+    }
+    // Place above
+    return { ...base, top: Math.max(16, aboveY), bottom: "auto", left: tooltipLeft, transform: "none" };
+  };
 
   return (
     <>
-      {/* Full-screen dark backdrop — always visible */}
+      {/* Full-screen dark backdrop */}
       <div
         style={{
           position: "fixed", inset: 0, zIndex: 10000,
@@ -143,31 +209,18 @@ export default function OnboardingTour({ onComplete, onStepChange }) {
         }}
       />
 
-      {/* Desktop spotlight cutout (hidden on mobile via the backdrop covering it) */}
-      {spotStyle && <div className="tour-spotlight" style={spotStyle} />}
-
       {/* Invisible click blocker */}
       <div
         style={{ position: "fixed", inset: 0, zIndex: 10002 }}
         onClick={(e) => e.stopPropagation()}
       />
 
-      {/* Tooltip card — smart vertical positioning to avoid highlighted element */}
+      {/* Tooltip card */}
       <div
         ref={tooltipRef}
         className="tour-tooltip"
         style={{
-          position: "fixed",
-          ...(hasTarget && targetRect
-            ? (targetRect.top + targetRect.height / 2 < window.innerHeight / 2)
-              ? { bottom: "100px", top: "auto" }   // element in top half → tooltip at bottom
-              : { top: "90px", bottom: "auto" }     // element in bottom half → tooltip at top
-            : { bottom: "100px", top: "auto" }),    // no target → default bottom
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 10003,
-          width: "calc(100% - 32px)",
-          maxWidth: "360px",
+          ...getTooltipStyle(),
           background: T.white,
           borderRadius: "16px",
           padding: "24px",
