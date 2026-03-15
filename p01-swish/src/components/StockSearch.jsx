@@ -202,8 +202,30 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
 
   // Dynamic data from APIs
   const [etfPrices, setEtfPrices]     = useState({});   // ticker → { price, changePct }
+  const [stockPrices, setStockPrices] = useState({});    // ticker → { price, changePct }
   const [cryptoTop, setCryptoTop]     = useState([]);    // top 20 from /api/crypto/top
   const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
+
+  // Fetch real prices for featured stocks on mount
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const batch = {};
+      await Promise.all(FEATURED_STOCKS.map(async (stock) => {
+        try {
+          const res = await fetch(`${baseUrl}/api/quote/${stock.ticker}`);
+          const data = await res.json();
+          if (data.c && data.c > 0) {
+            batch[stock.ticker] = { price: data.c, changePct: data.dp ?? 0 };
+          }
+        } catch { /* ignore */ }
+      }));
+      if (!cancelled && mountedRef.current) {
+        setStockPrices(batch);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [baseUrl]);
 
   // Fetch ETF prices on mount (Finnhub supports ETF quotes)
   useEffect(() => {
@@ -251,16 +273,22 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
     : e
   ), [etfPrices]);
 
-  const allFeatured = useMemo(() => [...FEATURED_STOCKS, ...cryptoTop, ...etfList], [cryptoTop, etfList]);
+  // Merge live prices into featured stocks
+  const featuredStocks = useMemo(() => FEATURED_STOCKS.map(s => stockPrices[s.ticker]
+    ? { ...s, price: stockPrices[s.ticker].price, changePct: stockPrices[s.ticker].changePct }
+    : s
+  ), [stockPrices]);
+
+  const allFeatured = useMemo(() => [...featuredStocks, ...cryptoTop, ...etfList], [featuredStocks, cryptoTop, etfList]);
 
   const featured = useMemo(() => sector === "All"
-    ? [...FEATURED_STOCKS, ...etfList.slice(0, 4), ...cryptoTop.slice(0, 4)]
+    ? [...featuredStocks, ...etfList.slice(0, 4), ...cryptoTop.slice(0, 4)]
     : sector === "Crypto"
       ? cryptoTop
       : sector === "ETFs"
         ? etfList
-        : FEATURED_STOCKS.filter(s => s.sector === sector),
-  [sector, etfList, cryptoTop]);
+        : featuredStocks.filter(s => s.sector === sector),
+  [sector, featuredStocks, etfList, cryptoTop]);
 
   // Fetch a quote for any symbol (stock or ETF via Finnhub)
   const fetchQuote = useCallback(async (symbol) => {
@@ -303,7 +331,7 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
               .filter(r => r.type === "Common Stock" && !r.symbol.includes("."))
               .slice(0, 12)
               .map(r => {
-                const feat = FEATURED_STOCKS.find(f => f.ticker === r.symbol);
+                const feat = featuredStocks.find(f => f.ticker === r.symbol);
                 return feat || { ticker: r.symbol, name: r.description, price: null, changePct: null, sector: null };
               });
             // ETFs: type ETC or description contains ETF/FUND/TRUST
@@ -322,7 +350,7 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
           .catch(() => ({ stocks: [], etfs: [] }));
       } else {
         finnhubPromise = Promise.resolve({
-          stocks: FEATURED_STOCKS.filter(s => s.ticker.toLowerCase().includes(q2) || s.name.toLowerCase().includes(q2)),
+          stocks: featuredStocks.filter(s => s.ticker.toLowerCase().includes(q2) || s.name.toLowerCase().includes(q2)),
           etfs: etfList.filter(e => e.ticker.toLowerCase().includes(q2) || e.name.toLowerCase().includes(q2)),
         });
       }
@@ -403,7 +431,7 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
       ));
       setSearching(false);
     }
-  }, [fetchQuote, baseUrl, etfList, cryptoTop, allFeatured]);
+  }, [fetchQuote, baseUrl, etfList, cryptoTop, allFeatured, featuredStocks]);
 
   useEffect(() => {
     clearTimeout(debounceRef.current);
