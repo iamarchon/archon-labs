@@ -38,7 +38,7 @@ export default function StockDetail({ stocks, livePrices = {}, onTrade, onOpenDe
   // Get stock info from seed data or create minimal
   const seedStock = stocks?.find(s => s.ticker === symbol);
   const livePrice = livePrices[symbol];
-  const currentPrice = livePrice ?? seedStock?.price ?? quote?.c ?? null;
+  const currentPrice = livePrice ?? quote?.c ?? null;
   const stockName = seedStock?.name ?? symbol;
   const sector = seedStock?.sector ?? null;
 
