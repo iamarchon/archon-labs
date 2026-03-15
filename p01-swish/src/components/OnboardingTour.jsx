@@ -152,13 +152,17 @@ export default function OnboardingTour({ onComplete, onStepChange }) {
         onClick={(e) => e.stopPropagation()}
       />
 
-      {/* Tooltip card — centered bottom on mobile, positioned near target on desktop */}
+      {/* Tooltip card — smart vertical positioning to avoid highlighted element */}
       <div
         ref={tooltipRef}
         className="tour-tooltip"
         style={{
           position: "fixed",
-          bottom: "100px",
+          ...(hasTarget && targetRect
+            ? (targetRect.top + targetRect.height / 2 < window.innerHeight / 2)
+              ? { bottom: "100px", top: "auto" }   // element in top half → tooltip at bottom
+              : { top: "90px", bottom: "auto" }     // element in bottom half → tooltip at top
+            : { bottom: "100px", top: "auto" }),    // no target → default bottom
           left: "50%",
           transform: "translateX(-50%)",
           zIndex: 10003,
