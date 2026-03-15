@@ -526,24 +526,6 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   };
 
   // Derive chart color + range P&L from fetched chartPoints
-  const RANGE_LABELS = { "1D": "today", "1W": "this week", "1M": "this month", "3M": "3 months", "1Y": "this year" };
-  const rangeLabel = RANGE_LABELS[perfRange] || "this year";
-  const hasRangeData = chartPoints.length >= 2;
-  const rangeBaseline = hasRangeData ? chartPoints[0].value : 10000;
-  const rangeLast = hasRangeData ? chartPoints[chartPoints.length - 1].value : total;
-  const rawRangeGain = rangeLast - rangeBaseline;
-  // For 1D range, use real daily P&L from previous close prices when available
-  const rangeGain = perfRange === "1D" && dailyPL != null ? dailyPL : rawRangeGain;
-  const rangeGainPct = perfRange === "1D" && dailyPL != null && total > cash
-    ? (dailyPL / (total - cash - dailyPL)) * 100
-    : rangeBaseline > 0 ? (rawRangeGain / rangeBaseline) * 100 : 0;
-  const chartColor = useMemo(() => {
-    if (!chartPoints || chartPoints.length < 2) return "#22c55e";
-    const delta = chartPoints[chartPoints.length - 1].value - chartPoints[0].value;
-    return delta >= 0 ? "#22c55e" : "#ef4444";
-  }, [chartPoints]);
-  // chartFill removed — chart now renders as unfilled line
-
   // Compute daily P&L from real previous close prices: sum(shares × (currentPrice - prevClose))
   const dailyPL = useMemo(() => {
     if (!allHeldPricesLoaded || holdings.length === 0) return null;
@@ -560,6 +542,23 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
     }
     return sum;
   }, [holdings, liveQuotes, allHeldPricesLoaded]);
+
+  const RANGE_LABELS = { "1D": "today", "1W": "this week", "1M": "this month", "3M": "3 months", "1Y": "this year" };
+  const rangeLabel = RANGE_LABELS[perfRange] || "this year";
+  const hasRangeData = chartPoints.length >= 2;
+  const rangeBaseline = hasRangeData ? chartPoints[0].value : 10000;
+  const rangeLast = hasRangeData ? chartPoints[chartPoints.length - 1].value : total;
+  const rawRangeGain = rangeLast - rangeBaseline;
+  // For 1D range, use real daily P&L from previous close prices when available
+  const rangeGain = perfRange === "1D" && dailyPL != null ? dailyPL : rawRangeGain;
+  const rangeGainPct = perfRange === "1D" && dailyPL != null && total > cash
+    ? (dailyPL / (total - cash - dailyPL)) * 100
+    : rangeBaseline > 0 ? (rawRangeGain / rangeBaseline) * 100 : 0;
+  const chartColor = useMemo(() => {
+    if (!chartPoints || chartPoints.length < 2) return "#22c55e";
+    const delta = chartPoints[chartPoints.length - 1].value - chartPoints[0].value;
+    return delta >= 0 ? "#22c55e" : "#ef4444";
+  }, [chartPoints]);
 
   return (
     <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px 24px 100px" }}>
