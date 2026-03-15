@@ -52,6 +52,8 @@ input::placeholder { color: #86868b; }
 /* Mobile bottom nav: visible only below 768px */
 .mobile-nav { display: none; }
 @media (max-width: 768px) {
+  html, body { overflow-x: hidden; }
+
   .pills-fade { display: block !important; }
   .mobile-back-btn { display: flex !important; }
   .floating-coach-bubble { display: flex !important; }

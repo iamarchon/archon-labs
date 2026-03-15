@@ -164,7 +164,7 @@ export default function Learn({ dbUser, refreshUser, fireConfetti }) {
 
   // Lesson grid
   return (
-    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "40px 28px 100px" }}>
+    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "40px 28px 100px", overflowX: "hidden" }}>
       <Reveal>
         <div style={{ marginBottom: "28px" }}>
           <h1 style={{ fontSize: "32px", fontWeight: 700, letterSpacing: "-0.8px", color: T.ink }}>Learn & Earn</h1>
@@ -222,7 +222,7 @@ export default function Learn({ dbUser, refreshUser, fireConfetti }) {
       })()}
 
       <Reveal delay={0.07}>
-        <div style={{ display: "flex", gap: "6px", marginBottom: "20px" }}>
+        <div style={{ display: "flex", gap: "6px", marginBottom: "20px", overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
           {CATS.map(c => (
             <button
               key={c}
@@ -234,6 +234,7 @@ export default function Learn({ dbUser, refreshUser, fireConfetti }) {
                 borderRadius: "20px", padding: "6px 14px",
                 fontSize: "12px", fontWeight: category === c ? 600 : 400,
                 cursor: "pointer", transition: "all .18s ease",
+                flexShrink: 0, whiteSpace: "nowrap",
               }}
             >{c}</button>
           ))}
