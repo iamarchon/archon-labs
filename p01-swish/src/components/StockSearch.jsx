@@ -148,7 +148,7 @@ const StockRow = ({ stock, onOpenTrade, onWatch, watched }) => {
       </div>
 
       <div style={{
-        display: "flex", gap: "6px",
+        display: "flex", gap: "6px", width: "160px", justifyContent: "flex-end",
         opacity: hov ? 1 : 0,
         transform: hov ? "translateX(0)" : "translateX(6px)",
         transition: "opacity 0.16s ease, transform 0.16s ease",
