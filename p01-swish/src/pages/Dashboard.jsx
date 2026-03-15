@@ -74,7 +74,6 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   const [liveQuotes, setLiveQuotes] = useState({});
   useEffect(() => {
     if (!allHeldPricesLoaded || holdings.length === 0) return;
-    if (!isMarketOpen()) return;
     let cancelled = false;
     const heldTickers = holdings.filter(h => Number(h.shares) >= 0.001).map(h => h.ticker);
     if (heldTickers.length === 0) return;
@@ -94,8 +93,11 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
         setLiveQuotes(results);
       }
     };
-    const id = setInterval(poll, 5000);
-    return () => { cancelled = true; clearInterval(id); };
+    // Always fetch once immediately for daily P&L
+    poll();
+    // Only poll repeatedly during market hours
+    const id = isMarketOpen() ? setInterval(poll, 5000) : null;
+    return () => { cancelled = true; if (id) clearInterval(id); };
   }, [allHeldPricesLoaded, holdings, isMarketOpen]);
 
   // Portfolio value: use live polled prices when available, else props
@@ -526,18 +528,17 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   };
 
   // Derive chart color + range P&L from fetched chartPoints
-  // Compute daily P&L from real previous close prices: sum(shares × (currentPrice - prevClose))
+  // Compute daily P&L from Finnhub dp% field: sum(shares × price × dp/100)
   const dailyPL = useMemo(() => {
     if (!allHeldPricesLoaded || holdings.length === 0) return null;
-    const quoteKeys = Object.keys(liveQuotes);
-    if (quoteKeys.length === 0) return null;
+    if (Object.keys(liveQuotes).length === 0) return null;
     let sum = 0;
     for (const h of holdings) {
       const shares = Number(h.shares);
       if (shares < 0.001) continue;
       const lq = liveQuotes[h.ticker];
-      if (lq && lq.pc > 0) {
-        sum += shares * (lq.price - lq.pc);
+      if (lq && lq.price > 0) {
+        sum += shares * lq.price * (lq.dp / 100);
       }
     }
     return sum;
@@ -549,10 +550,10 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
   const rangeBaseline = hasRangeData ? chartPoints[0].value : 10000;
   const rangeLast = hasRangeData ? chartPoints[chartPoints.length - 1].value : total;
   const rawRangeGain = rangeLast - rangeBaseline;
-  // For 1D range, use real daily P&L from previous close prices when available
+  // For 1D range, use real daily P&L from Finnhub dp% when available
   const rangeGain = perfRange === "1D" && dailyPL != null ? dailyPL : rawRangeGain;
-  const rangeGainPct = perfRange === "1D" && dailyPL != null && total > cash
-    ? (dailyPL / (total - cash - dailyPL)) * 100
+  const rangeGainPct = perfRange === "1D" && dailyPL != null
+    ? (total > 0 ? (dailyPL / total) * 100 : 0)
     : rangeBaseline > 0 ? (rawRangeGain / rangeBaseline) * 100 : 0;
   const chartColor = useMemo(() => {
     if (!chartPoints || chartPoints.length < 2) return "#22c55e";
