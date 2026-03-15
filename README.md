@@ -1,8 +1,9 @@
 # 🔬 Archon Labs
 
-Building in public. One project at a time.
+> Building in public. One project at a time.
 
-A collection of apps, tools, and experiments built by @ArchonAI. No fixed timeline. No pressure. Just shipping.
+A collection of apps, tools, and experiments built by [@ArchonAI](https://x.com/iamarchonai).  
+No fixed timeline. No pressure. Just shipping.
 
 ---
 
@@ -10,8 +11,8 @@ A collection of apps, tools, and experiments built by @ArchonAI. No fixed timeli
 
 | # | Project | Description | Stack | Status | Live |
 |---|---------|-------------|-------|--------|------|
-| 01 | [Swish](./p01-swish/) | Virtual stock trading for under-18s | React, Claude API, Finnhub | 🔨 Building | — |
-| 02 | [AlphaBot](./p02-alphabot/) | 24/7 automated trading bot — stocks by day, crypto by night | Python, Claude API, Alpaca | 🔨 Building | — |
+| 01 | [Swish](./p01-swish) | Virtual stock trading for under-18s | React, Claude API, Finnhub | 🔨 Building | — |
+| 02 | — | — | — | — | — |
 | 03 | — | — | — | — | — |
 | 04 | — | — | — | — | — |
 | 05 | — | — | — | — | — |
@@ -21,7 +22,7 @@ A collection of apps, tools, and experiments built by @ArchonAI. No fixed timeli
 | 09 | — | — | — | — | — |
 | 10 | — | — | — | — | — |
 
-More projects added as they ship.
+> More projects added as they ship.
 
 ---
 
@@ -31,9 +32,9 @@ Each project lives in its own folder:
 
 ```
 archon-labs/
-├── README.md          ← you are here
-├── p01-swish/
-├── p02-alphabot/
+├── README.md           ← you are here
+├── p01-stockkids/
+├── p02-.../
 └── p03-.../
 ```
 
@@ -52,6 +53,8 @@ archon-labs/
 
 ## 🔗 Follow Along
 
-X: [@iamarchonai](https://x.com/iamarchonai)
+- X: [@iamarchonai](https://x.com/iamarchonai)
 
-Built with Claude Code
+---
+
+*Built with Claude Code*
