@@ -5,26 +5,71 @@ import { CategoryIcon } from "../data/stockCategories";
 
 /* ── Featured stocks — names & sectors only, prices fetched live from Finnhub ── */
 const FEATURED_STOCKS = [
-  { ticker:"AAPL",  name:"Apple Inc.",            sector:"Tech"      },
-  { ticker:"NVDA",  name:"NVIDIA Corp.",          sector:"Tech"      },
-  { ticker:"TSLA",  name:"Tesla Inc.",            sector:"Auto"      },
-  { ticker:"AMZN",  name:"Amazon.com",            sector:"Retail"    },
-  { ticker:"GOOGL", name:"Alphabet Inc.",         sector:"Tech"      },
-  { ticker:"NFLX",  name:"Netflix Inc.",          sector:"Media"     },
-  { ticker:"MSFT",  name:"Microsoft Corp.",       sector:"Tech"      },
-  { ticker:"RBLX",  name:"Roblox Corp.",          sector:"Gaming"    },
-  { ticker:"SPOT",  name:"Spotify Technology",    sector:"Media"     },
-  { ticker:"DIS",   name:"Walt Disney Co.",       sector:"Media"     },
-  { ticker:"NKE",   name:"Nike Inc.",             sector:"Consumer"  },
-  { ticker:"CMG",   name:"Chipotle Mexican Grill",sector:"Food"     },
-  { ticker:"SNAP",  name:"Snap Inc.",             sector:"Social"    },
-  { ticker:"COIN",  name:"Coinbase Global",       sector:"Crypto"    },
-  { ticker:"ABNB",  name:"Airbnb Inc.",           sector:"Travel"    },
-  { ticker:"META",  name:"Meta Platforms",        sector:"Social"    },
-  { ticker:"UBER",  name:"Uber Technologies",     sector:"Transport" },
-  { ticker:"SBUX",  name:"Starbucks Corp.",       sector:"Food"      },
-  { ticker:"PYPL",  name:"PayPal Holdings",       sector:"Fintech"   },
-  { ticker:"AMD",   name:"Advanced Micro Devices",sector:"Tech"      },
+  // Tech (8)
+  { ticker:"AAPL",  name:"Apple Inc.",              sector:"Tech"      },
+  { ticker:"NVDA",  name:"NVIDIA Corp.",            sector:"Tech"      },
+  { ticker:"MSFT",  name:"Microsoft Corp.",         sector:"Tech"      },
+  { ticker:"GOOGL", name:"Alphabet Inc.",           sector:"Tech"      },
+  { ticker:"AMD",   name:"Advanced Micro Devices",  sector:"Tech"      },
+  { ticker:"INTC",  name:"Intel Corp.",             sector:"Tech"      },
+  { ticker:"ORCL",  name:"Oracle Corp.",            sector:"Tech"      },
+  { ticker:"CRM",   name:"Salesforce Inc.",         sector:"Tech"      },
+  // Media (5)
+  { ticker:"NFLX",  name:"Netflix Inc.",            sector:"Media"     },
+  { ticker:"SPOT",  name:"Spotify Technology",      sector:"Media"     },
+  { ticker:"DIS",   name:"Walt Disney Co.",         sector:"Media"     },
+  { ticker:"WBD",   name:"Warner Bros. Discovery",  sector:"Media"     },
+  { ticker:"PARA",  name:"Paramount Global",        sector:"Media"     },
+  // Gaming (5)
+  { ticker:"RBLX",  name:"Roblox Corp.",            sector:"Gaming"    },
+  { ticker:"EA",    name:"Electronic Arts",         sector:"Gaming"    },
+  { ticker:"TTWO",  name:"Take-Two Interactive",    sector:"Gaming"    },
+  { ticker:"ATVI",  name:"Activision Blizzard",     sector:"Gaming"    },
+  { ticker:"NTDOY", name:"Nintendo Co.",            sector:"Gaming"    },
+  // Social (4)
+  { ticker:"META",  name:"Meta Platforms",          sector:"Social"    },
+  { ticker:"SNAP",  name:"Snap Inc.",               sector:"Social"    },
+  { ticker:"PINS",  name:"Pinterest Inc.",          sector:"Social"    },
+  { ticker:"RDDT",  name:"Reddit Inc.",             sector:"Social"    },
+  // Fintech (5)
+  { ticker:"PYPL",  name:"PayPal Holdings",         sector:"Fintech"   },
+  { ticker:"COIN",  name:"Coinbase Global",         sector:"Fintech"   },
+  { ticker:"SQ",    name:"Block Inc.",              sector:"Fintech"   },
+  { ticker:"AFRM",  name:"Affirm Holdings",         sector:"Fintech"   },
+  { ticker:"SOFI",  name:"SoFi Technologies",       sector:"Fintech"   },
+  // Consumer (5)
+  { ticker:"NKE",   name:"Nike Inc.",               sector:"Consumer"  },
+  { ticker:"LULU",  name:"Lululemon Athletica",     sector:"Consumer"  },
+  { ticker:"PTON",  name:"Peloton Interactive",     sector:"Consumer"  },
+  { ticker:"RH",    name:"RH (Restoration Hardware)",sector:"Consumer" },
+  { ticker:"TPR",   name:"Tapestry Inc.",           sector:"Consumer"  },
+  // Auto (4)
+  { ticker:"TSLA",  name:"Tesla Inc.",              sector:"Auto"      },
+  { ticker:"F",     name:"Ford Motor Co.",          sector:"Auto"      },
+  { ticker:"GM",    name:"General Motors",          sector:"Auto"      },
+  { ticker:"RIVN",  name:"Rivian Automotive",       sector:"Auto"      },
+  // Retail (5)
+  { ticker:"AMZN",  name:"Amazon.com",              sector:"Retail"    },
+  { ticker:"WMT",   name:"Walmart Inc.",            sector:"Retail"    },
+  { ticker:"TGT",   name:"Target Corp.",            sector:"Retail"    },
+  { ticker:"COST",  name:"Costco Wholesale",        sector:"Retail"    },
+  { ticker:"ETSY",  name:"Etsy Inc.",               sector:"Retail"    },
+  // Food (5)
+  { ticker:"CMG",   name:"Chipotle Mexican Grill",  sector:"Food"      },
+  { ticker:"SBUX",  name:"Starbucks Corp.",         sector:"Food"      },
+  { ticker:"MCD",   name:"McDonald's Corp.",        sector:"Food"      },
+  { ticker:"YUM",   name:"Yum! Brands",             sector:"Food"      },
+  { ticker:"DNUT",  name:"Krispy Kreme Inc.",       sector:"Food"      },
+  // Travel (4)
+  { ticker:"ABNB",  name:"Airbnb Inc.",             sector:"Travel"    },
+  { ticker:"BKNG",  name:"Booking Holdings",        sector:"Travel"    },
+  { ticker:"MAR",   name:"Marriott International",  sector:"Travel"    },
+  { ticker:"DAL",   name:"Delta Air Lines",         sector:"Travel"    },
+  // Transport (4)
+  { ticker:"UBER",  name:"Uber Technologies",       sector:"Transport" },
+  { ticker:"LYFT",  name:"Lyft Inc.",               sector:"Transport" },
+  { ticker:"FDX",   name:"FedEx Corp.",             sector:"Transport" },
+  { ticker:"UPS",   name:"UPS Inc.",                sector:"Transport" },
 ].map(s => ({ ...s, price: null, changePct: null }));
 
 /* ── ETF defaults — 20 popular, prices fetched from Finnhub ── */
@@ -268,14 +313,17 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
 
   const allFeatured = useMemo(() => [...featuredStocks, ...cryptoTop, ...etfList], [featuredStocks, cryptoTop, etfList]);
 
-  const featured = useMemo(() => sector === "All"
-    ? [...featuredStocks, ...etfList.slice(0, 4), ...cryptoTop.slice(0, 4)]
-    : sector === "Crypto"
-      ? cryptoTop
-      : sector === "ETFs"
-        ? etfList
-        : featuredStocks.filter(s => s.sector === sector),
-  [sector, featuredStocks, etfList, cryptoTop]);
+  const featured = useMemo(() => {
+    if (sector === "All") {
+      // One or two picks per sector for a balanced "All" view
+      const picks = ["AAPL","NVDA","TSLA","AMZN","META","NFLX","RBLX","SNAP","PYPL","COIN","NKE","CMG","ABNB","UBER","SBUX","MSFT","GOOGL","AMD","SQ","WMT"];
+      const all = featuredStocks.filter(s => picks.includes(s.ticker));
+      return [...all, ...etfList.slice(0, 4), ...cryptoTop.slice(0, 4)];
+    }
+    if (sector === "Crypto") return cryptoTop;
+    if (sector === "ETFs") return etfList;
+    return featuredStocks.filter(s => s.sector === sector);
+  }, [sector, featuredStocks, etfList, cryptoTop]);
 
   // Fetch a quote for any symbol (stock or ETF via Finnhub)
   const fetchQuote = useCallback(async (symbol) => {
