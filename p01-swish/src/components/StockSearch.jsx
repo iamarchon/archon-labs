@@ -235,6 +235,7 @@ const StockRow = ({ stock, onOpenTrade, onWatch, watched }) => {
 export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
   const [query, setQuery]           = useState("");
   const [sector, setSector]         = useState("All");
+  const [showAll, setShowAll]       = useState(false);
   const [results, setResults]       = useState([]);
   const [searching, setSearching]   = useState(false);
   const [searchMode, setSearchMode] = useState(false);
@@ -247,25 +248,32 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
   useEffect(() => () => { mountedRef.current = false; }, []);
 
   // Dynamic data from APIs
-  const [etfPrices, setEtfPrices]     = useState({});   // ticker → { price, changePct }
-  const [stockPrices, setStockPrices] = useState({});    // ticker → { price, changePct }
-  const [cryptoTop, setCryptoTop]     = useState([]);    // top 20 from /api/crypto/top
+  const [etfPrices, setEtfPrices]     = useState({});
+  const [stockPrices, setStockPrices] = useState({});
+  const [cryptoTop, setCryptoTop]     = useState([]);
   const baseUrl = import.meta.env.DEV ? "http://localhost:3001" : "";
 
-  // Fetch real prices for all featured stocks + ETFs on mount via batch endpoint
+  // Reset showAll when sector changes
+  useEffect(() => setShowAll(false), [sector]);
+
+  // Fetch prices for the current sector's stocks when sector changes (lazy)
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const allTickers = [
-        ...FEATURED_STOCKS.map(s => s.ticker),
-        ...ETF_DEFAULTS.map(e => e.ticker),
-      ];
+      let tickers = [];
+      if (sector === "ETFs" || sector === "All") {
+        tickers.push(...ETF_DEFAULTS.map(e => e.ticker));
+      }
+      if (sector !== "Crypto" && sector !== "ETFs") {
+        const sectorStocks = sector === "All" ? FEATURED_STOCKS : FEATURED_STOCKS.filter(s => s.sector === sector);
+        tickers.push(...sectorStocks.map(s => s.ticker));
+      }
+      if (tickers.length === 0) return;
       try {
-        const res = await fetch(`${baseUrl}/api/quotes/batch?symbols=${allTickers.join(",")}`);
+        const res = await fetch(`${baseUrl}/api/quotes/batch?symbols=${tickers.join(",")}`);
         const data = await res.json();
         const quotes = data.quotes || {};
         if (cancelled || !mountedRef.current) return;
-
         const stockBatch = {};
         const etfBatch = {};
         for (const [ticker, q] of Object.entries(quotes)) {
@@ -273,12 +281,12 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
           if (FEATURED_STOCKS.some(s => s.ticker === ticker)) stockBatch[ticker] = entry;
           if (ETF_DEFAULTS.some(e => e.ticker === ticker)) etfBatch[ticker] = entry;
         }
-        setStockPrices(stockBatch);
-        setEtfPrices(etfBatch);
+        if (Object.keys(stockBatch).length) setStockPrices(prev => ({ ...prev, ...stockBatch }));
+        if (Object.keys(etfBatch).length) setEtfPrices(prev => ({ ...prev, ...etfBatch }));
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
-  }, [baseUrl]);
+  }, [sector, baseUrl]);
 
   // Fetch top 20 crypto from CoinGecko on mount
   useEffect(() => {
@@ -315,7 +323,6 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
 
   const featured = useMemo(() => {
     if (sector === "All") {
-      // One or two picks per sector for a balanced "All" view
       const picks = ["AAPL","NVDA","TSLA","AMZN","META","NFLX","RBLX","SNAP","PYPL","COIN","NKE","CMG","ABNB","UBER","SBUX","MSFT","GOOGL","AMD","SQ","WMT"];
       const all = featuredStocks.filter(s => picks.includes(s.ticker));
       return [...all, ...etfList.slice(0, 4), ...cryptoTop.slice(0, 4)];
@@ -324,6 +331,13 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
     if (sector === "ETFs") return etfList;
     return featuredStocks.filter(s => s.sector === sector);
   }, [sector, featuredStocks, etfList, cryptoTop]);
+
+  // Top 5 by default, all when showAll
+  const DEFAULT_SHOW = 5;
+  const visibleFeatured = useMemo(() => {
+    if (showAll || sector === "Crypto" || sector === "ETFs" || sector === "All") return featured;
+    return featured.slice(0, DEFAULT_SHOW);
+  }, [featured, showAll, sector]);
 
   // Fetch a quote for any symbol (stock or ETF via Finnhub)
   const fetchQuote = useCallback(async (symbol) => {
@@ -482,7 +496,7 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
     };
   }, [query, doSearch]);
 
-  const displayList = searchMode ? results : featured;
+  const displayList = searchMode ? results : visibleFeatured;
 
   return (
     <div>
@@ -592,6 +606,27 @@ export default function StockSearch({ onOpenTrade, onWatch, watchlist = [] }) {
           />
         ))}
       </div>
+
+      {/* See All button — only for named sectors with more than 5 stocks */}
+      {!searchMode && !showAll && sector !== "All" && sector !== "Crypto" && sector !== "ETFs" && featured.length > DEFAULT_SHOW && (
+        <button
+          onClick={() => setShowAll(true)}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+            width: "100%", marginTop: "10px", padding: "13px",
+            background: T.white, border: `1px solid ${T.line}`,
+            borderRadius: "12px", cursor: "pointer",
+            fontSize: "13px", fontWeight: 600, color: T.inkSub,
+            boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+            transition: "all 0.18s ease",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = T.ghost; e.currentTarget.style.color = T.ink; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = T.line; e.currentTarget.style.color = T.inkSub; }}
+        >
+          See all {featured.length} {sector} stocks
+          <span style={{ fontSize: "16px", lineHeight: 1 }}>↓</span>
+        </button>
+      )}
     </div>
   );
 }

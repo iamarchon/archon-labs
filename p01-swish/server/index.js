@@ -126,7 +126,7 @@ async function fetchSingleQuote(ticker, apiKey) {
 app.get("/api/quotes/batch", async (req, res) => {
   const apiKey = process.env.FINNHUB_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "FINNHUB_API_KEY not set" });
-  const symbols = (req.query.symbols || "").split(",").filter(Boolean).map(s => s.toUpperCase()).slice(0, 30);
+  const symbols = (req.query.symbols || "").split(",").filter(Boolean).map(s => s.toUpperCase()).slice(0, 100);
   if (symbols.length === 0) return res.json({ quotes: {} });
 
   const results = {};
