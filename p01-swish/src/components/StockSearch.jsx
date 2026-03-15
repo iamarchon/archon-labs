@@ -107,7 +107,7 @@ const StockRow = ({ stock, onOpenTrade, onWatch, watched }) => {
         cursor: "pointer",
       }}
     >
-      <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+      <div style={{ flex: 1, minWidth: "120px" }}>
         <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
           <span style={{ color:T.ink, fontWeight:700, fontSize:"14px", letterSpacing:"-0.2px", flexShrink: 0 }}>{stock.ticker}</span>
           {badgeStyle ? (
@@ -125,7 +125,7 @@ const StockRow = ({ stock, onOpenTrade, onWatch, watched }) => {
         </div>
       </div>
 
-      <div style={{ width: "56px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div className="stock-row-chart" style={{ width: "56px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Sparkline positive={pos} width={56} height={20} />
       </div>
 
@@ -147,7 +147,7 @@ const StockRow = ({ stock, onOpenTrade, onWatch, watched }) => {
         )}
       </div>
 
-      <div style={{
+      <div className="stock-row-actions" style={{
         display: "flex", gap: "6px", width: "160px", justifyContent: "flex-end",
         opacity: hov ? 1 : 0,
         transform: hov ? "translateX(0)" : "translateX(6px)",

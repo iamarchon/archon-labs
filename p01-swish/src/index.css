@@ -57,6 +57,12 @@ input::placeholder { color: #86868b; }
 
 /* Mobile bottom nav: visible only below 768px */
 .mobile-nav { display: none; }
+@media (max-width: 640px) {
+  /* Markets row: hide sparkline + actions on narrow mobile — show name + price only */
+  .stock-row-chart { display: none !important; }
+  .stock-row-actions { display: none !important; }
+}
+
 @media (max-width: 768px) {
   html, body { overflow-x: hidden; }
 
