@@ -1471,57 +1471,78 @@ app.delete("/api/dca/cancel/:id", async (req, res) => {
   }
 });
 
-/* ── POST /api/feedback — send bug report / feedback via Resend ── */
+/* ── POST /api/feedback — save to Supabase + send email via Resend ── */
 app.post("/api/feedback", async (req, res) => {
   const { type = "Feedback", message, email, debugContext = {} } = req.body;
   if (!message?.trim()) return res.status(400).json({ error: "message required" });
 
+  const d = debugContext;
+  const errList = (d.recentErrors || []).length > 0
+    ? d.recentErrors.map(e => `  ${e.time}: ${e.message}`).join("\n")
+    : "  None";
+  const failList = (d.failedRequests || []).length > 0
+    ? d.failedRequests.map(r => `  ${r.time}: ${r.url} → ${r.status || r.error}`).join("\n")
+    : "  None";
+
+  // 1) Save to Supabase (non-blocking — don't fail the request if this errors)
+  if (supabaseAdmin) {
+    supabaseAdmin.from("feedback").insert({
+      type,
+      message: message.trim(),
+      user_email: email || null,
+      clerk_user_id: d.userId || null,
+      clerk_user_email: d.userEmail || null,
+      clerk_user_name: d.userName || null,
+      session_id: d.sessionId || null,
+      url: d.url || null,
+      page_title: d.pageTitle || null,
+      viewport: d.viewport || null,
+      platform: d.platform || null,
+      user_agent: d.userAgent || null,
+      app_version: d.appVersion || null,
+      page_load_ms: d.pageLoadMs || null,
+      recent_errors: d.recentErrors || [],
+      failed_requests: d.failedRequests || [],
+    }).then(({ error }) => { if (error) console.error("Feedback Supabase insert error:", error); });
+  }
+
+  // 2) Send email via Resend
   const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) return res.status(500).json({ error: "RESEND_API_KEY not set" });
+  if (!resendKey) return res.json({ ok: true, note: "Saved to DB; RESEND_API_KEY not set so email skipped" });
 
   const subjects = { Bug: "[BUG] Swish Bug Report", Feedback: "[FEEDBACK] Swish Feedback", Question: "[QUESTION] Swish Question" };
   const subject = subjects[type] || "[FEEDBACK] Swish Feedback";
 
-  const errList = (debugContext.recentErrors || []).length > 0
-    ? debugContext.recentErrors.map(e => `  ${e.time}: ${e.message} (${e.filename || ""}:${e.line || ""})`).join("\n")
-    : "  None";
-  const failList = (debugContext.recentFailedRequests || []).length > 0
-    ? debugContext.recentFailedRequests.map(r => `  ${r.time}: ${r.url} → ${r.status || r.error}`).join("\n")
-    : "  None";
+  const text = `TYPE: ${type}
+MESSAGE: ${message.trim()}
+USER EMAIL: ${email || "not provided"}
 
-  const text = `
-━━━━ USER MESSAGE ━━━━
-Type:         ${type}
-Message:      ${message}
-User email:   ${email || "not provided"}
+── USER ──────────────────────
+Clerk ID:    ${d.userId || "n/a"}
+Name:        ${d.userName || "n/a"}
+Email:       ${d.userEmail || "n/a"}
+Session:     ${d.sessionId || "n/a"}
 
-━━━━ DEBUG CONTEXT ━━━━
-User ID:      ${debugContext.userId || "n/a"}
-User name:    ${debugContext.userName || "n/a"}
-User email:   ${debugContext.userEmail || "n/a"}
-Session ID:   ${debugContext.sessionId || "n/a"}
-Session:      ${debugContext.sessionStatus || "n/a"}
+── PAGE ──────────────────────
+URL:         ${d.url || "n/a"}
+Title:       ${d.pageTitle || "n/a"}
+Time:        ${d.timestamp || "n/a"}
+Version:     ${d.appVersion || "n/a"}
+Load time:   ${d.pageLoadMs || "n/a"}ms
 
-━━━━ PAGE ━━━━
-URL:          ${debugContext.url || "n/a"}
-Page:         ${debugContext.page || "n/a"}
-Timestamp:    ${debugContext.timestamp || "n/a"}
-App version:  ${debugContext.appVersion || "n/a"}
-Page load:    ${debugContext.pageLoadTime || "n/a"}ms
+── DEVICE ────────────────────
+Viewport:    ${d.viewport || "n/a"}
+Platform:    ${d.platform || "n/a"}
+Agent:       ${d.userAgent || "n/a"}
 
-━━━━ DEVICE ━━━━
-Viewport:     ${debugContext.viewport || "n/a"}
-Platform:     ${debugContext.platform || "n/a"}
-DPR:          ${debugContext.devicePixelRatio || "n/a"}
-Language:     ${debugContext.language || "n/a"}
-User agent:   ${debugContext.userAgent || "n/a"}
-
-━━━━ RECENT ERRORS ━━━━
+── ERRORS ────────────────────
 ${errList}
 
-━━━━ FAILED API CALLS ━━━━
+── FAILED API CALLS ──────────
 ${failList}
-`.trim();
+
+── VIEW ALL REPORTS ──────────
+https://supabase.com/dashboard/project/amuwtdthgqkflxkfwaum/editor`;
 
   try {
     const r = await fetch("https://api.resend.com/emails", {
