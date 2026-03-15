@@ -3,29 +3,29 @@ import { useNavigate } from "react-router-dom";
 import { T } from "../tokens";
 import { CategoryIcon } from "../data/stockCategories";
 
-/* ── Stock defaults (hardcoded seed prices, replaced by live on mount) ── */
+/* ── Featured stocks — names & sectors only, prices fetched live from Finnhub ── */
 const FEATURED_STOCKS = [
-  { ticker:"AAPL",  name:"Apple Inc.",           price:189.30, changePct:+0.66, sector:"Tech"     },
-  { ticker:"NVDA",  name:"NVIDIA Corp.",          price:875.40, changePct:+1.48, sector:"Tech"     },
-  { ticker:"TSLA",  name:"Tesla Inc.",            price:248.50, changePct:-1.27, sector:"Auto"     },
-  { ticker:"AMZN",  name:"Amazon.com",            price:178.25, changePct:+1.19, sector:"Retail"   },
-  { ticker:"GOOGL", name:"Alphabet Inc.",         price:141.80, changePct:+0.67, sector:"Tech"     },
-  { ticker:"NFLX",  name:"Netflix Inc.",          price:485.60, changePct:-1.30, sector:"Media"    },
-  { ticker:"MSFT",  name:"Microsoft Corp.",       price:378.90, changePct:+1.20, sector:"Tech"     },
-  { ticker:"RBLX",  name:"Roblox Corp.",          price:42.15,  changePct:+2.06, sector:"Gaming"   },
-  { ticker:"SPOT",  name:"Spotify Technology",    price:248.70, changePct:+1.30, sector:"Media"    },
-  { ticker:"DIS",   name:"Walt Disney Co.",       price:112.40, changePct:-1.58, sector:"Media"    },
-  { ticker:"NKE",   name:"Nike Inc.",             price:94.20,  changePct:+0.45, sector:"Consumer" },
-  { ticker:"CMG",   name:"Chipotle Mexican Grill",price:3180.00,changePct:+1.10, sector:"Food"     },
-  { ticker:"SNAP",  name:"Snap Inc.",             price:11.40,  changePct:-2.10, sector:"Social"   },
-  { ticker:"COIN",  name:"Coinbase Global",       price:218.50, changePct:+3.20, sector:"Crypto"   },
-  { ticker:"ABNB",  name:"Airbnb Inc.",           price:148.60, changePct:-0.80, sector:"Travel"   },
-  { ticker:"META",  name:"Meta Platforms",        price:512.30, changePct:+1.75, sector:"Social"   },
-  { ticker:"UBER",  name:"Uber Technologies",     price:78.40,  changePct:+0.92, sector:"Transport"},
-  { ticker:"SBUX",  name:"Starbucks Corp.",       price:76.80,  changePct:-0.60, sector:"Food"     },
-  { ticker:"PYPL",  name:"PayPal Holdings",       price:62.10,  changePct:+1.40, sector:"Fintech"  },
-  { ticker:"AMD",   name:"Advanced Micro Devices",price:168.90, changePct:+2.30, sector:"Tech"     },
-];
+  { ticker:"AAPL",  name:"Apple Inc.",            sector:"Tech"      },
+  { ticker:"NVDA",  name:"NVIDIA Corp.",          sector:"Tech"      },
+  { ticker:"TSLA",  name:"Tesla Inc.",            sector:"Auto"      },
+  { ticker:"AMZN",  name:"Amazon.com",            sector:"Retail"    },
+  { ticker:"GOOGL", name:"Alphabet Inc.",         sector:"Tech"      },
+  { ticker:"NFLX",  name:"Netflix Inc.",          sector:"Media"     },
+  { ticker:"MSFT",  name:"Microsoft Corp.",       sector:"Tech"      },
+  { ticker:"RBLX",  name:"Roblox Corp.",          sector:"Gaming"    },
+  { ticker:"SPOT",  name:"Spotify Technology",    sector:"Media"     },
+  { ticker:"DIS",   name:"Walt Disney Co.",       sector:"Media"     },
+  { ticker:"NKE",   name:"Nike Inc.",             sector:"Consumer"  },
+  { ticker:"CMG",   name:"Chipotle Mexican Grill",sector:"Food"     },
+  { ticker:"SNAP",  name:"Snap Inc.",             sector:"Social"    },
+  { ticker:"COIN",  name:"Coinbase Global",       sector:"Crypto"    },
+  { ticker:"ABNB",  name:"Airbnb Inc.",           sector:"Travel"    },
+  { ticker:"META",  name:"Meta Platforms",        sector:"Social"    },
+  { ticker:"UBER",  name:"Uber Technologies",     sector:"Transport" },
+  { ticker:"SBUX",  name:"Starbucks Corp.",       sector:"Food"      },
+  { ticker:"PYPL",  name:"PayPal Holdings",       sector:"Fintech"   },
+  { ticker:"AMD",   name:"Advanced Micro Devices",sector:"Tech"      },
+].map(s => ({ ...s, price: null, changePct: null }));
 
 /* ── ETF defaults — 20 popular, prices fetched from Finnhub ── */
 const ETF_DEFAULTS = [

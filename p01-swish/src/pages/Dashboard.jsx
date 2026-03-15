@@ -388,13 +388,15 @@ export default function Dashboard({ stocks, onTrade, onOpenDetail, holdings = []
         const res = await fetch(`${baseUrl}/api/crypto/top`);
         const data = await res.json();
         if (!cancelled && data.coins) {
-          setCryptoMoversData(data.coins.map(c => ({
-            ticker: c.symbol,
-            name: c.name,
-            price: c.price,
-            changePct: c.changePct ?? 0,
-            isCrypto: true,
-          })));
+          setCryptoMoversData(data.coins
+            .filter(c => c.symbol && /^[A-Z0-9]{2,10}$/.test(c.symbol) && c.price > 0)
+            .map(c => ({
+              ticker: c.symbol,
+              name: c.name,
+              price: c.price,
+              changePct: c.changePct ?? 0,
+              isCrypto: true,
+            })));
         }
       } catch { /* ignore */ }
     })();
