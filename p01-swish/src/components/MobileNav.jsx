@@ -1,11 +1,11 @@
 import { NavLink } from "react-router-dom";
-import { Home, TrendingUp, RefreshCw, Gamepad2, BookOpen } from "lucide-react";
+import { Home, TrendingUp, CalendarClock, Gamepad2, BookOpen } from "lucide-react";
 import { T } from "../tokens";
 
 const NAV_ITEMS = [
   { to: "/", label: "Home", Icon: Home, id: "mnav-home" },
   { to: "/markets", label: "Markets", Icon: TrendingUp, id: "mnav-markets" },
-  { to: "/auto-invest", label: "Auto", Icon: RefreshCw, id: "mnav-auto" },
+  { to: "/auto-invest", label: "Auto", Icon: CalendarClock, id: "mnav-auto" },
   { to: "/scenarios", label: "Play", Icon: Gamepad2, id: "mnav-scenarios" },
   { to: "/learn", label: "Learn", Icon: BookOpen, id: "mnav-learn" },
 ];

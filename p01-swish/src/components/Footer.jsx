@@ -27,7 +27,7 @@ export default function Footer() {
         <a href="mailto:iamarchon@proton.me" style={{ color: T.inkFaint, textDecoration: "none" }}
           onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
           onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}
-        >Contact</a>
+        >iamarchon@proton.me</a>
       </p>
       <p style={{ fontSize: "12px", color: T.inkFaint }}>
         For educational purposes only. Not financial advice.
