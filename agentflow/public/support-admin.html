@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support Tickets — AgentFlow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0b12;--surface:#141420;--surface2:#1c1c2c;--surface3:#252538;
+  --text:#e8e8f4;--muted:#7070a0;--muted2:#3a3a5c;--border:rgba(255,255,255,.07);
+  --teal:#00d4c2;--teal-bg:rgba(0,212,194,.08);--teal-bd:rgba(0,212,194,.2);
+  --green:#2dd45a;--green-bg:rgba(45,212,90,.08);--green-bd:rgba(45,212,90,.2);
+  --amber:#f5aa28;--amber-bg:rgba(245,170,40,.08);--amber-bd:rgba(245,170,40,.2);
+  --red:#f54040;--red-bg:rgba(245,64,64,.07);--red-bd:rgba(245,64,64,.2);
+  --violet:#9d7df0;
+  --font:'Manrope',system-ui,sans-serif;
+  --display:'Syne',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* Nav */
+.nav{position:sticky;top:0;z-index:100;background:rgba(11,11,18,.95);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;height:52px;gap:16px;}
+.nav-logo{font-family:var(--display);font-size:16px;font-weight:800;color:var(--text);text-decoration:none;flex-shrink:0;}
+.nav-logo span{color:var(--teal);}
+.nav-badge{font-size:10px;font-weight:700;background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);padding:3px 8px;border-radius:20px;letter-spacing:.5px;text-transform:uppercase;flex-shrink:0;}
+.nav-links{display:flex;gap:4px;margin-left:auto;}
+.nl{font-size:12px;color:var(--muted);text-decoration:none;padding:5px 10px;border-radius:6px;transition:all .15s;}
+.nl:hover{color:var(--text);background:var(--surface2);}
+
+/* Page */
+.page{max-width:1100px;margin:0 auto;padding:28px 20px;}
+.page-title{font-family:var(--display);font-size:26px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px;}
+.page-sub{font-size:13px;color:var(--muted);margin-bottom:24px;}
+
+/* Hero stats */
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;}
+.sc-val{font-family:var(--mono);font-size:24px;font-weight:800;margin-bottom:4px;}
+.sc-lbl{font-size:11px;color:var(--muted);}
+
+/* Filters */
+.filter-bar{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.fb-btn{font-size:12px;font-weight:600;padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;transition:all .15s;}
+.fb-btn:hover,.fb-btn.active{background:var(--surface2);color:var(--text);border-color:var(--muted2);}
+.fb-btn.active{border-color:var(--teal);color:var(--teal);}
+.search-input{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-family:var(--font);font-size:12px;color:var(--text);outline:none;width:220px;margin-left:auto;}
+.search-input::placeholder{color:var(--muted2);}
+
+/* Ticket table */
+.ticket-table{width:100%;border-collapse:collapse;}
+.ticket-table th{text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:8px 12px;border-bottom:1px solid var(--border);}
+.ticket-table td{padding:12px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+.ticket-table tr:hover td{background:var(--surface2);}
+.tr-ref{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--teal);}
+.tr-subject{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;}
+.tr-meta{font-size:11px;color:var(--muted);}
+.tr-body-preview{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4;max-width:380px;}
+
+/* Status badges */
+.tk-status{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;}
+.tks-open{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd);}
+.tks-ai_resolved{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd);}
+.tks-resolved{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-bd);}
+.tks-escalated{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);}
+
+.tk-priority{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;margin-left:4px;}
+.tp-critical{background:var(--red-bg);color:var(--red);}
+.tp-high{background:var(--amber-bg);color:var(--amber);}
+.tp-normal{background:var(--surface3);color:var(--muted);}
+.tp-low{background:var(--surface3);color:var(--muted2);}
+
+.type-pill{font-size:10px;color:var(--muted);background:var(--surface3);padding:2px 8px;border-radius:20px;display:inline-block;}
+
+/* Confidence bar */
+.conf-bar{display:flex;align-items:center;gap:6px;}
+.conf-track{flex:1;height:4px;background:var(--surface3);border-radius:2px;overflow:hidden;}
+.conf-fill{height:100%;border-radius:2px;background:var(--teal);}
+.conf-val{font-size:10px;font-family:var(--mono);color:var(--muted);width:28px;}
+
+/* Detail modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;display:none;align-items:flex-start;justify-content:flex-end;padding:0;}
+.modal-overlay.open{display:flex;}
+.modal-panel{background:var(--surface);border-left:1px solid var(--border);width:100%;max-width:520px;height:100vh;overflow-y:auto;animation:slideIn .25s ease;}
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.mp-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
+.mp-close{margin-left:auto;background:var(--surface2);border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:700;}
+.mp-body{padding:20px 24px;}
+.mp-section{margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border);}
+.mp-section:last-child{border-bottom:none;}
+.mp-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;}
+.mp-val{font-size:13px;color:var(--text);line-height:1.55;}
+.debug-box{background:var(--surface2);border-radius:8px;padding:12px;font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.5;max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;}
+.ai-resp-box{background:var(--teal-bg);border:1px solid var(--teal-bd);border-radius:8px;padding:14px;font-size:13px;color:var(--text);line-height:1.6;}
+.resolve-btn{display:block;width:100%;padding:10px;background:var(--teal);color:#000;border:none;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;margin-top:10px;transition:all .15s;}
+.resolve-btn:hover{opacity:.85;}
+
+.empty{padding:40px;text-align:center;color:var(--muted);font-size:13px;}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a class="nav-logo" href="/admin.html">Agent<span>Flow</span></a>
+  <span class="nav-badge">Support Admin</span>
+  <div class="nav-links">
+    <a class="nl" href="/admin.html">← Platform Dashboard</a>
+    <a class="nl" href="/app.html">Marketplace</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-title">🎫 Support Tickets</div>
+  <div class="page-sub">All user-submitted tickets · AI triage results · resolution tracking</div>
+
+  <div class="stats-row" id="statsRow">
+    <div class="stat-card"><div class="sc-val" id="sTotal" style="color:var(--text)">—</div><div class="sc-lbl">Total Tickets</div></div>
+    <div class="stat-card"><div class="sc-val" id="sOpen" style="color:var(--amber)">—</div><div class="sc-lbl">Open / Needs Attention</div></div>
+    <div class="stat-card"><div class="sc-val" id="sAiResolved" style="color:var(--green)">—</div><div class="sc-lbl">AI Auto-Resolved</div></div>
+    <div class="stat-card"><div class="sc-val" id="sAiRate" style="color:var(--teal)">—</div><div class="sc-lbl">AI Resolution Rate</div></div>
+    <div class="stat-card"><div class="sc-val" id="sAvgConf" style="color:var(--violet)">—</div><div class="sc-lbl">Avg AI Confidence</div></div>
+  </div>
+
+  <div class="filter-bar">
+    <button class="fb-btn active" data-filter="all" onclick="setFilter('all',this)">All</button>
+    <button class="fb-btn" data-filter="open" onclick="setFilter('open',this)">🔴 Open</button>
+    <button class="fb-btn" data-filter="ai_resolved" onclick="setFilter('ai_resolved',this)">✅ AI Resolved</button>
+    <button class="fb-btn" data-filter="resolved" onclick="setFilter('resolved',this)">✓ Resolved</button>
+    <button class="fb-btn" data-filter="critical" onclick="setFilter('critical',this)">🚨 Critical</button>
+    <input class="search-input" id="searchInput" placeholder="Search ref, subject, user…" oninput="renderTable()"/>
+  </div>
+
+  <table class="ticket-table">
+    <thead>
+      <tr>
+        <th>Ticket</th>
+        <th>Issue</th>
+        <th>Status</th>
+        <th>AI Confidence</th>
+        <th>Created</th>
+      </tr>
+    </thead>
+    <tbody id="ticketBody">
+      <tr><td colspan="5" class="empty">Loading…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Detail panel -->
+<div class="modal-overlay" id="detailOverlay" onclick="if(event.target===this)closeDetail()">
+  <div class="modal-panel" id="detailPanel">
+    <div class="mp-header">
+      <div>
+        <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--teal)" id="dp-ref"></div>
+        <div style="font-size:15px;font-weight:700;margin-top:2px" id="dp-subject"></div>
+      </div>
+      <button class="mp-close" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="mp-body" id="dp-body">Loading…</div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:3333';
+let allTickets = [];
+let currentFilter = 'all';
+
+const TYPE_LABELS = {
+  dispute_outcome: '⚖️ Dispute outcome',
+  not_delivered:   '🤖 Not delivered',
+  poor_quality:    '⚠️ Poor quality',
+  payment:         '💳 Payment',
+  technical:       '🔧 Technical',
+  billing:         '🧾 Billing',
+  other:           '💬 Other',
+};
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.fb-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderTable();
+}
+
+function timeAgo(ts) {
+  if (!ts) return '—';
+  const sec = Math.floor((Date.now() - new Date(ts)) / 1000);
+  if (sec < 60) return sec + 's ago';
+  if (sec < 3600) return Math.floor(sec/60) + 'm ago';
+  if (sec < 86400) return Math.floor(sec/3600) + 'h ago';
+  return Math.floor(sec/86400) + 'd ago';
+}
+
+function statusBadge(t) {
+  const map = {
+    open:        `<span class="tk-status tks-open">● Open</span>`,
+    ai_resolved: `<span class="tk-status tks-ai_resolved">✓ AI Resolved</span>`,
+    resolved:    `<span class="tk-status tks-resolved">✓ Resolved</span>`,
+    escalated:   `<span class="tk-status tks-escalated">🚨 Escalated</span>`,
+  };
+  return (map[t.status] || `<span class="tk-status tks-open">${t.status}</span>`)
+    + (t.priority && t.priority !== 'normal' ? `<span class="tk-priority tp-${t.priority}">${t.priority}</span>` : '');
+}
+
+function renderTable() {
+  const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  let rows = allTickets;
+  if (currentFilter === 'open')        rows = rows.filter(t => t.status === 'open');
+  if (currentFilter === 'ai_resolved') rows = rows.filter(t => t.status === 'ai_resolved');
+  if (currentFilter === 'resolved')    rows = rows.filter(t => ['resolved','ai_resolved'].includes(t.status));
+  if (currentFilter === 'critical')    rows = rows.filter(t => t.priority === 'critical' || t.priority === 'high');
+  if (q) rows = rows.filter(t =>
+    (t.ticket_ref||'').toLowerCase().includes(q) ||
+    (t.subject||'').toLowerCase().includes(q) ||
+    (t.user_id||'').toLowerCase().includes(q) ||
+    (t.issue_type||'').toLowerCase().includes(q)
+  );
+
+  if (!rows.length) {
+    document.getElementById('ticketBody').innerHTML = `<tr><td colspan="5" class="empty">No tickets match.</td></tr>`;
+    return;
+  }
+
+  document.getElementById('ticketBody').innerHTML = rows.map(t => `
+    <tr style="cursor:pointer" onclick="openDetail('${t.id}')">
+      <td>
+        <div class="tr-ref">${t.ticket_ref || t.id.slice(-8)}</div>
+        <div class="tr-subject">${escHtml(t.subject)}</div>
+        <div class="tr-meta">${t.user_email ? t.user_email : 'User: ' + (t.user_id?.slice(0,20)||'?') + '…'} ${t.task_id ? '· task linked' : ''}</div>
+      </td>
+      <td><span class="type-pill">${TYPE_LABELS[t.issue_type]||t.issue_type||'other'}</span></td>
+      <td>${statusBadge(t)}</td>
+      <td>
+        ${t.ai_confidence != null ? `
+          <div class="conf-bar">
+            <div class="conf-track"><div class="conf-fill" style="width:${t.ai_confidence}%;background:${t.ai_confidence>=75?'var(--green)':t.ai_confidence>=50?'var(--amber)':'var(--red)'}"></div></div>
+            <div class="conf-val">${t.ai_confidence}%</div>
+          </div>` : '<span style="font-size:11px;color:var(--muted2)">Pending</span>'}
+      </td>
+      <td style="font-size:11px;color:var(--muted);white-space:nowrap">${timeAgo(t.created_at)}</td>
+    </tr>
+  `).join('');
+}
+
+function escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function openDetail(id) {
+  const ticket = allTickets.find(t => t.id === id);
+  if (!ticket) return;
+
+  document.getElementById('dp-ref').textContent = ticket.ticket_ref || id;
+  document.getElementById('dp-subject').textContent = ticket.subject;
+
+  // Fetch full ticket with debug context
+  let full = ticket;
+  try {
+    const r = await fetch(`${API}/api/admin/tickets/${id}`);
+    if (r.ok) full = await r.json();
+  } catch {}
+
+  const debugCtx = full.debug_context ? (typeof full.debug_context === 'string' ? JSON.parse(full.debug_context) : full.debug_context) : null;
+  const task = debugCtx?.task;
+  const txns = debugCtx?.transactions || [];
+
+  document.getElementById('dp-body').innerHTML = `
+    <div class="mp-section">
+      <div class="mp-label">Issue Type</div>
+      <div>${TYPE_LABELS[full.issue_type]||full.issue_type}</div>
+      <div style="margin-top:6px">${statusBadge(full)}</div>
+    </div>
+
+    <div class="mp-section">
+      <div class="mp-label">User</div>
+      <div style="font-size:12px;font-family:var(--mono)">${full.user_email ? `<a href="mailto:${full.user_email}" style="color:var(--teal);text-decoration:none">${full.user_email}</a>` : full.user_id}</div>
+    </div>
+
+    <div class="mp-section">
+      <div class="mp-label">User Message</div>
+      <div class="mp-val">${escHtml(full.body)}</div>
+    </div>
+
+    ${full.ai_response ? `
+    <div class="mp-section">
+      <div class="mp-label">AI First Response <span style="font-weight:400;color:var(--muted)">(confidence: ${full.ai_confidence}%)</span></div>
+      <div class="ai-resp-box">${escHtml(full.ai_response)}</div>
+    </div>` : `
+    <div class="mp-section">
+      <div class="mp-label">AI Response</div>
+      <div style="font-size:12px;color:var(--muted2)">AI triage pending or unavailable</div>
+    </div>`}
+
+    ${task ? `
+    <div class="mp-section">
+      <div class="mp-label">Linked Task</div>
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;font-size:12px;line-height:1.7">
+        <div><b>${escHtml(task.title||'Untitled')}</b> <span style="color:var(--muted)">— ${task.status}</span></div>
+        <div style="color:var(--muted);margin-top:4px">Agent: ${escHtml(task.agentName||'—')} · Bid: ⚡${task.agreedBid||'—'} · Score: ${task.disputeScore??'—'}</div>
+        ${task.timeline ? `<div style="color:var(--muted2);font-family:var(--mono);font-size:10px;margin-top:6px">
+          Created: ${task.timeline.created?.slice(0,16)||'—'}<br>
+          Hired: ${task.timeline.hired?.slice(0,16)||'—'}<br>
+          Completed: ${task.timeline.completed?.slice(0,16)||'—'}<br>
+          Approved: ${task.timeline.approved?.slice(0,16)||'—'}<br>
+          Disputed: ${task.timeline.disputed?.slice(0,16)||'—'}
+        </div>` : ''}
+      </div>
+    </div>` : ''}
+
+    ${txns.length ? `
+    <div class="mp-section">
+      <div class="mp-label">Transaction Log (${txns.length})</div>
+      <div class="debug-box">${txns.map(tx=>`${tx.ts?.slice(0,16)} ${tx.type.padEnd(10)} ⚡${String(tx.amount).padStart(5)}  ${tx.note||''}`).join('\n')}</div>
+    </div>` : ''}
+
+    ${debugCtx?.userWallet ? `
+    <div class="mp-section">
+      <div class="mp-label">User Wallet State</div>
+      <div style="font-size:12px;color:var(--muted);font-family:var(--mono)">Available: ⚡${debugCtx.userWallet.available} · Escrowed: ⚡${debugCtx.userWallet.escrowed}</div>
+    </div>` : ''}
+
+    <div class="mp-section">
+      <div class="mp-label">Actions</div>
+      ${full.status !== 'resolved' ? `<button class="resolve-btn" onclick="resolveTicket('${full.id}')">✓ Mark as Resolved</button>` : '<div style="font-size:12px;color:var(--green)">✓ Resolved</div>'}
+    </div>
+  `;
+
+  document.getElementById('detailOverlay').classList.add('open');
+  document.getElementById('detailOverlay').style.display = 'flex';
+}
+
+function closeDetail() {
+  document.getElementById('detailOverlay').style.display = 'none';
+  document.getElementById('detailOverlay').classList.remove('open');
+}
+
+async function resolveTicket(id) {
+  try {
+    await fetch(`${API}/api/admin/tickets/${id}/resolve`, { method:'POST', headers:{'Content-Type':'application/json'} });
+    await loadTickets();
+    const t = allTickets.find(x=>x.id===id);
+    if (t) t.status = 'resolved';
+    closeDetail();
+  } catch(e) { alert('Failed to resolve: ' + e.message); }
+}
+
+async function loadTickets() {
+  try {
+    const r = await fetch(`${API}/api/admin/tickets`);
+    const d = await r.json();
+    allTickets = d.tickets || [];
+    const s = d.stats || {};
+
+    document.getElementById('sTotal').textContent = s.total || 0;
+    document.getElementById('sOpen').textContent  = s.open  || 0;
+    document.getElementById('sAiResolved').textContent = s.aiResolved || 0;
+    const rate = s.total > 0 ? Math.round(s.aiResolved/s.total*100) : 0;
+    document.getElementById('sAiRate').textContent = rate + '%';
+    document.getElementById('sAvgConf').textContent = s.avgAiConfidence ? Math.round(s.avgAiConfidence) + '%' : '—';
+
+    renderTable();
+  } catch(e) {
+    document.getElementById('ticketBody').innerHTML = `<tr><td colspan="5" class="empty">Failed to load: ${e.message}</td></tr>`;
+  }
+}
+
+loadTickets();
+setInterval(loadTickets, 15000);
+</script>
+</body>
+</html>

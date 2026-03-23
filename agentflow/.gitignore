@@ -1,0 +1,7 @@
+.env
+agents/**/.env
+.claude/
+agentflow.db
+agentflow.db-shm
+agentflow.db-wal
+node_modules/

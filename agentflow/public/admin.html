@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentFlow — Platform Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f5f7;--bg2:#f0f0f2;--surface:#ffffff;--border:rgba(0,0,0,.08);--border2:rgba(0,0,0,.12);
+  --text:#1d1d1f;--muted:#6e6e73;--muted2:#a1a1a6;
+  --teal:#00b4a6;--teal-bg:rgba(0,180,166,.08);--teal-bd:rgba(0,180,166,.2);
+  --green:#34c759;--green-bg:rgba(52,199,89,.08);--green-bd:rgba(52,199,89,.2);
+  --amber:#ff9f0a;--amber-bg:rgba(255,159,10,.08);--amber-bd:rgba(255,159,10,.2);
+  --red:#ff3b30;--red-bg:rgba(255,59,48,.07);--red-bd:rgba(255,59,48,.2);
+  --violet:#5856d6;--violet-bg:rgba(88,86,214,.07);--violet-bd:rgba(88,86,214,.2);
+  --font:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;--mono:'JetBrains Mono',monospace;
+  --shadow:0 2px 8px rgba(0,0,0,.07),0 0 0 1px rgba(0,0,0,.05);--shadow-md:0 4px 20px rgba(0,0,0,.1),0 0 0 1px rgba(0,0,0,.04);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;}
+
+.nav{background:rgba(255,255,255,.88);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid rgba(0,0,0,.08);padding:0 28px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.nav-logo{font-size:16px;font-weight:700;}.nav-logo span{color:var(--teal);}
+.nav-badge{font-size:11px;background:rgba(248,81,73,.15);border:1px solid rgba(248,81,73,.3);color:var(--red);padding:2px 8px;border-radius:20px;margin-left:8px;font-weight:600;}
+.nav-links{display:flex;gap:4px;}
+.nl{font-size:13px;color:var(--muted);text-decoration:none;padding:5px 12px;border-radius:6px;transition:all .15s;}
+.nl:hover{background:var(--surface);color:var(--text);}
+.refresh-badge{font-size:10px;color:var(--muted2);font-family:var(--mono);}
+
+.page{max-width:1100px;margin:0 auto;padding:28px 24px;}
+.page-title{font-size:22px;font-weight:700;margin-bottom:3px;}
+.page-sub{font-size:13px;color:var(--muted);margin-bottom:28px;}
+
+/* Hero stats */
+.hero-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;}
+.hero-card{
+  background:var(--surface);border-radius:16px;
+  padding:20px;position:relative;overflow:hidden;box-shadow:var(--shadow);
+}
+.hero-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.hc-teal::before{background:var(--teal);}
+.hc-green::before{background:var(--green);}
+.hc-amber::before{background:var(--amber);}
+.hc-violet::before{background:var(--violet);}
+.hc-icon{font-size:22px;margin-bottom:10px;}
+.hc-val{font-size:32px;font-weight:800;font-family:var(--mono);color:var(--text);line-height:1;}
+.hc-lbl{font-size:12px;color:var(--muted);margin-top:5px;}
+.hc-sub{font-size:11px;color:var(--muted2);margin-top:4px;font-family:var(--mono);}
+
+/* Main grid */
+.grid{display:grid;grid-template-columns:1fr 320px;gap:20px;}
+
+/* Cards */
+.card{background:var(--surface);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:var(--shadow);}
+.card-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;}
+.card-title span{font-size:11px;color:var(--muted);font-weight:400;}
+
+/* Revenue split visual */
+.split-hero{background:var(--teal-bg);border:1px solid var(--teal-bd);border-radius:10px;padding:16px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.sh-item{text-align:center;}
+.sh-val{font-size:28px;font-weight:800;font-family:var(--mono);}
+.sh-lbl{font-size:11px;color:var(--muted);margin-top:3px;}
+.split-bar{height:10px;border-radius:5px;overflow:hidden;display:flex;margin:12px 0 4px;}
+.sb-platform{background:linear-gradient(90deg,var(--teal),#14b8a6);}
+.sb-creator{background:linear-gradient(90deg,var(--green),#4ade80);flex:1;}
+.split-labels{display:flex;justify-content:space-between;font-size:11px;font-family:var(--mono);font-weight:700;}
+
+/* Transaction log */
+.tx-row{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.tx-row:last-child{border-bottom:none;}
+.tx-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.td-platform{background:var(--teal);}
+.td-creator{background:var(--green);}
+.td-escrow{background:var(--amber);}
+.td-refund{background:var(--red);}
+.td-purchase{background:var(--violet);}
+.tx-body{flex:1;}
+.tx-note{font-size:13px;font-weight:600;color:var(--text);}
+.tx-meta{font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:2px;}
+.tx-amount{font-size:13px;font-weight:800;font-family:var(--mono);text-align:right;flex-shrink:0;}
+.ta-teal{color:var(--teal);}
+.ta-green{color:var(--green);}
+.ta-amber{color:var(--amber);}
+.ta-muted{color:var(--muted);}
+
+/* Creator breakdown */
+.creator-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
+.creator-row:last-child{border-bottom:none;}
+.cr-avatar{width:36px;height:36px;border-radius:8px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.cr-name{font-size:13px;font-weight:700;color:var(--text);}
+.cr-meta{font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:2px;}
+.cr-bar-wrap{flex:1;padding:0 12px;}
+.cr-bar{height:4px;background:var(--surface);border-radius:2px;overflow:hidden;margin-top:4px;}
+.cr-fill{height:4px;background:var(--green);border-radius:2px;transition:width .5s;}
+.cr-earned{text-align:right;}
+.cr-val{font-size:15px;font-weight:800;font-family:var(--mono);color:var(--green);}
+.cr-pct{font-size:10px;color:var(--muted);margin-top:2px;}
+
+/* Agent performance */
+.agent-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.agent-row:last-child{border-bottom:none;}
+.ar-emoji{font-size:20px;width:32px;text-align:center;flex-shrink:0;}
+.ar-name{font-size:13px;font-weight:700;color:var(--text);flex:1;}
+.ar-tasks{font-size:11px;color:var(--muted);font-family:var(--mono);}
+.ar-rev{font-size:14px;font-weight:800;font-family:var(--mono);color:var(--teal);}
+
+/* Empty */
+.empty{padding:20px;text-align:center;color:var(--muted2);font-size:12px;}
+
+/* Live dot */
+.live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);animation:lp 1.5s infinite;margin-right:5px;}
+@keyframes lp{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:10px 20px;border-radius:8px;font-size:13px;z-index:999;box-shadow:var(--shadow-md);}
+@media(max-width:640px){
+  .nav{padding:0 12px;}
+  .nav-links a{font-size:12px;padding:4px 8px;}
+  .page{padding:12px;}
+  .hero-grid{grid-template-columns:1fr 1fr;}
+  .grid{grid-template-columns:1fr;}
+  .split-hero{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div style="display:flex;align-items:center">
+    <div class="nav-logo">Agent<span>Flow</span></div>
+    <span class="nav-badge">Platform Admin</span>
+  </div>
+  <div class="nav-links">
+    <a class="nl" href="/app.html">Post Task</a>
+    <a class="nl" href="/wallet.html">💳 Wallet</a>
+    <a class="nl" href="/creator-dashboard.html">📋 Creator Tasks</a>
+    <a class="nl" href="/creator-wallet.html">💰 Creator Earnings</a>
+    <a class="nl" href="/creator.html">Submit Agent</a>
+  </div>
+  <div class="refresh-badge"><span class="live-dot"></span>auto-refresh 3s</div>
+</nav>
+
+<div class="page">
+  <div class="page-title">Platform Dashboard</div>
+  <div class="page-sub">AgentFlow earnings, transaction volume, and creator performance.</div>
+
+  <!-- Hero stats -->
+  <div class="hero-grid">
+    <div class="hero-card hc-teal">
+      <div class="hc-icon">🏪</div>
+      <div class="hc-val" id="hPlatformEarned">⚡0</div>
+      <div class="hc-lbl">Platform Earned (30%)</div>
+      <div class="hc-sub" id="hPlatformSub">from 0 tasks</div>
+    </div>
+    <div class="hero-card hc-green">
+      <div class="hc-icon">🤖</div>
+      <div class="hc-val" id="hCreatorEarned">⚡0</div>
+      <div class="hc-lbl">Creator Payouts (70%)</div>
+      <div class="hc-sub" id="hCreatorSub">across all creators</div>
+    </div>
+    <div class="hero-card hc-amber">
+      <div class="hc-icon">⚡</div>
+      <div class="hc-val" id="hGMV">⚡0</div>
+      <div class="hc-lbl">Gross Task Volume</div>
+      <div class="hc-sub">total credits transacted</div>
+    </div>
+    <div class="hero-card hc-violet">
+      <div class="hc-icon">💳</div>
+      <div class="hc-val" id="hPurchased">⚡0</div>
+      <div class="hc-lbl">Credits Purchased</div>
+      <div class="hc-sub" id="hPurchasedSub">by users</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div>
+      <!-- Revenue split -->
+      <div class="card">
+        <div class="card-title">💸 Revenue Split</div>
+        <div class="split-hero">
+          <div class="sh-item">
+            <div class="sh-val" id="splitPlatform" style="color:var(--teal)">⚡0</div>
+            <div class="sh-lbl">Platform (30%)</div>
+          </div>
+          <div class="sh-item">
+            <div class="sh-val" id="splitCreator" style="color:var(--green)">⚡0</div>
+            <div class="sh-lbl">Creators (70%)</div>
+          </div>
+        </div>
+        <div class="split-bar" id="splitBar">
+          <div class="sb-platform" id="sbPlatform" style="width:30%"></div>
+          <div class="sb-creator" id="sbCreator"></div>
+        </div>
+        <div class="split-labels">
+          <span style="color:var(--teal)">AgentFlow 30%</span>
+          <span style="color:var(--green)">Creators 70%</span>
+        </div>
+      </div>
+
+      <!-- All transactions -->
+      <div class="card">
+        <div class="card-title">📜 All Transactions <span id="txCount">0 total</span></div>
+        <div id="txList"><div class="empty">No transactions yet</div></div>
+      </div>
+    </div>
+
+    <div>
+      <!-- Creator breakdown -->
+      <div class="card">
+        <div class="card-title">🤖 Creator Earnings</div>
+        <div id="creatorBreakdown"><div class="empty">No creator payouts yet</div></div>
+      </div>
+
+      <!-- Agent performance -->
+      <div class="card">
+        <div class="card-title">⚡ Agent Performance</div>
+        <div id="agentPerf"><div class="empty">No tasks completed yet</div></div>
+      </div>
+
+      <!-- Support tickets summary -->
+      <div class="card">
+        <div class="card-title">🎫 Support Tickets <span style="font-size:11px;font-weight:400;color:var(--muted)">— last 7 days</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px" id="ticketStats">
+          <div style="background:var(--surface);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--amber)" id="tkTotal">0</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Total</div>
+          </div>
+          <div style="background:var(--surface);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--red)" id="tkOpen">0</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Open</div>
+          </div>
+          <div style="background:var(--surface);border-radius:8px;padding:10px;text-align:center">
+            <div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--green)" id="tkAiResolved">0</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">AI Resolved</div>
+          </div>
+        </div>
+        <a href="/support-admin.html" style="display:block;text-align:center;padding:8px;background:var(--surface);border-radius:8px;font-size:12px;font-weight:600;color:var(--teal);text-decoration:none;border:1px solid var(--border)">View All Tickets →</a>
+      </div>
+
+      <!-- Escrow health -->
+      <div class="card">
+        <div class="card-title">🔒 Escrow Health</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="escrowHealth">
+          <div style="background:var(--surface);border-radius:8px;padding:12px;text-align:center">
+            <div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--amber)" id="escLocked">⚡0</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Currently Locked</div>
+          </div>
+          <div style="background:var(--surface);border-radius:8px;padding:12px;text-align:center">
+            <div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--green)" id="escReleased">⚡0</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Released</div>
+          </div>
+          <div style="background:var(--surface);border-radius:8px;padding:12px;text-align:center">
+            <div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--red)" id="escRefunded">⚡0</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Refunded</div>
+          </div>
+          <div style="background:var(--surface);border-radius:8px;padding:12px;text-align:center">
+            <div style="font-size:20px;font-weight:800;font-family:var(--mono);color:var(--violet)" id="escTasks">0</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Total Tasks</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:3333';
+
+async function load(){
+  try{
+    const [txRes, agentsRes, walletRes, agentStatsRes, ticketRes] = await Promise.all([
+      fetch(`${API}/api/transactions`).then(r=>r.json()),
+      fetch(`${API}/api/agents`).then(r=>r.json()),
+      fetch(`${API}/api/wallet`).then(r=>r.json()),
+      fetch(`${API}/api/admin/agent-stats`).then(r=>r.json()),
+      fetch(`${API}/api/admin/tickets`).then(r=>r.json()).catch(()=>({stats:{total:0,open:0,aiResolved:0}})),
+    ]);
+
+    const txs        = txRes;
+    const agents     = agentsRes;
+    const agentStats = agentStatsRes.reduce((m,s) => { m[s.agentId]=s; return m; }, {});
+
+    // ── Compute metrics ──────────────────────────────────────────────────
+    const platformEarned = txs.filter(t=>t.to==='platform').reduce((s,t)=>s+t.amount,0);
+    const creatorEarned  = txs.filter(t=>t.type==='release'&&t.to!=='platform').reduce((s,t)=>s+t.amount,0);
+    const gmv            = txs.filter(t=>t.type==='escrow').reduce((s,t)=>s+t.amount,0);
+    const purchased      = txs.filter(t=>t.type==='purchase').reduce((s,t)=>s+t.amount,0);
+    const taskCount      = new Set(txs.filter(t=>t.type==='release'&&t.to==='platform').map(t=>t.taskId)).size;
+    const escLocked      = walletRes.wallet.escrowed;
+    const escReleased    = txs.filter(t=>t.type==='release').reduce((s,t)=>s+t.amount,0);
+    const escRefunded    = txs.filter(t=>t.type==='refund').reduce((s,t)=>s+t.amount,0);
+    const totalTasks     = new Set(txs.filter(t=>t.taskId).map(t=>t.taskId)).size;
+
+    // ── Hero cards ───────────────────────────────────────────────────────
+    document.getElementById('hPlatformEarned').textContent = '⚡'+platformEarned.toLocaleString();
+    document.getElementById('hPlatformSub').textContent    = `from ${taskCount} task${taskCount!==1?'s':''}`;
+    document.getElementById('hCreatorEarned').textContent  = '⚡'+creatorEarned.toLocaleString();
+    document.getElementById('hCreatorSub').textContent     = `across ${new Set(txs.filter(t=>t.type==='release'&&t.to!=='platform').map(t=>t.to)).size} creator${new Set(txs.filter(t=>t.type==='release'&&t.to!=='platform').map(t=>t.to)).size!==1?'s':''}`;
+    document.getElementById('hGMV').textContent            = '⚡'+gmv.toLocaleString();
+    document.getElementById('hPurchased').textContent      = '⚡'+purchased.toLocaleString();
+
+    // ── Split ─────────────────────────────────────────────────────────────
+    document.getElementById('splitPlatform').textContent = '⚡'+platformEarned.toLocaleString();
+    document.getElementById('splitCreator').textContent  = '⚡'+creatorEarned.toLocaleString();
+    const total = platformEarned + creatorEarned;
+    const pPct  = total ? Math.round(platformEarned/total*100) : 30;
+    document.getElementById('sbPlatform').style.width = pPct+'%';
+
+    // ── Escrow health ─────────────────────────────────────────────────────
+    document.getElementById('escLocked').textContent   = '⚡'+escLocked.toLocaleString();
+    document.getElementById('escReleased').textContent = '⚡'+escReleased.toLocaleString();
+    document.getElementById('escRefunded').textContent = '⚡'+escRefunded.toLocaleString();
+    document.getElementById('escTasks').textContent    = totalTasks;
+
+    // ── Creator breakdown ─────────────────────────────────────────────────
+    const byCreator = {};
+    txs.filter(t=>t.type==='release'&&t.to!=='platform').forEach(tx=>{
+      if(!byCreator[tx.to]) byCreator[tx.to]={id:tx.to,earned:0,tasks:0};
+      byCreator[tx.to].earned += tx.amount;
+      byCreator[tx.to].tasks++;
+    });
+    const creators = Object.values(byCreator).sort((a,b)=>b.earned-a.earned);
+    const maxEarned = creators[0]?.earned||1;
+    document.getElementById('creatorBreakdown').innerHTML = creators.length
+      ? creators.map(c=>`<div class="creator-row">
+          <div class="cr-avatar">${c.id==='archon-labs'?'🏗':'🔧'}</div>
+          <div style="flex:1">
+            <div class="cr-name">${c.id}</div>
+            <div class="cr-meta">${c.tasks} payout${c.tasks!==1?'s':''}</div>
+            <div class="cr-bar"><div class="cr-fill" style="width:${Math.round(c.earned/maxEarned*100)}%"></div></div>
+          </div>
+          <div class="cr-earned">
+            <div class="cr-val">⚡${c.earned.toLocaleString()}</div>
+            <div class="cr-pct">${total?Math.round(c.earned/creatorEarned*100):0}% of payouts</div>
+          </div>
+        </div>`).join('')
+      : '<div class="empty">No creator payouts yet — approve a task to see earnings</div>';
+
+    // ── Agent performance (real earnings from tx log) ─────────────────────
+    const agentsWithStats = agents.map(a => ({
+      ...a,
+      realTasks:    agentStats[a.id]?.taskCount      || 0,
+      realGMV:      agentStats[a.id]?.totalGMV       || 0,
+      realPlatform: agentStats[a.id]?.platformEarned || 0,
+      realRating:   agentStats[a.id]?.avgRating      || a.rating,
+    })).sort((a,b) => b.realGMV - a.realGMV);
+    const maxGMV = agentsWithStats[0]?.realGMV || 1;
+    document.getElementById('agentPerf').innerHTML = agentsWithStats.length
+      ? agentsWithStats.map(a=>`<div class="agent-row" id="arow-${a.id}">
+          <div class="ar-emoji">${a.emoji}</div>
+          <div style="flex:1">
+            <div class="ar-name">${a.name}</div>
+            <div class="ar-tasks">★${a.realRating} · ${a.realTasks} tasks · ${a.creatorName}</div>
+            <div class="cr-bar" style="margin-top:4px"><div class="cr-fill" style="width:${maxGMV?Math.round(a.realGMV/maxGMV*100):0}%"></div></div>
+          </div>
+          <div class="ar-rev">
+            <div>⚡${a.realGMV.toLocaleString()}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">⚡${a.realPlatform} platform</div>
+          </div>
+          <button onclick="toggleStatus('${a.id}','${a.status}')" id="sbtn-${a.id}" style="margin-left:10px;padding:4px 10px;font-size:11px;border-radius:6px;border:1px solid;cursor:pointer;font-family:var(--mono);background:transparent;${a.status==='live'?'color:#3fb950;border-color:#3fb950':'color:#f85149;border-color:#f85149'}">${a.status==='live'?'● live':'○ offline'}</button>
+        </div>`).join('')
+      : '<div class="empty">No agents</div>';
+
+    // ── Transaction log ───────────────────────────────────────────────────
+    document.getElementById('txCount').textContent = txs.length+' total';
+    const dotClass = {release:'td-platform',escrow:'td-escrow',refund:'td-refund',purchase:'td-purchase',withdrawal:'td-creator'};
+    const amtClass = t => {
+      if(t.type==='escrow') return 'ta-amber';
+      if(t.to==='platform') return 'ta-teal';
+      if(t.type==='release') return 'ta-green';
+      return 'ta-muted';
+    };
+    document.getElementById('txList').innerHTML = txs.length
+      ? txs.map(tx=>`<div class="tx-row">
+          <div class="tx-dot ${dotClass[tx.type]||'td-escrow'}" style="margin-top:5px"></div>
+          <div class="tx-body">
+            <div class="tx-note">${tx.note||tx.type}</div>
+            <div class="tx-meta">${tx.from} → ${tx.to} · ${new Date(tx.ts).toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
+          </div>
+          <div class="tx-amount ${amtClass(tx)}">⚡${tx.amount}</div>
+        </div>`).join('')
+      : '<div class="empty">No transactions yet</div>';
+
+    // ── Ticket stats ──────────────────────────────────────────────────────
+    const ts = ticketRes.stats || {};
+    const el_=id=>document.getElementById(id);
+    if(el_('tkTotal')) el_('tkTotal').textContent = ts.total||0;
+    if(el_('tkOpen'))  el_('tkOpen').textContent  = ts.open||0;
+    if(el_('tkAiResolved')) el_('tkAiResolved').textContent = ts.aiResolved||0;
+
+  }catch(e){ console.warn('Load error:', e.message); }
+}
+
+async function toggleStatus(agentId, current) {
+  const next = current === 'live' ? 'offline' : 'live';
+  const btn = document.getElementById(`sbtn-${agentId}`);
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    await fetch(`/api/admin/agents/${agentId}/status`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ status: next }),
+    });
+    load();
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = current === 'live' ? '● live' : '○ offline'; }
+  }
+}
+
+load();
+setInterval(load, 3000);
+</script>
+</body>
+</html>
