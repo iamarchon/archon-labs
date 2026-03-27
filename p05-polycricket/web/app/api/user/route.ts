@@ -16,11 +16,14 @@ export async function POST() {
     .select()
     .single();
 
-  await supabase.from('coin_transactions').insert({
-    user_id: userId,
-    amount: 1000,
-    type: 'signup',
-  }).then(() => {});
+  // Only insert signup transaction for genuinely new users (data is null when row already existed)
+  if (data) {
+    await supabase.from('coin_transactions').insert({
+      user_id: userId,
+      amount: 1000,
+      type: 'signup',
+    });
+  }
 
   return NextResponse.json(data ?? { id: userId, username });
 }
