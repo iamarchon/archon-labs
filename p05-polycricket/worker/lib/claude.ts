@@ -39,6 +39,6 @@ Return ONLY a JSON array of strings, e.g.: ["Will ${homeTeam} win?", "Will there
     if (!Array.isArray(titles)) throw new Error('Not an array');
     return (titles as unknown[]).filter((t): t is string => typeof t === 'string').slice(0, 5);
   } catch {
-    return FALLBACK_TEMPLATES.map(fn => fn(homeTeam, awayTeam));
+    return FALLBACK_TEMPLATES.map(fn => fn(homeTeam));
   }
 }
