@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
+import { useAuth, SignInButton, UserButton } from '@clerk/nextjs';
 
 const NAV = [
   { label: 'MARKETS', href: '/' },
@@ -11,6 +11,7 @@ const NAV = [
 
 export default function Navbar() {
   const path = usePathname();
+  const { isSignedIn } = useAuth();
   return (
     <nav className="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
       <Link href="/" className="text-xs font-medium tracking-[0.2em] uppercase text-black">
@@ -28,16 +29,14 @@ export default function Navbar() {
             {n.label}
           </Link>
         ))}
-        <SignedOut>
+        {!isSignedIn && (
           <SignInButton>
             <button className="text-[10px] tracking-widest uppercase bg-black text-white px-4 py-1.5">
               SIGN IN
             </button>
           </SignInButton>
-        </SignedOut>
-        <SignedIn>
-          <UserButton />
-        </SignedIn>
+        )}
+        {isSignedIn && <UserButton />}
       </div>
     </nav>
   );
