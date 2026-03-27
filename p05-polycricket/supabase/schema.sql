@@ -144,6 +144,8 @@ declare
   v_market markets%rowtype;
   v_winning_pool integer;
 begin
+  if p_outcome not in ('yes', 'no') then raise exception 'Invalid outcome'; end if;
+
   select * into v_market from markets where id = p_market_id for update;
   if not found then raise exception 'Market not found'; end if;
   if v_market.status != 'open' then return; end if;
@@ -192,3 +194,27 @@ end;
 $$;
 
 revoke execute on function resolve_market(uuid, text) from authenticated, anon;
+
+-- RPC: claim_daily_bonus (atomic — prevents race condition double-claim)
+create or replace function claim_daily_bonus(
+  p_user_id text
+) returns json language plpgsql security definer as $$
+declare
+  v_user users%rowtype;
+begin
+  select * into v_user from users where id = p_user_id for update;
+  if not found then raise exception 'User not found'; end if;
+
+  if v_user.last_bonus_at is not null and
+     v_user.last_bonus_at > now() - interval '24 hours' then
+    raise exception 'Already claimed';
+  end if;
+
+  update users set coins = coins + 100, last_bonus_at = now() where id = p_user_id;
+
+  insert into coin_transactions (user_id, amount, type)
+  values (p_user_id, 100, 'bonus');
+
+  return json_build_object('coins', v_user.coins + 100);
+end;
+$$;

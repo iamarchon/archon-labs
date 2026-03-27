@@ -10,6 +10,9 @@ export async function POST(req: NextRequest) {
   if (!adminIds.includes(userId)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { market_id, outcome } = await req.json();
+  if (!['yes', 'no'].includes(outcome)) {
+    return NextResponse.json({ error: 'Invalid outcome' }, { status: 400 });
+  }
   const supabase = createSupabaseServerClient();
   const { error } = await supabase.rpc('resolve_market', {
     p_market_id: market_id,
