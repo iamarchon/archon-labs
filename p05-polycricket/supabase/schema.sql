@@ -94,15 +94,17 @@ create index on coin_transactions (user_id, created_at desc);
 create or replace function place_bet(
   p_market_id uuid,
   p_side text,
-  p_coins integer
+  p_coins integer,
+  p_user_id text
 ) returns json language plpgsql security definer as $$
 declare
-  v_user_id text := auth.uid()::text;
+  v_user_id text := p_user_id;
   v_market markets%rowtype;
   v_user_coins integer;
   v_price numeric;
   v_bet_id uuid;
 begin
+  if p_user_id is null or p_user_id = '' then raise exception 'User required'; end if;
   if p_side not in ('yes', 'no') then raise exception 'Invalid side'; end if;
   if p_coins <= 0 then raise exception 'Coins must be positive'; end if;
 

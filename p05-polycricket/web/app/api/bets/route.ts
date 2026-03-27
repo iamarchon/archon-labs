@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
     p_market_id: market_id,
     p_side: side,
     p_coins: coins,
+    p_user_id: userId,
   });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
