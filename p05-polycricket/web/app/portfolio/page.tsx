@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { getYesPrice } from '@/lib/amm';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
+export const dynamic = 'force-dynamic';
+
 export default async function Portfolio() {
   const { userId } = await auth();
   if (!userId) redirect('/sign-in');
