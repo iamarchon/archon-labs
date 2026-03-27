@@ -1,0 +1,13 @@
+# Root
+.env
+.env.local
+node_modules/
+.superpowers/
+
+# Web
+web/.next/
+web/node_modules/
+
+# Worker
+worker/node_modules/
+worker/dist/
