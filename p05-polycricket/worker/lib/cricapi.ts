@@ -37,11 +37,35 @@ export function parseMatchResult(raw: unknown): string | null {
 }
 
 const BASE = 'https://api.cricapi.com/v1';
+const IPL_SERIES_ID = '87c62aac-bc3c-4738-ab93-19da0690488f';
+
+export function parseSeriesMatches(raw: unknown): ParsedMatch[] {
+  if (!raw || typeof raw !== 'object') return [];
+  const data = (raw as Record<string, unknown>).data as Record<string, unknown>;
+  if (!data) return [];
+  const matchList = data.matchList;
+  if (!Array.isArray(matchList)) return [];
+
+  return matchList
+    .filter((m: unknown) => m && typeof m === 'object')
+    .map((m: unknown) => {
+      const match = m as Record<string, unknown>;
+      const name = String(match.name ?? '');
+      const parts = name.split(' vs ');
+      return {
+        cricapiMatchId: String(match.id ?? ''),
+        homeTeam: parts[0]?.trim() ?? 'TBA',
+        awayTeam: parts[1]?.split(',')[0]?.trim() ?? 'TBA',
+        matchDate: new Date(String(match.date ?? '') + 'T00:00:00Z'),
+      };
+    })
+    .filter(m => m.cricapiMatchId && !isNaN(m.matchDate.getTime()));
+}
 
 export async function fetchUpcomingMatches(apiKey: string): Promise<ParsedMatch[]> {
-  const res = await fetch(`${BASE}/matches?apikey=${apiKey}&offset=0`);
+  const res = await fetch(`${BASE}/series_info?apikey=${apiKey}&id=${IPL_SERIES_ID}`);
   const json = await res.json();
-  return parseUpcomingMatches(json);
+  return parseSeriesMatches(json);
 }
 
 export async function fetchMatchResult(apiKey: string, matchId: string): Promise<string | null> {
