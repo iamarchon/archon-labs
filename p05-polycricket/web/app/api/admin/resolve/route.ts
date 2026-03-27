@@ -10,6 +10,9 @@ export async function POST(req: NextRequest) {
   if (!adminIds.includes(userId)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { market_id, outcome } = await req.json();
+  if (!market_id) {
+    return NextResponse.json({ error: 'Missing market_id' }, { status: 400 });
+  }
   if (!['yes', 'no'].includes(outcome)) {
     return NextResponse.json({ error: 'Invalid outcome' }, { status: 400 });
   }

@@ -210,11 +210,16 @@ begin
     raise exception 'Already claimed';
   end if;
 
-  update users set coins = coins + 100, last_bonus_at = now() where id = p_user_id;
+  update users set coins = coins + 100, last_bonus_at = now() where id = p_user_id
+  returning coins into v_user.coins;
 
   insert into coin_transactions (user_id, amount, type)
   values (p_user_id, 100, 'bonus');
 
-  return json_build_object('coins', v_user.coins + 100);
+  return json_build_object('coins', v_user.coins);
 end;
 $$;
+
+revoke execute on function claim_daily_bonus(text) from authenticated, anon;
+
+revoke execute on function place_bet(uuid, text, integer, text) from authenticated, anon;
