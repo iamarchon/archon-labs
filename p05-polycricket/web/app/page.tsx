@@ -23,12 +23,13 @@ export default function Home() {
   useEffect(() => {
     fetch('/api/markets?status=open')
       .then(r => r.json())
-      .then(setMarkets);
+      .then(setMarkets)
+      .catch(err => console.error('[markets] fetch failed:', err));
   }, []);
 
   useEffect(() => {
     if (isSignedIn) {
-      fetch('/api/user', { method: 'POST' });
+      fetch('/api/user', { method: 'POST' }).catch(() => {});
     }
   }, [isSignedIn]);
 
