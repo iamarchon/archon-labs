@@ -34,7 +34,7 @@ export async function runGenerateMarkets(): Promise<void> {
 
   for (const match of upcoming) {
     const hoursUntil = (match.matchDate.getTime() - Date.now()) / (1000 * 60 * 60);
-    if (hoursUntil < 0 || hoursUntil > 25) continue;
+    if (hoursUntil < 0 || hoursUntil > 72) continue;
 
     const { data: existing } = await supabase
       .from('matches')
