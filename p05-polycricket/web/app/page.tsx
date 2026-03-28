@@ -76,35 +76,42 @@ export default function Home() {
     <div className="max-w-7xl mx-auto px-4 py-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-900">All markets</h2>
-        <span className="text-sm text-gray-400">{filtered.length} open</span>
+        <h2
+          className="text-xl font-bold text-gray-900"
+          style={{ letterSpacing: '-0.025em' }}
+        >
+          All markets
+        </h2>
+        <span className="text-[13px] text-gray-400">{filtered.length} open</span>
       </div>
 
-      {/* Filter pills row */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6" style={{ scrollbarWidth: 'none' }}>
+      {/* Filter pills row — Polymarket style */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-6" style={{ scrollbarWidth: 'none' }}>
         {SORT_OPTS.map(opt => (
           <button
             key={opt}
             onClick={() => setSort(opt)}
-            className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              sort === opt
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+            className="shrink-0 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all"
+            style={{
+              background: sort === opt ? '#111827' : '#F3F4F6',
+              color: sort === opt ? '#fff' : '#374151',
+              letterSpacing: '-0.01em',
+            }}
           >
             {opt}
           </button>
         ))}
 
-        {teams.length > 0 && <div className="w-px h-5 bg-gray-200 mx-1 shrink-0" />}
+        {teams.length > 0 && <div className="w-px h-5 mx-1 shrink-0" style={{ background: '#e5e7eb' }} />}
 
         <button
           onClick={() => setTeamFilter('All')}
-          className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-            teamFilter === 'All'
-              ? 'bg-gray-900 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
+          className="shrink-0 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all"
+          style={{
+            background: teamFilter === 'All' ? '#111827' : '#F3F4F6',
+            color: teamFilter === 'All' ? '#fff' : '#374151',
+            letterSpacing: '-0.01em',
+          }}
         >
           All Teams
         </button>
@@ -115,11 +122,12 @@ export default function Home() {
             <button
               key={team}
               onClick={() => setTeamFilter(team)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                teamFilter === team
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              className="shrink-0 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all"
+              style={{
+                background: teamFilter === team ? '#111827' : '#F3F4F6',
+                color: teamFilter === team ? '#fff' : '#374151',
+                letterSpacing: '-0.01em',
+              }}
             >
               {abbr}
             </button>

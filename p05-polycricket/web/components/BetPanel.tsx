@@ -8,6 +8,7 @@ interface Market {
   yes_pool: number;
   no_pool: number;
   total_pool: number;
+  matches?: { home_team: string; away_team: string } | null;
 }
 
 export default function BetPanel({
@@ -30,10 +31,14 @@ export default function BetPanel({
   const noPrice = getNoPrice(market.yes_pool, market.no_pool);
   const sidePool = side === 'yes' ? market.yes_pool : market.no_pool;
   const amountNum = parseInt(amount) || 0;
-  const estimatedPayout = amountNum > 0
+  const payout = amountNum > 0
     ? calculatePayout(amountNum, sidePool + amountNum, market.total_pool + amountNum)
     : 0;
-  const profit = estimatedPayout - amountNum;
+
+  const homeTeam = market.matches?.home_team ?? 'YES';
+  const awayTeam = market.matches?.away_team ?? 'NO';
+  const homeAbbr = homeTeam.split(' ').map(w => w[0]).join('').slice(0, 3).toUpperCase();
+  const awayAbbr = awayTeam.split(' ').map(w => w[0]).join('').slice(0, 3).toUpperCase();
 
   function addAmount(n: number) {
     setAmount(String((parseInt(amount) || 0) + n));
@@ -41,7 +46,7 @@ export default function BetPanel({
 
   async function handleTrade() {
     setError('');
-    if (!amountNum || amountNum < 1) { setError('Enter an amount'); return; }
+    if (!amountNum || amountNum < 1) { setError('Enter an amount to trade'); return; }
     setLoading(true);
     const res = await fetch('/api/bets', {
       method: 'POST',
@@ -50,133 +55,179 @@ export default function BetPanel({
     });
     const data = await res.json();
     setLoading(false);
-    if (!res.ok) { setError(data.error ?? 'Failed'); return; }
+    if (!res.ok) { setError(data.error ?? 'Trade failed'); return; }
     onSuccess();
     onClose();
   }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.4)' }}
       onClick={onClose}
     >
+      {/* Panel */}
       <div
-        className="bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl"
+        className="w-full sm:w-[340px] bg-white sm:rounded-2xl rounded-t-2xl overflow-hidden"
+        style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Drag handle on mobile */}
-        <div className="flex justify-center pt-3 pb-1 sm:hidden">
-          <div className="w-10 h-1 bg-gray-200 rounded-full" />
+        {/* Mobile drag handle */}
+        <div className="sm:hidden flex justify-center pt-2.5 pb-1">
+          <div className="w-8 h-1 rounded-full bg-gray-200" />
         </div>
 
-        <div className="p-5">
-          {/* Market title */}
-          <p className="text-[11px] font-medium text-gray-500 mb-1 line-clamp-1">{market.title}</p>
+        <div className="p-4">
+          {/* Header — team icon + title */}
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-700 to-green-900 flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-[9px] font-bold">🏏</span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-900 truncate">
+                {homeAbbr} vs {awayAbbr}
+              </p>
+              <span
+                className="inline-block text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                style={{ background: '#dcfce7', color: '#166534' }}
+              >
+                {homeAbbr}
+              </span>
+            </div>
+          </div>
 
           {/* Buy / Sell tabs */}
-          <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-4">
-            {(['buy', 'sell'] as const).map(tab => (
-              <button
-                key={tab}
-                disabled={tab === 'sell'}
-                className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all capitalize ${
-                  tab === 'buy'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                {tab === 'sell' ? 'Sell (soon)' : 'Buy'}
-              </button>
-            ))}
+          <div className="flex items-center border-b border-gray-100 mb-4">
+            <button className="text-sm font-semibold text-gray-900 pb-2.5 mr-4 border-b-2 border-gray-900 -mb-px">
+              Buy
+            </button>
+            <button className="text-sm text-gray-400 pb-2.5 mr-auto cursor-not-allowed">
+              Sell
+            </button>
+            <span className="text-xs text-gray-500 flex items-center gap-1 pb-2">
+              Market
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </span>
           </div>
 
-          {/* YES / NO outcome buttons */}
+          {/* Outcome buttons — exact Polymarket style */}
           <div className="grid grid-cols-2 gap-2 mb-4">
+            {/* YES / home team */}
             <button
               onClick={() => setSide('yes')}
-              className={`py-3 rounded-xl font-semibold text-sm transition-all ${
-                side === 'yes'
-                  ? 'bg-green-500 text-white ring-2 ring-green-500 ring-offset-2'
-                  : 'bg-green-50 text-green-700 hover:bg-green-100'
-              }`}
+              className="py-3 px-4 rounded-lg text-sm font-semibold transition-all"
+              style={{
+                background: side === 'yes' ? '#166534' : '#F3F4F6',
+                color: side === 'yes' ? '#fff' : '#374151',
+              }}
             >
-              <span className="block text-[10px] font-normal opacity-70 mb-0.5">YES</span>
-              {Math.round(yesPrice * 100)}¢
+              {homeAbbr} {Math.round(yesPrice * 100)}¢
             </button>
+            {/* NO / away team */}
             <button
               onClick={() => setSide('no')}
-              className={`py-3 rounded-xl font-semibold text-sm transition-all ${
-                side === 'no'
-                  ? 'bg-red-500 text-white ring-2 ring-red-500 ring-offset-2'
-                  : 'bg-red-50 text-red-600 hover:bg-red-100'
-              }`}
+              className="py-3 px-4 rounded-lg text-sm font-semibold transition-all"
+              style={{
+                background: side === 'no' ? '#166534' : '#F3F4F6',
+                color: side === 'no' ? '#fff' : '#374151',
+              }}
             >
-              <span className="block text-[10px] font-normal opacity-70 mb-0.5">NO</span>
-              {Math.round(noPrice * 100)}¢
+              {awayAbbr} {Math.round(noPrice * 100)}¢
             </button>
           </div>
 
-          {/* Amount input */}
-          <div className="mb-3">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-medium text-gray-500">Amount</span>
-              {amountNum > 0 && (
-                <span className="text-xs text-gray-400">
-                  Win up to <span className="text-gray-800 font-semibold">${estimatedPayout}</span>
-                  {profit > 0 && <span className="text-green-600 ml-1">(+${profit})</span>}
-                </span>
+          {/* Amount row */}
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-gray-700">Amount</span>
+            <div className="flex items-center">
+              {amountNum > 0 ? (
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  className="text-2xl font-semibold text-gray-900 text-right w-28 outline-none tabular-nums"
+                  style={{ letterSpacing: '-0.03em' }}
+                  autoFocus
+                />
+              ) : (
+                <button
+                  onClick={() => setAmount('1')}
+                  className="text-2xl font-semibold text-gray-300 tabular-nums"
+                  style={{ letterSpacing: '-0.03em' }}
+                >
+                  $0
+                </button>
               )}
-            </div>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
-              <input
-                type="number"
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                placeholder="0"
-                className="w-full border-2 border-gray-200 focus:border-blue-500 rounded-xl pl-7 pr-3 py-3 text-lg font-semibold text-gray-900 outline-none transition-colors"
-              />
+              {amountNum > 0 && (
+                <button
+                  onClick={() => setAmount('')}
+                  className="ml-2 text-gray-300 hover:text-gray-500"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <circle cx="8" cy="8" r="7" fill="#E5E7EB"/>
+                    <path d="M5.5 5.5L10.5 10.5M10.5 5.5L5.5 10.5" stroke="#6B7280" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Quick add buttons */}
-          <div className="grid grid-cols-5 gap-1.5 mb-4">
+          {/* Quick add pills — exactly like Polymarket */}
+          <div className="flex gap-1.5 mb-4">
             {[1, 5, 10, 100].map(v => (
               <button
                 key={v}
                 onClick={() => addAmount(v)}
-                className="text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 py-2 rounded-lg transition-colors"
+                className="flex-1 text-xs font-semibold py-1.5 rounded-lg transition-colors"
+                style={{ background: '#F3F4F6', color: '#374151' }}
+                onMouseEnter={e => (e.currentTarget.style.background = '#E5E7EB')}
+                onMouseLeave={e => (e.currentTarget.style.background = '#F3F4F6')}
               >
                 +${v}
               </button>
             ))}
             <button
               onClick={() => setAmount('1000')}
-              className="text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 py-2 rounded-lg transition-colors"
+              className="flex-1 text-xs font-semibold py-1.5 rounded-lg transition-colors"
+              style={{ background: '#F3F4F6', color: '#374151' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#E5E7EB')}
+              onMouseLeave={e => (e.currentTarget.style.background = '#F3F4F6')}
             >
               Max
             </button>
           </div>
 
-          {error && (
-            <p className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2 mb-3">{error}</p>
+          {/* Payout preview */}
+          {amountNum > 0 && payout > 0 && (
+            <div className="flex justify-between items-center text-xs text-gray-500 mb-3 bg-gray-50 rounded-lg px-3 py-2">
+              <span>Potential return</span>
+              <span className="font-semibold text-gray-800">${payout} <span className="text-green-600">(+${payout - amountNum})</span></span>
+            </div>
           )}
 
-          {/* Trade button */}
+          {error && (
+            <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{error}</p>
+          )}
+
+          {/* Trade button — exact Polymarket blue */}
           <button
             onClick={handleTrade}
             disabled={loading || amountNum < 1}
-            className={`w-full py-3.5 rounded-xl font-bold text-sm transition-all ${
-              amountNum >= 1
-                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 active:scale-[0.98]'
-                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-            }`}
+            className="w-full text-sm font-semibold text-white rounded-lg py-3 transition-all"
+            style={{
+              background: amountNum >= 1 ? '#2563EB' : '#E5E7EB',
+              color: amountNum >= 1 ? '#fff' : '#9CA3AF',
+              cursor: amountNum >= 1 ? 'pointer' : 'not-allowed',
+            }}
           >
-            {loading ? 'Placing...' : amountNum >= 1 ? `Buy ${side.toUpperCase()} · $${amountNum}` : 'Trade'}
+            {loading ? 'Placing trade...' : 'Trade'}
           </button>
 
-          <p className="text-center text-[10px] text-gray-400 mt-3">
-            Paper trading · No real money · Just for fun
+          <p className="text-center text-[11px] text-gray-400 mt-3">
+            By trading, you agree to our{' '}
+            <span className="underline cursor-pointer">Terms of Use</span>.
           </p>
         </div>
       </div>
