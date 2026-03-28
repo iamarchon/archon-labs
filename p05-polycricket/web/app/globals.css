@@ -48,3 +48,15 @@ h1, h2, h3 {
 .bet-toast-enter {
   animation: slideInUp 0.2s ease-out forwards;
 }
+
+/* Live card floaters */
+@keyframes floatUp {
+  0%   { opacity: 1;   transform: translateY(0px); }
+  20%  { opacity: 1;   transform: translateY(-6px); }
+  80%  { opacity: 0.4; transform: translateY(-28px); }
+  100% { opacity: 0;   transform: translateY(-40px); }
+}
+.live-floater {
+  animation: floatUp 2.4s ease-out forwards;
+  pointer-events: none;
+}
