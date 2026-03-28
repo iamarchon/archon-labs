@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
-import { generateOrderBook } from '@/lib/amm';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -14,14 +13,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (error || !market) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const { data: recentBets } = await supabase
+  const { data: bets } = await supabase
     .from('bets')
     .select('side, coins_wagered, price_at_bet, created_at')
     .eq('market_id', id)
-    .order('created_at', { ascending: false })
-    .limit(10);
+    .order('created_at', { ascending: true })
+    .limit(500);
 
-  const orderBook = generateOrderBook(market.yes_pool, market.no_pool);
-
-  return NextResponse.json({ ...market, orderBook, recentBets: recentBets ?? [] });
+  return NextResponse.json({ ...market, bets: bets ?? [] });
 }

@@ -3,9 +3,18 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import MarketChart from '@/components/MarketChart';
-import OrderBook from '@/components/OrderBook';
+import ActivityFeed from '@/components/ActivityFeed';
 import BetPanel from '@/components/BetPanel';
-import { getYesPrice, getNoPrice, OrderBookEntry } from '@/lib/amm';
+import BetTicker, { useBetTicker } from '@/components/BetTicker';
+import { getYesPrice } from '@/lib/amm';
+import { createSupabaseClient } from '@/lib/supabase-client';
+
+interface Bet {
+  side: string;
+  coins_wagered: number;
+  price_at_bet: number;
+  created_at: string;
+}
 
 interface MarketDetail {
   id: string;
@@ -16,140 +25,242 @@ interface MarketDetail {
   status: string;
   resolves_at: string;
   matches: { home_team: string; away_team: string; match_date: string } | null;
-  orderBook: { asks: OrderBookEntry[]; bids: OrderBookEntry[] };
-  recentBets: { side: string; coins_wagered: number; price_at_bet: number; created_at: string }[];
+  bets: Bet[];
 }
 
-const TABS = ['ORDER BOOK', 'GRAPH', 'RESOLUTION'];
+const TABS = ['ACTIVITY', 'GRAPH', 'RESOLUTION'];
 
 export default function MarketPage() {
   const { id } = useParams<{ id: string }>();
   const { isSignedIn } = useUser();
   const [market, setMarket] = useState<MarketDetail | null>(null);
-  const [activeTab, setActiveTab] = useState('ORDER BOOK');
+  const [activeTab, setActiveTab] = useState('ACTIVITY');
   const [betSide, setBetSide] = useState<'yes' | 'no' | null>(null);
+  const ticker = useBetTicker();
 
   function load() {
-    fetch(`/api/markets/${id}`).then(r => r.json()).then(setMarket).catch(err => console.error('[market] fetch failed:', err));
+    fetch(`/api/markets/${id}`)
+      .then(r => r.json())
+      .then(setMarket)
+      .catch(err => console.error('[market] fetch failed:', err));
   }
 
-  useEffect(load, [id]);
+  useEffect(() => {
+    load();
+
+    const supabase = createSupabaseClient();
+    const channel = supabase
+      .channel(`market-bets-${id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'bets', filter: `market_id=eq.${id}` },
+        (payload) => {
+          const bet = payload.new as Bet;
+          ticker.push(bet.side as 'yes' | 'no', bet.coins_wagered);
+          load();
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [id]);
 
   if (!market) return (
     <div className="max-w-5xl mx-auto px-6 py-10">
-      <p className="text-[10px] tracking-widest uppercase text-gray-400">Loading...</p>
+      <div className="animate-pulse space-y-4">
+        <div className="h-4 bg-gray-100 rounded w-32" />
+        <div className="h-8 bg-gray-100 rounded w-3/4" />
+        <div className="h-20 bg-gray-100 rounded" />
+      </div>
     </div>
   );
 
   const yesP = Math.round(getYesPrice(market.yes_pool, market.no_pool) * 100);
   const noP = 100 - yesP;
+  const totalVol = market.total_pool;
 
-  // Mock chart data from recent bets
-  const chartData = market.recentBets.slice().reverse().map((b) => ({
-    time: new Date(b.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-    yes: Math.round(b.price_at_bet * 100),
-    no: 100 - Math.round(b.price_at_bet * 100),
-  }));
-  if (chartData.length === 0) chartData.push({ time: 'NOW', yes: yesP, no: noP });
+  function openBet(side: 'yes' | 'no') {
+    if (!isSignedIn) { window.location.href = '/sign-in'; return; }
+    setBetSide(side);
+  }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-10">
-      <div className="flex flex-col lg:flex-row gap-10">
-        {/* LEFT */}
-        <div className="flex-1 min-w-0">
-          {market.matches && (
-            <p className="text-[10px] tracking-widest uppercase text-gray-400 mb-2">
-              {market.matches.home_team} vs {market.matches.away_team}
-            </p>
-          )}
-          <h1 className="text-2xl font-medium mb-1">{market.title}</h1>
-          <p className="text-[10px] tracking-widest uppercase text-gray-400 mb-8">
-            {market.total_pool.toLocaleString()} coins Vol. · Resolves {new Date(market.resolves_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-          </p>
+    <>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* LEFT — main content */}
+          <div className="flex-1 min-w-0">
 
-          {/* Outcome row */}
-          <div className="flex items-center gap-6 mb-8 py-4 border-y border-gray-100">
-            <div>
-              <p className="text-4xl font-light">{yesP}%</p>
-              <p className="text-[9px] tracking-widest uppercase text-gray-400 mt-1">YES</p>
-            </div>
-            <div className="flex-1 h-1 flex">
-              <div className="bg-green-500 h-full transition-all" style={{ width: `${yesP}%` }} />
-              <div className="bg-red-500 h-full transition-all" style={{ width: `${noP}%` }} />
-            </div>
-            <div className="text-right">
-              <p className="text-4xl font-light">{noP}%</p>
-              <p className="text-[9px] tracking-widest uppercase text-gray-400 mt-1">NO</p>
-            </div>
-          </div>
-
-          {/* Buy row */}
-          <div className="flex gap-3 mb-8">
-            <button
-              onClick={() => isSignedIn ? setBetSide('yes') : (window.location.href = '/sign-in')}
-              className="flex-1 bg-green-600 text-white text-[10px] tracking-widest uppercase py-3 hover:bg-green-700 transition-colors"
-            >
-              BUY YES {yesP}¢
-            </button>
-            <button
-              onClick={() => isSignedIn ? setBetSide('no') : (window.location.href = '/sign-in')}
-              className="flex-1 bg-red-500 text-white text-[10px] tracking-widest uppercase py-3 hover:bg-red-600 transition-colors"
-            >
-              BUY NO {noP}¢
-            </button>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex gap-8 border-b border-gray-100 mb-6">
-            {TABS.map(t => (
-              <button
-                key={t}
-                onClick={() => setActiveTab(t)}
-                className={`text-[10px] tracking-widest uppercase pb-3 transition-colors ${
-                  activeTab === t ? 'text-black border-b-2 border-black -mb-px' : 'text-gray-400 hover:text-black'
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-
-          {activeTab === 'ORDER BOOK' && (
-            <OrderBook asks={market.orderBook.asks} bids={market.orderBook.bids} />
-          )}
-          {activeTab === 'GRAPH' && <MarketChart data={chartData} />}
-          {activeTab === 'RESOLUTION' && (
-            <div>
-              <p className="text-[10px] tracking-widest uppercase text-gray-400 mb-2">Resolution Criteria</p>
-              <p className="text-sm text-gray-600">
-                This market resolves YES if the outcome matches the match result from CricAPI after the match ends.
-                Markets are auto-resolved within 10 minutes of match completion.
+            {/* Breadcrumb */}
+            {market.matches && (
+              <p className="text-xs text-gray-400 mb-3">
+                IPL 2026 · {market.matches.home_team} vs {market.matches.away_team}
               </p>
-            </div>
-          )}
-        </div>
+            )}
 
-        {/* RIGHT — sticky buy panel on desktop */}
-        <div className="lg:w-72 lg:sticky lg:top-6 lg:self-start">
-          <div className="border border-gray-200 p-6">
-            <p className="text-[10px] tracking-widest uppercase text-gray-400 mb-4">Trade</p>
-            <div className="flex gap-2 mb-4">
+            {/* Title */}
+            <h1 className="text-xl font-semibold text-gray-900 mb-1 leading-snug">{market.title}</h1>
+
+            {/* Meta row */}
+            <div className="flex items-center gap-3 flex-wrap mb-6">
+              <span className="text-xs text-gray-400">
+                ${totalVol.toLocaleString()} Vol.
+              </span>
+              <span className="text-xs text-gray-300">·</span>
+              <span className="text-xs text-gray-400">
+                {market.bets.length} trades
+              </span>
+              <span className="text-xs text-gray-300">·</span>
+              <span className="text-xs text-gray-400">
+                Resolves {new Date(market.resolves_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+              </span>
+              {market.status === 'open' && (
+                <span className="text-[10px] font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                  OPEN
+                </span>
+              )}
+            </div>
+
+            {/* Probability bar */}
+            <div className="mb-6">
+              <div className="flex justify-between items-end mb-2">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold text-green-600">{yesP}%</span>
+                  <span className="text-sm text-gray-400">YES</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-sm text-gray-400">NO</span>
+                  <span className="text-3xl font-bold text-red-500">{noP}%</span>
+                </div>
+              </div>
+              <div className="h-2 rounded-full overflow-hidden bg-red-100">
+                <div
+                  className="h-full bg-green-500 rounded-full transition-all duration-500"
+                  style={{ width: `${yesP}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Buy row — visible on mobile, hidden on desktop (desktop uses sidebar) */}
+            <div className="flex gap-2 mb-6 lg:hidden">
               <button
-                onClick={() => isSignedIn ? setBetSide('yes') : (window.location.href = '/sign-in')}
-                className="flex-1 bg-green-600 text-white text-[10px] tracking-widest uppercase py-2.5 hover:bg-green-700"
+                onClick={() => openBet('yes')}
+                className="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold text-sm py-3 rounded-xl transition-colors shadow-sm"
               >
-                YES {yesP}¢
+                Buy YES · {yesP}¢
               </button>
               <button
-                onClick={() => isSignedIn ? setBetSide('no') : (window.location.href = '/sign-in')}
-                className="flex-1 bg-red-500 text-white text-[10px] tracking-widest uppercase py-2.5 hover:bg-red-600"
+                onClick={() => openBet('no')}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold text-sm py-3 rounded-xl transition-colors shadow-sm"
               >
-                NO {noP}¢
+                Buy NO · {noP}¢
               </button>
             </div>
-            <p className="text-[9px] text-gray-400 tracking-wide">
-              Volume: {market.total_pool.toLocaleString()} coins<br />
-              Status: {market.status.toUpperCase()}
+
+            {/* Tabs */}
+            <div className="flex gap-6 border-b border-gray-100 mb-5">
+              {TABS.map(t => (
+                <button
+                  key={t}
+                  onClick={() => setActiveTab(t)}
+                  className={`text-xs font-semibold tracking-wide pb-3 transition-colors ${
+                    activeTab === t
+                      ? 'text-gray-900 border-b-2 border-gray-900 -mb-px'
+                      : 'text-gray-400 hover:text-gray-700'
+                  }`}
+                >
+                  {t}
+                  {t === 'ACTIVITY' && market.bets.length > 0 && (
+                    <span className="ml-1.5 text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">
+                      {market.bets.length}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {activeTab === 'ACTIVITY' && <ActivityFeed bets={market.bets} />}
+            {activeTab === 'GRAPH' && <MarketChart bets={market.bets} currentYesP={yesP} />}
+            {activeTab === 'RESOLUTION' && (
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Resolution Criteria</p>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  This market resolves YES if the outcome matches the match result from CricAPI after the match ends.
+                  Markets are auto-resolved within 10 minutes of match completion.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT — sticky trade panel, desktop only */}
+          <div className="hidden lg:block lg:w-72 lg:sticky lg:top-20 lg:self-start">
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+              {/* Panel header */}
+              <div className="px-4 pt-4 pb-3 border-b border-gray-100">
+                <p className="text-xs font-semibold text-gray-500 mb-3">Trade</p>
+                {/* Buy/Sell tabs */}
+                <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+                  <button className="flex-1 py-1.5 text-xs font-semibold rounded-md bg-white text-gray-900 shadow-sm">Buy</button>
+                  <button className="flex-1 py-1.5 text-xs font-semibold rounded-md text-gray-400 cursor-not-allowed">Sell</button>
+                </div>
+              </div>
+
+              <div className="p-4">
+                {/* Outcome buttons */}
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <button
+                    onClick={() => openBet('yes')}
+                    className="py-3 rounded-xl bg-green-50 hover:bg-green-500 hover:text-white text-green-700 font-semibold text-sm transition-all group"
+                  >
+                    <span className="block text-[10px] font-normal opacity-60 mb-0.5">YES</span>
+                    {yesP}¢
+                  </button>
+                  <button
+                    onClick={() => openBet('no')}
+                    className="py-3 rounded-xl bg-red-50 hover:bg-red-500 hover:text-white text-red-600 font-semibold text-sm transition-all"
+                  >
+                    <span className="block text-[10px] font-normal opacity-60 mb-0.5">NO</span>
+                    {noP}¢
+                  </button>
+                </div>
+
+                {/* Quick amounts */}
+                <p className="text-[10px] text-gray-400 mb-2">Quick amounts</p>
+                <div className="grid grid-cols-4 gap-1.5 mb-4">
+                  {[1, 5, 10, 100].map(v => (
+                    <button
+                      key={v}
+                      onClick={() => openBet('yes')}
+                      className="text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 py-2 rounded-lg transition-colors"
+                    >
+                      ${v}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Stats */}
+                <div className="border-t border-gray-100 pt-3 space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-400">Volume</span>
+                    <span className="font-medium text-gray-700">${totalVol.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-400">Trades</span>
+                    <span className="font-medium text-gray-700">{market.bets.length}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-400">Status</span>
+                    <span className={`font-medium capitalize ${market.status === 'open' ? 'text-green-600' : 'text-gray-500'}`}>
+                      {market.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Paper trading disclaimer */}
+            <p className="text-center text-[10px] text-gray-400 mt-3">
+              Paper trading · $1,000 starting balance
             </p>
           </div>
         </div>
@@ -163,6 +274,8 @@ export default function MarketPage() {
           onSuccess={load}
         />
       )}
-    </div>
+
+      <BetTicker items={ticker.items} />
+    </>
   );
 }

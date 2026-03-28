@@ -32,7 +32,7 @@ export default async function Portfolio() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border border-gray-100 mb-12">
         {[
-          { label: 'COINS', value: (user?.coins ?? 0).toLocaleString() },
+          { label: 'BALANCE', value: `$${(user?.coins ?? 0).toLocaleString()}` },
           { label: 'OPEN BETS', value: open.length },
           { label: 'TOTAL WON', value: totalWon.toLocaleString() },
           { label: 'WIN RATE', value: `${winRate}%` },
@@ -64,7 +64,7 @@ export default async function Portfolio() {
                 <span className={`text-xs font-medium ${b.side === 'yes' ? 'text-green-600' : 'text-red-500'}`}>
                   {b.side.toUpperCase()}
                 </span>
-                <span className="text-xs">{b.coins_wagered.toLocaleString()}</span>
+                <span className="text-xs">${b.coins_wagered.toLocaleString()}</span>
                 <span className="text-xs">{currentP}¢</span>
               </div>
             );
@@ -87,9 +87,9 @@ export default async function Portfolio() {
               <span className={`text-xs font-medium ${b.side === 'yes' ? 'text-green-600' : 'text-red-500'}`}>
                 {b.side.toUpperCase()}
               </span>
-              <span className="text-xs">{b.coins_wagered.toLocaleString()}</span>
+              <span className="text-xs">${b.coins_wagered.toLocaleString()}</span>
               <span className={`text-xs font-medium ${(b.payout ?? 0) > b.coins_wagered ? 'text-green-600' : 'text-gray-400'}`}>
-                {(b.payout ?? 0).toLocaleString()}
+                ${(b.payout ?? 0).toLocaleString()}
               </span>
             </div>
           ))}

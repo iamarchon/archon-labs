@@ -48,9 +48,9 @@ function TeamBadge({ team }: { team: string }) {
 }
 
 function formatVol(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return String(n);
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return `$${n}`;
 }
 
 export default function MarketCard({
@@ -86,7 +86,7 @@ export default function MarketCard({
           )}
           {market.total_pool > 0 && (
             <span className="text-xs text-gray-400 shrink-0">
-              · {formatVol(market.total_pool)} coins
+              · {formatVol(market.total_pool)} vol
             </span>
           )}
 
