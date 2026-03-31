@@ -65,13 +65,20 @@ export function useLeaderboard({ fixtureId, entries = [], enabled = true }: UseL
       return;
     }
 
+    if (!supabase) {
+      setError("Supabase client unavailable");
+      setLoading(false);
+      return;
+    }
+
+    const client = supabase;
     let cancelled = false;
 
     async function loadInitialStats() {
       setLoading(true);
       setError(null);
 
-      const { data, error: statsError } = await supabase
+      const { data, error: statsError } = await client
         .from("player_match_stats")
         .select("player_id, runs, wickets, fours, sixes, dots, maidens")
         .eq("fixture_id", fixtureId);
@@ -92,7 +99,7 @@ export function useLeaderboard({ fixtureId, entries = [], enabled = true }: UseL
 
     void loadInitialStats();
 
-    const channel = supabase
+    const channel = client
       .channel(`leaderboard:${fixtureId}`)
       .on(
         "postgres_changes",
@@ -110,7 +117,7 @@ export function useLeaderboard({ fixtureId, entries = [], enabled = true }: UseL
 
     return () => {
       cancelled = true;
-      void supabase.removeChannel(channel);
+      void client.removeChannel(channel);
     };
   }, [enabled, fixtureId]);
 
