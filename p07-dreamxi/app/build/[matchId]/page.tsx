@@ -1,20 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { notFound, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams, notFound } from "next/navigation";
 import { BottomNav, MatchPill, PitchView, PlayerRow } from "@/components/dreamxi";
 import { getFixtureById } from "@/lib/data/fixtures";
 import { getMatchPlayers } from "@/lib/data/players";
 import { useTeamBuilder } from "@/lib/stores/teamBuilder";
 
 export default function BuildTeamPage() {
+  const router = useRouter();
   const params = useParams<{ matchId: string }>();
+  const searchParams = useSearchParams();
   const fixture = getFixtureById(Number(params.matchId));
 
   if (!fixture) {
     notFound();
   }
 
+  const fixtureId = fixture.id;
+  const contestId = searchParams.get("contest") ?? "mega";
   const matchPlayers = getMatchPlayers(fixture.home, fixture.away);
   const selected = useTeamBuilder((state) => state.selected);
   const captain = useTeamBuilder((state) => state.captain);
@@ -27,6 +31,11 @@ export default function BuildTeamPage() {
 
   const selectedPlayers = matchPlayers.filter((player) => selected.includes(player.id));
 
+  function handleConfirm() {
+    if (!valid) return;
+    router.push(`/leaderboard/${fixtureId}?contest=${contestId}&entry=confirmed`);
+  }
+
   return (
     <main className="container-mobile px-4 pb-20 pt-6">
       <section className="space-y-5">
@@ -34,6 +43,10 @@ export default function BuildTeamPage() {
           <p className="text-xs uppercase tracking-[0.25em] text-violet-300">Team builder</p>
           <h1 className="mt-2 text-3xl font-bold text-slate-50">Build your XI</h1>
           <p className="mt-2 text-sm text-slate-400">Select 11 players, stay under 100 credits, then assign captain and vice-captain.</p>
+        </div>
+
+        <div className="rounded-3xl border border-violet-500/20 bg-violet-500/10 p-4 text-sm text-violet-100">
+          Building entry for contest <span className="font-semibold">{contestId}</span>. Confirming your team will route you to the contest leaderboard prototype.
         </div>
 
         <MatchPill fixture={fixture} />
@@ -83,8 +96,15 @@ export default function BuildTeamPage() {
               <p className="mt-2 text-sm font-medium text-slate-200">Status: {valid ? "Ready to confirm" : "Incomplete team"}</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button disabled={!valid} className="rounded-full bg-violet-500 px-5 py-3 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40">Confirm team</button>
-              <Link href={`/play/${fixture.id}`} className="rounded-full border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-300">Back to lobby</Link>
+              <button
+                type="button"
+                onClick={handleConfirm}
+                disabled={!valid}
+                className="rounded-full bg-violet-500 px-5 py-3 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Confirm team
+              </button>
+              <Link href={`/play/${fixtureId}`} className="rounded-full border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-300">Back to lobby</Link>
             </div>
           </div>
         </div>

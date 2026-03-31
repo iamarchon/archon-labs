@@ -2,12 +2,12 @@ import type { LeaderboardEntry } from "@/types";
 
 interface LeaderboardProps {
   entries: LeaderboardEntry[];
-  username?: string;
 }
+
 
 const COIN_PRIZES: Record<number, number> = { 1: 5000, 2: 2000, 3: 1000 };
 
-export default function Leaderboard({ entries, username }: LeaderboardProps) {
+export default function Leaderboard({ entries }: LeaderboardProps) {
   const userEntry = entries.find((e) => e.isUser);
   const others = entries.filter((e) => !e.isUser);
 

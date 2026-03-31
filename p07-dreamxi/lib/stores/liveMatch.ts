@@ -22,7 +22,7 @@ interface LiveMatchStore {
   reset: () => void;
 }
 
-export const useLiveMatch = create<LiveMatchStore>((set, get) => ({
+export const useLiveMatch = create<LiveMatchStore>((set) => ({
   liveStats: {},
   matchLog: [],
   over: 0,
@@ -34,7 +34,7 @@ export const useLiveMatch = create<LiveMatchStore>((set, get) => ({
   leaderboard: [],
 
   updateStat: (playerId, updates) =>
-    set(state => ({
+    set((state) => ({
       liveStats: {
         ...state.liveStats,
         [playerId]: { ...state.liveStats[playerId], ...updates },
@@ -42,20 +42,20 @@ export const useLiveMatch = create<LiveMatchStore>((set, get) => ({
     })),
 
   addLog: (event) =>
-    set(state => ({ matchLog: [event, ...state.matchLog.slice(0, 79)] })),
+    set((state) => ({ matchLog: [event, ...state.matchLog.slice(0, 79)] })),
 
   addHomeRuns: (runs) =>
-    set(state => ({ homeScore: state.homeScore + runs })),
+    set((state) => ({ homeScore: state.homeScore + runs })),
 
   addHomeWicket: () =>
-    set(state => {
+    set((state) => {
       const nw = state.homeWickets + 1;
       if (nw >= 10) return { homeWickets: nw, running: false };
       return { homeWickets: nw };
     }),
 
   advanceBall: () =>
-    set(state => {
+    set((state) => {
       const nextBall = (state.ball + 1) % 6;
       const nextOver = nextBall === 0 ? state.over + 1 : state.over;
       const done = nextOver >= 20;

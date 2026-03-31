@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
+import { usePathname } from "next/navigation";
 import { TEAMS } from "@/lib/data/teams";
 import type { Fixture, LeaderboardEntry, LiveStats, MatchEvent, Player } from "@/types";
 
@@ -87,23 +88,42 @@ export function ContestCard({ fixture }: { fixture: Fixture }) {
   );
 }
 
+function getActiveMatchId(pathname: string): string {
+  const match = pathname.match(/^\/(play|build|live|leaderboard)\/([^/?#]+)/);
+  return match?.[2] ?? "1";
+}
+
 export function BottomNav() {
+  const pathname = usePathname();
+  const activeMatchId = getActiveMatchId(pathname);
   const items = [
     { href: "/contests", label: "Contests" },
-    { href: "/play/2", label: "Lobby" },
-    { href: "/build/2", label: "Build" },
-    { href: "/live/2", label: "Live" },
-    { href: "/leaderboard/2", label: "Ranks" },
+    { href: `/play/${activeMatchId}`, label: "Lobby" },
+    { href: `/build/${activeMatchId}`, label: "Build" },
+    { href: `/live/${activeMatchId}`, label: "Live" },
+    { href: `/leaderboard/${activeMatchId}`, label: "Ranks" },
   ];
 
   return (
     <nav className="fixed bottom-0 left-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 border-t border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur-xl">
       <div className="grid grid-cols-5 gap-2">
-        {items.map((item) => (
-          <Link key={item.href} href={item.href} className="rounded-2xl border border-slate-800 bg-slate-900/80 px-2 py-3 text-center text-xs font-semibold text-slate-300 transition hover:border-violet-500/40 hover:text-violet-300">
-            {item.label}
-          </Link>
-        ))}
+        {items.map((item) => {
+          const isActive = pathname === item.href || pathname.startsWith(`${item.href}?`);
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`rounded-2xl border px-2 py-3 text-center text-xs font-semibold transition ${
+                isActive
+                  ? "border-violet-500/50 bg-violet-500/10 text-violet-300"
+                  : "border-slate-800 bg-slate-900/80 text-slate-300 hover:border-violet-500/40 hover:text-violet-300"
+              }`}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );

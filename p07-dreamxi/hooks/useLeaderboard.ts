@@ -56,18 +56,11 @@ function rankEntries(entries: LeaderboardSeed[], liveStats: LiveStats): Leaderbo
 
 export function useLeaderboard({ fixtureId, entries = [], enabled = true }: UseLeaderboardOptions) {
   const [liveStats, setLiveStats] = useState<LiveStats>({});
-  const [loading, setLoading] = useState<boolean>(enabled);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(enabled && !!supabase);
+  const [error, setError] = useState<string | null>(enabled && !supabase ? "Supabase client unavailable" : null);
 
   useEffect(() => {
-    if (!enabled) {
-      setLoading(false);
-      return;
-    }
-
-    if (!supabase) {
-      setError("Supabase client unavailable");
-      setLoading(false);
+    if (!enabled || !supabase) {
       return;
     }
 

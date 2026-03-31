@@ -48,10 +48,11 @@ export default function LiveMatchPage() {
   ], [battingPlayers, captain, players, userTeam, vc]);
 
   const simulation = useMatchSimulation({ battingPlayers, bowlingPlayers, leaderboardEntries, enabled: true });
+  const { reset } = simulation;
 
   useEffect(() => {
-    simulation.reset();
-  }, []);
+    reset();
+  }, [reset]);
 
   return (
     <main className="container-mobile px-4 pb-20 pt-6">
