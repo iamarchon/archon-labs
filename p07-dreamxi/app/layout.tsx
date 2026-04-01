@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Oswald, Manrope } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 const oswald = Oswald({
@@ -26,10 +25,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <html lang="en" className={`${oswald.variable} ${manrope.variable}`}>
-        <body>{children}</body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" className={`${oswald.variable} ${manrope.variable}`}>
+      <body>{children}</body>
+    </html>
   );
 }
