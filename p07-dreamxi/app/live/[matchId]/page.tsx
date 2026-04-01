@@ -104,7 +104,7 @@ export default function LiveMatchPage() {
             {simulation.running ? "Stop simulation" : "Start simulation"}
           </button>
           <button onClick={simulation.reset} className="rounded-full border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-300">Reset</button>
-          <Link href={`/leaderboard/${fixture.id}`} className="rounded-full border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-300">
+          <Link prefetch={false} href={`/leaderboard/${fixture.id}`} className="rounded-full border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-300">
             View leaderboard
           </Link>
         </div>

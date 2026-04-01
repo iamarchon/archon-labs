@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useParams, useSearchParams, notFound } from "next/navigation";
+import { useParams, useSearchParams, notFound } from "next/navigation";
 import { BottomNav, MatchPill, PitchView, PlayerRow } from "@/components/dreamxi";
 import { getFixtureById } from "@/lib/data/fixtures";
 import { getMatchPlayers } from "@/lib/data/players";
 import { useTeamBuilder } from "@/lib/stores/teamBuilder";
 
 export default function BuildTeamPage() {
-  const router = useRouter();
   const params = useParams<{ matchId: string }>();
   const searchParams = useSearchParams();
   const fixture = getFixtureById(Number(params.matchId));
@@ -33,7 +32,7 @@ export default function BuildTeamPage() {
 
   function handleConfirm() {
     if (!valid) return;
-    router.push(`/leaderboard/${fixtureId}?contest=${contestId}&entry=confirmed`);
+    window.location.assign(`/leaderboard/${fixtureId}?contest=${contestId}&entry=confirmed`);
   }
 
   return (
@@ -104,7 +103,7 @@ export default function BuildTeamPage() {
               >
                 Confirm team
               </button>
-              <Link href={`/play/${fixtureId}`} className="rounded-full border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-300">Back to lobby</Link>
+              <Link prefetch={false} href={`/play/${fixtureId}`} className="rounded-full border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-300">Back to lobby</Link>
             </div>
           </div>
         </div>

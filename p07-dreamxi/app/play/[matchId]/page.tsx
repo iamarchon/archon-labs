@@ -47,7 +47,7 @@ export default async function MatchLobbyPage({
               <h2 className="text-xl font-semibold text-slate-100">Available leagues</h2>
               <p className="mt-1 text-sm text-slate-400">Choose your entry style and lock your squad before toss.</p>
             </div>
-            <Link href={`/build/${fixture.id}`} className="rounded-full bg-violet-500 px-4 py-2 text-sm font-semibold text-slate-950">Build team</Link>
+            <Link prefetch={false} href={`/build/${fixture.id}`} className="rounded-full bg-violet-500 px-4 py-2 text-sm font-semibold text-slate-950">Build team</Link>
           </div>
           <div className="mt-4 space-y-3">
             {LEAGUES.map((league) => {
@@ -72,10 +72,10 @@ export default async function MatchLobbyPage({
                     </div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <Link href={primaryHref} className="rounded-full bg-violet-500 px-4 py-2 text-sm font-semibold text-slate-950">
+                    <Link prefetch={false} href={primaryHref} className="rounded-full bg-violet-500 px-4 py-2 text-sm font-semibold text-slate-950">
                       {primaryLabel}
                     </Link>
-                    <Link href={`/build/${fixture.id}?contest=${league.id}`} className="rounded-full border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300">Edit team</Link>
+                    <Link prefetch={false} href={`/build/${fixture.id}?contest=${league.id}`} className="rounded-full border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300">Edit team</Link>
                   </div>
                 </div>
               );

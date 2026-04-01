@@ -57,7 +57,7 @@ export function ContestCard({ fixture }: { fixture: Fixture }) {
   const away = TEAMS[fixture.away];
 
   return (
-    <Link href={`/play/${fixture.id}`} className="block rounded-3xl border border-slate-800 bg-[linear-gradient(180deg,rgba(17,24,39,0.95),rgba(8,11,18,0.95))] p-5 transition hover:border-violet-500/40 hover:bg-slate-950/95">
+    <Link prefetch={false} href={`/play/${fixture.id}`} className="block rounded-3xl border border-slate-800 bg-[linear-gradient(180deg,rgba(17,24,39,0.95),rgba(8,11,18,0.95))] p-5 transition hover:border-violet-500/40 hover:bg-slate-950/95">
       <div className="mb-4 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-slate-400">
         <span>{fixture.date}</span>
         <span>{fixture.time}</span>
@@ -113,6 +113,7 @@ export function BottomNav() {
           return (
             <Link
               key={item.href}
+              prefetch={false}
               href={item.href}
               className={`rounded-2xl border px-2 py-3 text-center text-xs font-semibold transition ${
                 isActive

@@ -42,10 +42,10 @@ export default async function LeaderboardPage({
         <Leaderboard entries={MOCK_ENTRIES} />
 
         <div className="flex flex-wrap gap-3">
-          <Link href={`/live/${fixture.id}`} className="rounded-full bg-violet-500 px-5 py-3 text-sm font-semibold text-slate-950">
+          <Link prefetch={false} href={`/live/${fixture.id}`} className="rounded-full bg-violet-500 px-5 py-3 text-sm font-semibold text-slate-950">
             View live match
           </Link>
-          <Link href={`/play/${fixture.id}?joined=${contest ?? "contest"}`} className="rounded-full border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-300">
+          <Link prefetch={false} href={`/play/${fixture.id}?joined=${contest ?? "contest"}`} className="rounded-full border border-slate-700 px-5 py-3 text-sm font-semibold text-slate-300">
             Back to contest lobby
           </Link>
         </div>
