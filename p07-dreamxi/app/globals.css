@@ -3,9 +3,9 @@
 :root {
   --bg-base: #07111f;
   --bg-surface: #0b1728;
-  --bg-card: #101b31;
+  --bg-card: rgba(255, 255, 255, 0.055);
   --bg-elevated: #14213d;
-  --border: rgba(148, 163, 184, 0.14);
+  --border: rgba(255, 255, 255, 0.12);
   --border-strong: rgba(148, 163, 184, 0.28);
   --text-primary: #f8fafc;
   --text-secondary: #dbe6f3;
@@ -116,7 +116,7 @@ a {
 .stat-card {
   border-radius: 1.15rem;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--bg-card);
   padding: 0.95rem;
 }
 
@@ -154,4 +154,18 @@ a {
   position: sticky;
   top: 0.8rem;
   z-index: 30;
+}
+
+.contest-join-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #16a34a;
+  color: white;
+  padding: 0.7rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: 0 10px 24px rgba(22, 163, 74, 0.28);
 }

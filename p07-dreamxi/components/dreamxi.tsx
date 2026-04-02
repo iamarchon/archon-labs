@@ -51,110 +51,91 @@ export function MatchPill({ fixture }: { fixture: Fixture }) {
         <span>{fixture.date}</span>
         <span>{fixture.time}</span>
       </div>
-      <div className="mt-4 flex items-center justify-between gap-4">
-        <div className="flex flex-1 flex-col items-center gap-2 text-center">
+      <div className="mt-5 flex items-start justify-between gap-4">
+        <div className="flex flex-1 flex-col items-center gap-3 text-center">
           <TeamBadge teamCode={fixture.home} large />
           <div>
-            <p className="text-xl font-extrabold tracking-[-0.04em] text-white">{home?.short ?? fixture.home}</p>
-            <p className="text-xs text-slate-400">{home?.city}</p>
+            <p className="text-lg font-extrabold tracking-[-0.04em] text-white">{home?.name ?? fixture.home}</p>
+            <p className="mt-1 text-xs text-slate-400">{home?.short ?? fixture.home}</p>
           </div>
         </div>
-        <div className="rounded-full border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-extrabold text-orange-200">VS</div>
-        <div className="flex flex-1 flex-col items-center gap-2 text-center">
+        <div className="mt-3 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-4 py-2 text-sm font-extrabold text-slate-950 shadow-[0_12px_30px_rgba(255,107,61,0.28)]">
+          VS
+        </div>
+        <div className="flex flex-1 flex-col items-center gap-3 text-center">
           <TeamBadge teamCode={fixture.away} large />
           <div>
-            <p className="text-xl font-extrabold tracking-[-0.04em] text-white">{away?.short ?? fixture.away}</p>
-            <p className="text-xs text-slate-400">{away?.city}</p>
+            <p className="text-lg font-extrabold tracking-[-0.04em] text-white">{away?.name ?? fixture.away}</p>
+            <p className="mt-1 text-xs text-slate-400">{away?.short ?? fixture.away}</p>
           </div>
         </div>
       </div>
-      <div className="mt-5 flex flex-wrap gap-2">
-        <span className="signal-chip signal-chip--hot">Prize pools live</span>
-        <span className="signal-chip signal-chip--live">Real-time scoring</span>
-        <span className="signal-chip signal-chip--violet">Secure contest entry</span>
+      <div className="mt-5 text-center">
+        <p className="text-sm font-semibold text-slate-300">{fixture.venue}</p>
+        <p className="mt-1 text-xs text-slate-500">{fixture.date} • {fixture.time}</p>
       </div>
     </div>
   );
 }
 
-export function ContestCard({ fixture }: { fixture: Fixture }) {
-  const home = TEAMS[fixture.home];
-  const away = TEAMS[fixture.away];
-  const entryFee = fixture.id === 2 ? 49 : fixture.id === 3 ? 39 : 29;
-  const prizePool = fixture.id === 2 ? "₹25 Lakhs" : fixture.id === 3 ? "₹10 Lakhs" : "₹5 Lakhs";
-  const firstPrize = fixture.id === 2 ? "₹2.5 Lakhs" : fixture.id === 3 ? "₹1 Lakh" : "₹50K";
-  const totalSpots = fixture.id === 2 ? 134582 : fixture.id === 3 ? 84210 : 56240;
-  const spotsLeft = fixture.id === 2 ? 18462 : fixture.id === 3 ? 12908 : 9405;
-  const fillPercent = Math.round(((totalSpots - spotsLeft) / totalSpots) * 100);
+export function ContestCard({
+  fixture,
+  contestName,
+  badge,
+  entry,
+  prizePool,
+  firstPrize,
+  spots,
+  spotsLeft,
+  href,
+}: {
+  fixture: Fixture;
+  contestName: string;
+  badge: string;
+  entry: number;
+  prizePool: string;
+  firstPrize: string;
+  spots: number;
+  spotsLeft: number;
+  href: string;
+}) {
+  const fillPercent = Math.round(((spots - spotsLeft) / spots) * 100);
 
   return (
-    <Link prefetch={false} href={`/play/${fixture.id}`} className="sports-panel block rounded-[1.9rem] p-5 transition hover:-translate-y-0.5 hover:border-orange-500/30">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          <span className="signal-chip signal-chip--hot">Mega</span>
-          <span className="signal-chip signal-chip--live">{spotsLeft < 15000 ? "Locks soon" : "Open"}</span>
-        </div>
-        <div className="text-right">
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">{fixture.date}</p>
-          <p className="text-sm font-semibold text-slate-300">{fixture.time}</p>
-        </div>
-      </div>
-
-      <div className="mt-4 flex items-center gap-3">
-        <div className="flex flex-1 items-center gap-3">
-          <TeamBadge teamCode={fixture.home} />
-          <div>
-            <p className="text-base font-extrabold tracking-[-0.03em] text-white">{home?.short ?? fixture.home}</p>
-            <p className="text-xs text-slate-400">{home?.name}</p>
+    <Link prefetch={false} href={href} className="block rounded-[1.6rem] border p-4 shadow-[0_20px_50px_rgba(2,6,23,0.24)]" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <p className="text-xl font-extrabold tracking-[-0.03em] text-white">{contestName}</p>
+            <span className={`signal-chip ${badge === "MEGA" ? "signal-chip--hot" : badge === "H2H" ? "signal-chip--live" : "signal-chip--violet"}`}>{badge}</span>
           </div>
         </div>
-        <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-300">vs</div>
-        <div className="flex flex-1 items-center justify-end gap-3 text-right">
-          <div>
-            <p className="text-base font-extrabold tracking-[-0.03em] text-white">{away?.short ?? fixture.away}</p>
-            <p className="text-xs text-slate-400">{away?.name}</p>
-          </div>
-          <TeamBadge teamCode={fixture.away} />
+        <span className="contest-join-btn">JOIN ₹{entry}</span>
+      </div>
+
+      <div className="mt-5 grid grid-cols-3 gap-3">
+        <div className="rounded-[1rem] border px-3 py-3" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Prize pool</p>
+          <p className="mt-2 text-xl font-extrabold tracking-[-0.03em]" style={{ color: "var(--accent-green)" }}>{prizePool}</p>
+        </div>
+        <div className="rounded-[1rem] border px-3 py-3" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">1st Prize</p>
+          <p className="mt-2 text-lg font-extrabold tracking-[-0.03em] text-white">{firstPrize}</p>
+        </div>
+        <div className="rounded-[1rem] border px-3 py-3" style={{ background: "var(--bg-card)", borderColor: "var(--border)" }}>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Spots left</p>
+          <p className="mt-2 text-lg font-extrabold tracking-[-0.03em] text-white">{spotsLeft}</p>
         </div>
       </div>
 
-      <p className="mt-4 text-sm text-slate-400">{fixture.venue}</p>
-
-      <div className="mt-5 stat-grid">
-        <div className="stat-card">
-          <p className="stat-label">Prize pool</p>
-          <p className="stat-value">{prizePool}</p>
-        </div>
-        <div className="stat-card">
-          <p className="stat-label">Entry</p>
-          <p className="stat-value">₹{entryFee}</p>
-        </div>
-        <div className="stat-card">
-          <p className="stat-label">1st prize</p>
-          <p className="stat-value">{firstPrize}</p>
-        </div>
-      </div>
-
-      <div className="mt-5 rounded-[1.35rem] border border-white/8 bg-white/[0.03] p-4">
-        <div className="mb-3 flex items-center justify-between text-sm">
-          <span className="font-semibold text-slate-200">{spotsLeft.toLocaleString()} spots left</span>
-          <span className="text-slate-400">{fillPercent}% filled</span>
+      <div className="mt-4">
+        <div className="mb-2 flex items-center justify-between text-sm">
+          <span className="font-semibold text-slate-200">{fillPercent}% filled</span>
+          <span className="text-slate-400">{spots} spots</span>
         </div>
         <div className="progress-track">
           <div className="progress-fill" style={{ width: `${fillPercent}%` }} />
         </div>
-        <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-          <span>{totalSpots.toLocaleString()} total spots</span>
-          <span>Max 20 teams</span>
-        </div>
-      </div>
-
-      <div className="mt-5 flex items-center justify-between rounded-[1.35rem] border border-orange-500/20 bg-orange-500/10 px-4 py-4">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-orange-200">High demand slate</p>
-          <p className="mt-1 text-sm text-orange-50">View contests and join before prices tighten.</p>
-        </div>
-        <span className="rounded-full bg-orange-500 px-4 py-2 text-sm font-extrabold text-slate-950">View contests</span>
       </div>
     </Link>
   );
